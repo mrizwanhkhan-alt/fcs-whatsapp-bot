@@ -3,9 +3,7 @@ const https = require("https");
 
 const PORT = process.env.PORT || 10000;
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN || "FCS2026Verify";
-const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
-const PHONE_NUMBER_ID = "1336918219494908";
-
+const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
 function sendWhatsAppMessage(to, message) {
   const data = JSON.stringify({
     messaging_product: "whatsapp",
