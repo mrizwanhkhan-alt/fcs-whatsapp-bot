@@ -4,11 +4,20 @@ const https = require("https");
 const PORT = process.env.PORT || 10000;
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN || "FCS2026Verify";
 const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
+const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
+
 function sendWhatsAppMessage(to, message) {
+  if (!PHONE_NUMBER_ID || !WHATSAPP_TOKEN) {
+    console.error(
+      "Missing PHONE_NUMBER_ID or WHATSAPP_TOKEN in Render environment variables."
+    );
+    return;
+  }
+
   const data = JSON.stringify({
     messaging_product: "whatsapp",
     recipient_type: "individual",
-    to: to,
+    to,
     type: "text",
     text: {
       preview_url: false,
@@ -35,7 +44,11 @@ function sendWhatsAppMessage(to, message) {
     });
 
     response.on("end", () => {
-      console.log("WhatsApp response:", response.statusCode, responseBody);
+      console.log(
+        "WhatsApp API response:",
+        response.statusCode,
+        responseBody
+      );
     });
   });
 
@@ -48,10 +61,14 @@ function sendWhatsAppMessage(to, message) {
 }
 
 const server = http.createServer((req, res) => {
-  const url = new URL(req.url, `http://${req.headers.host}`);
+  const host = req.headers.host || "localhost";
+  const url = new URL(req.url, `http://${host}`);
 
   if (req.method === "GET" && url.pathname === "/") {
-    res.writeHead(200, { "Content-Type": "text/plain" });
+    res.writeHead(200, {
+      "Content-Type": "text/plain"
+    });
+
     return res.end("FCS Express WhatsApp Bot is running");
   }
 
@@ -60,16 +77,30 @@ const server = http.createServer((req, res) => {
     const token = url.searchParams.get("hub.verify_token");
     const challenge = url.searchParams.get("hub.challenge");
 
+    console.log("Webhook verification request received.");
+
     if (mode === "subscribe" && token === VERIFY_TOKEN) {
-      res.writeHead(200, { "Content-Type": "text/plain" });
-      return res.end(challenge);
+      console.log("Webhook verified successfully.");
+
+      res.writeHead(200, {
+        "Content-Type": "text/plain"
+      });
+
+      return res.end(challenge || "");
     }
 
-    res.writeHead(403);
+    console.error("Webhook verification failed.");
+
+    res.writeHead(403, {
+      "Content-Type": "text/plain"
+    });
+
     return res.end("Verification failed");
   }
 
   if (req.method === "POST" && url.pathname === "/webhook") {
+    console.log("WEBHOOK POST RECEIVED");
+
     let body = "";
 
     req.on("data", (chunk) => {
@@ -77,34 +108,72 @@ const server = http.createServer((req, res) => {
     });
 
     req.on("end", () => {
-      res.writeHead(200);
+      res.writeHead(200, {
+        "Content-Type": "text/plain"
+      });
+
       res.end("EVENT_RECEIVED");
 
       try {
         const webhookData = JSON.parse(body);
 
-        const message =
-          webhookData.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
+        console.log(
+          "Webhook payload:",
+          JSON.stringify(webhookData, null, 2)
+        );
+
+        const value =
+          webhookData.entry?.[0]?.changes?.[0]?.value;
+
+        const message = value?.messages?.[0];
 
         if (!message) {
+          console.log(
+            "Webhook received, but it does not contain a customer message."
+          );
           return;
         }
 
         const customerNumber = message.from;
+        const customerText =
+          message.text?.body || `[${message.type || "unknown"} message]`;
+
+        console.log("Customer number:", customerNumber);
+        console.log("Customer message:", customerText);
 
         const reply =
-          "Welcome to FCS Express.\n\nThank you for contacting us. Please tell us how we can help you.";
+          "Welcome to FCS Express.\n\n" +
+          "Thank you for contacting us. " +
+          "Please tell us how we can help you.";
 
         sendWhatsAppMessage(customerNumber, reply);
       } catch (error) {
-        console.error("Webhook processing error:", error.message);
+        console.error(
+          "Webhook processing error:",
+          error.message
+        );
+      }
+    });
+
+    req.on("error", (error) => {
+      console.error(
+        "Webhook request error:",
+        error.message
+      );
+
+      if (!res.headersSent) {
+        res.writeHead(500);
+        res.end("Request error");
       }
     });
 
     return;
   }
 
-  res.writeHead(404);
+  res.writeHead(404, {
+    "Content-Type": "text/plain"
+  });
+
   res.end("Not found");
 });
 
