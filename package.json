@@ -1,15 +1,15 @@
-module.exports = {
-  PORT: Number(process.env.PORT) || 10000,
-
-  VERIFY_TOKEN:
-    (process.env.VERIFY_TOKEN || "FCS2026Verify").trim(),
-
-  PHONE_NUMBER_ID:
-    (process.env.PHONE_NUMBER_ID || "").trim(),
-
-  WHATSAPP_TOKEN:
-    (process.env.WHATSAPP_TOKEN || "").trim(),
-
-  OPENAI_API_KEY:
-    (process.env.OPENAI_API_KEY || "").trim()
-};
+{
+  "name": "fcs-whatsapp-bot",
+  "version": "1.0.0",
+  "description": "FCS Express WhatsApp AI Bot",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "openai": "^5.12.2"
+  }
+}
