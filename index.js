@@ -196,10 +196,18 @@ const server = http.createServer((req, res) => {
         );
 
         const reply =
-          "Welcome to FCS Express.\n\n" +
-          "Thank you for contacting us. " +
-          "Please tell us how we can help you.";
-
+  "🚚 Welcome to FCS Express Pakistan\n\n" +
+  "Thank you for contacting FCS Express.\n\n" +
+  "Please reply with the number below:\n\n" +
+  "1️⃣ Apply for Franchise\n" +
+  "2️⃣ Track Shipment\n" +
+  "3️⃣ Our Services\n" +
+  "4️⃣ Rate Calculator\n" +
+  "5️⃣ Book a Pickup\n" +
+  "6️⃣ Customer Support\n" +
+  "7️⃣ Company Information\n" +
+  "8️⃣ Business Account\n" +
+  "9️⃣ Speak to a Representative";
         sendWhatsAppMessage(
           customerNumber,
           reply
