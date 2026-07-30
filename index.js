@@ -1,24 +1,22 @@
 const http = require("http");
 const https = require("https");
 
-const PORT = Number(process.env.PORT) || 10000;
-const VERIFY_TOKEN =
-  (process.env.VERIFY_TOKEN || "FCS2026Verify").trim();
+const config = require("./config");
+const { getReply } = require("./openai");
 
-const PHONE_NUMBER_ID =
-  (process.env.PHONE_NUMBER_ID || "").trim();
-
-const WHATSAPP_TOKEN =
-  (process.env.WHATSAPP_TOKEN || "").trim();
+const PORT = config.PORT;
+const VERIFY_TOKEN = config.VERIFY_TOKEN;
+const PHONE_NUMBER_ID = config.PHONE_NUMBER_ID;
+const WHATSAPP_TOKEN = config.WHATSAPP_TOKEN;
 
 function sendWhatsAppMessage(to, message) {
   if (!PHONE_NUMBER_ID) {
-    console.error("PHONE_NUMBER_ID is missing in Render.");
+    console.error("PHONE_NUMBER_ID is missing.");
     return;
   }
 
   if (!WHATSAPP_TOKEN) {
-    console.error("WHATSAPP_TOKEN is missing in Render.");
+    console.error("WHATSAPP_TOKEN is missing.");
     return;
   }
 
@@ -45,10 +43,6 @@ function sendWhatsAppMessage(to, message) {
     }
   };
 
-  console.log(
-    `Sending WhatsApp reply using Phone Number ID: ${PHONE_NUMBER_ID}`
-  );
-
   const request = https.request(options, (response) => {
     let responseBody = "";
 
@@ -57,30 +51,16 @@ function sendWhatsAppMessage(to, message) {
     });
 
     response.on("end", () => {
-      if (
-        response.statusCode >= 200 &&
-        response.statusCode < 300
-      ) {
-        console.log(
-          "WhatsApp message sent successfully:",
-          response.statusCode,
-          responseBody
-        );
-      } else {
-        console.error(
-          "WhatsApp API error:",
-          response.statusCode,
-          responseBody
-        );
-      }
+      console.log(
+        "WhatsApp API:",
+        response.statusCode,
+        responseBody
+      );
     });
   });
 
   request.on("error", (error) => {
-    console.error(
-      "WhatsApp sending request failed:",
-      error.message
-    );
+    console.error(error.message);
   });
 
   request.write(data);
@@ -96,33 +76,18 @@ const server = http.createServer((req, res) => {
       "Content-Type": "text/plain"
     });
 
-    return res.end(
-      "FCS Express WhatsApp Bot is running"
-    );
+    return res.end("FCS Express WhatsApp Bot Running");
   }
 
-  if (
-    req.method === "GET" &&
-    url.pathname === "/webhook"
-  ) {
+  if (req.method === "GET" && url.pathname === "/webhook") {
     const mode = url.searchParams.get("hub.mode");
-    const token =
-      url.searchParams.get("hub.verify_token");
-    const challenge =
-      url.searchParams.get("hub.challenge");
-
-    console.log(
-      "Webhook verification request received."
-    );
+    const token = url.searchParams.get("hub.verify_token");
+    const challenge = url.searchParams.get("hub.challenge");
 
     if (
       mode === "subscribe" &&
       token === VERIFY_TOKEN
     ) {
-      console.log(
-        "Webhook verified successfully."
-      );
-
       res.writeHead(200, {
         "Content-Type": "text/plain"
       });
@@ -130,28 +95,18 @@ const server = http.createServer((req, res) => {
       return res.end(challenge || "");
     }
 
-    console.error("Webhook verification failed.");
-
-    res.writeHead(403, {
-      "Content-Type": "text/plain"
-    });
-
+    res.writeHead(403);
     return res.end("Verification failed");
   }
 
-  if (
-    req.method === "POST" &&
-    url.pathname === "/webhook"
-  ) {
-    console.log("WEBHOOK POST RECEIVED");
-
+  if (req.method === "POST" && url.pathname === "/webhook") {
     let body = "";
 
     req.on("data", (chunk) => {
       body += chunk.toString();
     });
 
-    req.on("end", () => {
+    req.on("end", async () => {
       res.writeHead(200, {
         "Content-Type": "text/plain"
       });
@@ -161,21 +116,13 @@ const server = http.createServer((req, res) => {
       try {
         const webhookData = JSON.parse(body);
 
-        console.log(
-          "Webhook payload:",
-          JSON.stringify(webhookData, null, 2)
-        );
-
         const value =
-          webhookData.entry?.[0]?.changes?.[0]
-            ?.value;
+          webhookData.entry?.[0]?.changes?.[0]?.value;
 
         const message = value?.messages?.[0];
 
         if (!message) {
-          console.log(
-            "Webhook received without a customer message."
-          );
+          console.log("No customer message found.");
           return;
         }
 
@@ -185,36 +132,22 @@ const server = http.createServer((req, res) => {
           message.text?.body ||
           `[${message.type || "unknown"} message]`;
 
-        console.log(
-          "Customer number:",
-          customerNumber
-        );
+        console.log("Customer:", customerNumber);
+        console.log("Message:", customerText);
 
-        console.log(
-          "Customer message:",
+        const reply = await getReply(
+          customerNumber,
           customerText
         );
 
-        const reply =
-  "🚚 Welcome to FCS Express Pakistan\n\n" +
-  "Thank you for contacting FCS Express.\n\n" +
-  "Please reply with the number below:\n\n" +
-  "1️⃣ Apply for Franchise\n" +
-  "2️⃣ Track Shipment\n" +
-  "3️⃣ Our Services\n" +
-  "4️⃣ Rate Calculator\n" +
-  "5️⃣ Book a Pickup\n" +
-  "6️⃣ Customer Support\n" +
-  "7️⃣ Company Information\n" +
-  "8️⃣ Business Account\n" +
-  "9️⃣ Speak to a Representative";
         sendWhatsAppMessage(
           customerNumber,
           reply
         );
+
       } catch (error) {
         console.error(
-          "Webhook processing error:",
+          "Webhook Error:",
           error.message
         );
       }
@@ -231,7 +164,7 @@ const server = http.createServer((req, res) => {
           "Content-Type": "text/plain"
         });
 
-        res.end("Request error");
+        res.end("Request Error");
       }
     });
 
@@ -242,25 +175,43 @@ const server = http.createServer((req, res) => {
     "Content-Type": "text/plain"
   });
 
-  res.end("Not found");
+  res.end("Not Found");
 });
 
 server.listen(PORT, "0.0.0.0", () => {
+  console.log("--------------------------------");
+  console.log("FCS Express WhatsApp Bot Started");
+  console.log("--------------------------------");
+
+  console.log("Port:", PORT);
+
   console.log(
-    `FCS Express bot running on port ${PORT}`
+    "PHONE_NUMBER_ID:",
+    PHONE_NUMBER_ID ? "Loaded" : "Missing"
   );
 
   console.log(
-    "PHONE_NUMBER_ID loaded:",
-    PHONE_NUMBER_ID
-      ? PHONE_NUMBER_ID
-      : "MISSING"
+    "WHATSAPP_TOKEN:",
+    WHATSAPP_TOKEN ? "Loaded" : "Missing"
   );
 
   console.log(
-    "WHATSAPP_TOKEN loaded:",
-    WHATSAPP_TOKEN
-      ? "YES"
-      : "MISSING"
+    "VERIFY_TOKEN:",
+    VERIFY_TOKEN ? "Loaded" : "Missing"
   );
+
+  console.log("--------------------------------");
+  console.log("Webhook URL:");
+  console.log("/webhook");
+  console.log("--------------------------------");
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught Exception:");
+  console.error(err);
+});
+
+process.on("unhandledRejection", (err) => {
+  console.error("Unhandled Rejection:");
+  console.error(err);
 });
