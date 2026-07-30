@@ -1,23 +1,31 @@
 const http = require("http");
 const https = require("https");
 
-const PORT = process.env.PORT || 10000;
-const VERIFY_TOKEN = process.env.VERIFY_TOKEN || "FCS2026Verify";
-const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
-const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
+const PORT = Number(process.env.PORT) || 10000;
+const VERIFY_TOKEN =
+  (process.env.VERIFY_TOKEN || "FCS2026Verify").trim();
+
+const PHONE_NUMBER_ID =
+  (process.env.PHONE_NUMBER_ID || "").trim();
+
+const WHATSAPP_TOKEN =
+  (process.env.WHATSAPP_TOKEN || "").trim();
 
 function sendWhatsAppMessage(to, message) {
-  if (!PHONE_NUMBER_ID || !WHATSAPP_TOKEN) {
-    console.error(
-      "Missing PHONE_NUMBER_ID or WHATSAPP_TOKEN in Render environment variables."
-    );
+  if (!PHONE_NUMBER_ID) {
+    console.error("PHONE_NUMBER_ID is missing in Render.");
+    return;
+  }
+
+  if (!WHATSAPP_TOKEN) {
+    console.error("WHATSAPP_TOKEN is missing in Render.");
     return;
   }
 
   const data = JSON.stringify({
     messaging_product: "whatsapp",
     recipient_type: "individual",
-    to,
+    to: String(to),
     type: "text",
     text: {
       preview_url: false,
@@ -27,6 +35,7 @@ function sendWhatsAppMessage(to, message) {
 
   const options = {
     hostname: "graph.facebook.com",
+    port: 443,
     path: `/v25.0/${PHONE_NUMBER_ID}/messages`,
     method: "POST",
     headers: {
@@ -36,24 +45,42 @@ function sendWhatsAppMessage(to, message) {
     }
   };
 
+  console.log(
+    `Sending WhatsApp reply using Phone Number ID: ${PHONE_NUMBER_ID}`
+  );
+
   const request = https.request(options, (response) => {
     let responseBody = "";
 
     response.on("data", (chunk) => {
-      responseBody += chunk;
+      responseBody += chunk.toString();
     });
 
     response.on("end", () => {
-      console.log(
-        "WhatsApp API response:",
-        response.statusCode,
-        responseBody
-      );
+      if (
+        response.statusCode >= 200 &&
+        response.statusCode < 300
+      ) {
+        console.log(
+          "WhatsApp message sent successfully:",
+          response.statusCode,
+          responseBody
+        );
+      } else {
+        console.error(
+          "WhatsApp API error:",
+          response.statusCode,
+          responseBody
+        );
+      }
     });
   });
 
   request.on("error", (error) => {
-    console.error("WhatsApp sending error:", error.message);
+    console.error(
+      "WhatsApp sending request failed:",
+      error.message
+    );
   });
 
   request.write(data);
@@ -69,18 +96,32 @@ const server = http.createServer((req, res) => {
       "Content-Type": "text/plain"
     });
 
-    return res.end("FCS Express WhatsApp Bot is running");
+    return res.end(
+      "FCS Express WhatsApp Bot is running"
+    );
   }
 
-  if (req.method === "GET" && url.pathname === "/webhook") {
+  if (
+    req.method === "GET" &&
+    url.pathname === "/webhook"
+  ) {
     const mode = url.searchParams.get("hub.mode");
-    const token = url.searchParams.get("hub.verify_token");
-    const challenge = url.searchParams.get("hub.challenge");
+    const token =
+      url.searchParams.get("hub.verify_token");
+    const challenge =
+      url.searchParams.get("hub.challenge");
 
-    console.log("Webhook verification request received.");
+    console.log(
+      "Webhook verification request received."
+    );
 
-    if (mode === "subscribe" && token === VERIFY_TOKEN) {
-      console.log("Webhook verified successfully.");
+    if (
+      mode === "subscribe" &&
+      token === VERIFY_TOKEN
+    ) {
+      console.log(
+        "Webhook verified successfully."
+      );
 
       res.writeHead(200, {
         "Content-Type": "text/plain"
@@ -98,7 +139,10 @@ const server = http.createServer((req, res) => {
     return res.end("Verification failed");
   }
 
-  if (req.method === "POST" && url.pathname === "/webhook") {
+  if (
+    req.method === "POST" &&
+    url.pathname === "/webhook"
+  ) {
     console.log("WEBHOOK POST RECEIVED");
 
     let body = "";
@@ -123,30 +167,43 @@ const server = http.createServer((req, res) => {
         );
 
         const value =
-          webhookData.entry?.[0]?.changes?.[0]?.value;
+          webhookData.entry?.[0]?.changes?.[0]
+            ?.value;
 
         const message = value?.messages?.[0];
 
         if (!message) {
           console.log(
-            "Webhook received, but it does not contain a customer message."
+            "Webhook received without a customer message."
           );
           return;
         }
 
         const customerNumber = message.from;
-        const customerText =
-          message.text?.body || `[${message.type || "unknown"} message]`;
 
-        console.log("Customer number:", customerNumber);
-        console.log("Customer message:", customerText);
+        const customerText =
+          message.text?.body ||
+          `[${message.type || "unknown"} message]`;
+
+        console.log(
+          "Customer number:",
+          customerNumber
+        );
+
+        console.log(
+          "Customer message:",
+          customerText
+        );
 
         const reply =
           "Welcome to FCS Express.\n\n" +
           "Thank you for contacting us. " +
           "Please tell us how we can help you.";
 
-        sendWhatsAppMessage(customerNumber, reply);
+        sendWhatsAppMessage(
+          customerNumber,
+          reply
+        );
       } catch (error) {
         console.error(
           "Webhook processing error:",
@@ -162,7 +219,10 @@ const server = http.createServer((req, res) => {
       );
 
       if (!res.headersSent) {
-        res.writeHead(500);
+        res.writeHead(500, {
+          "Content-Type": "text/plain"
+        });
+
         res.end("Request error");
       }
     });
@@ -178,5 +238,21 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, "0.0.0.0", () => {
-  console.log(`FCS Express bot running on port ${PORT}`);
+  console.log(
+    `FCS Express bot running on port ${PORT}`
+  );
+
+  console.log(
+    "PHONE_NUMBER_ID loaded:",
+    PHONE_NUMBER_ID
+      ? PHONE_NUMBER_ID
+      : "MISSING"
+  );
+
+  console.log(
+    "WHATSAPP_TOKEN loaded:",
+    WHATSAPP_TOKEN
+      ? "YES"
+      : "MISSING"
+  );
 });
