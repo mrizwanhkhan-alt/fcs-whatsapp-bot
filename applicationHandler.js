@@ -21,6 +21,17 @@ const fields = [
 ];
 
 function startApplication(number) {
+
+  if (completedApplications.has(number)) {
+    return `⚠️ You have already submitted a franchise application using this WhatsApp number.
+
+Our Franchise Development Team is reviewing your application.
+
+If additional information is required, we will contact you.
+
+Thank you for your interest in FCS Express Pakistan.`;
+  }
+
   applications.set(number, {
     step: 0,
     data: {}
