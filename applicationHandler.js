@@ -41,11 +41,17 @@ Thank you for your interest in FCS Express Pakistan.`;
     data: {}
   });
 
-  return (
-    "📝 FCS Express Franchise Application\n\n" +
-    "Thank you for choosing FCS Express.\n\n" +
-    questions[getLanguage(number) || "en"][0]
-  );
+  const lang = getLanguage(number) || "en";
+
+return (
+  lang === "ur"
+    ? "📝 ایف سی ایس ایکسپریس فرنچائز درخواست\n\n" +
+      "ایف سی ایس ایکسپریس کا انتخاب کرنے کا شکریہ۔\n\n" +
+      questions[lang][0]
+    : "📝 FCS Express Franchise Application\n\n" +
+      "Thank you for choosing FCS Express.\n\n" +
+      questions[lang][0]
+);
 }
 
 function isApplying(number) {
