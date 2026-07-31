@@ -147,6 +147,41 @@ const server = http.createServer((req, res) => {
         console.log("Message:", customerText);
 
         const text = customerText.trim();
+
+// ==============================
+// LANGUAGE SELECTION
+// ==============================
+if (!hasLanguage(customerNumber)) {
+
+  if (text === "1") {
+    setLanguage(customerNumber, "en");
+
+    sendWhatsAppMessage(
+      customerNumber,
+      "✅ English selected.\n\nType anything to continue."
+    );
+
+    return;
+  }
+
+  if (text === "2") {
+    setLanguage(customerNumber, "ur");
+
+    sendWhatsAppMessage(
+      customerNumber,
+      "✅ اردو منتخب کر لی گئی۔\n\nجاری رکھنے کے لیے کچھ بھی لکھیں۔"
+    );
+
+    return;
+  }
+
+  sendWhatsAppMessage(
+    customerNumber,
+    languageMenu()
+  );
+
+  return;
+}
                 // ==============================
         // START FRANCHISE APPLICATION
         // ==============================
