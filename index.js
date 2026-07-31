@@ -156,14 +156,27 @@ if (!hasLanguage(customerNumber)) {
  if (text === "1") {
   setLanguage(customerNumber, "en");
 
-  const reply = await getReply(customerNumber, "Hi");
+  sendWhatsAppMessage(customerNumber, `🇵🇰 Welcome to FCS Express Pakistan
 
-  sendWhatsAppMessage(customerNumber, reply);
+Assalam-o-Alaikum!
+
+I am Ghulam Qadir, your Franchise Development Assistant.
+
+Please reply with a number:
+
+1️⃣ About FCS Express
+2️⃣ Our Nationwide Network
+3️⃣ Our Services
+4️⃣ Why Choose FCS Express
+5️⃣ Franchise Opportunity
+6️⃣ Apply for Franchise
+7️⃣ Frequently Asked Questions
+8️⃣ Contact Franchise Team`);
 
   return;
 }
 
- if (text === "2") {
+if (text === "2") {
   setLanguage(customerNumber, "ur");
 
   const reply = await getReply(customerNumber, "سلام");
