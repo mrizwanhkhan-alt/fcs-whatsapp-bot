@@ -89,7 +89,17 @@ if (app.step >= questions[lang].length) {
       completed: true,
       data: completedData,
       reply:
-`🎉 Thank you!
+lang === "ur"
+? `🎉 شکریہ!
+
+آپ کی فرنچائز درخواست کامیابی سے جمع ہو گئی ہے۔
+
+ہماری فرنچائز ڈویلپمنٹ ٹیم جلد آپ سے رابطہ کرے گی۔
+
+ایف سی ایس ایکسپریس پاکستان کا انتخاب کرنے کا شکریہ۔
+
+👋 اللہ حافظ۔`
+: `🎉 Thank you!
 
 Your franchise application has been submitted successfully.
 
