@@ -24,16 +24,25 @@ function startApplication(number) {
 
   // Prevent duplicate applications
   if (completedApplications.has(number)) {
-    return `⚠️ Franchise Application Already Submitted
+    const lang = getLanguage(number) || "en";
+
+return lang === "ur"
+? `⚠️ فرنچائز درخواست پہلے ہی جمع ہو چکی ہے۔
+
+اس واٹس ایپ نمبر سے پہلے ہی ایک فرنچائز درخواست جمع کرائی جا چکی ہے۔
+
+اگر آپ اپنی معلومات اپ ڈیٹ کرنا چاہتے ہیں یا اپنی درخواست کے بارے میں کوئی سوال ہے تو براہِ کرم ہماری فرنچائز ٹیم سے رابطہ کریں۔
+
+📱 WhatsApp: +92 316 0034207
+📧 Email: info@fcsexpress.com.pk`
+: `⚠️ Franchise Application Already Submitted
 
 Our records show that a franchise application has already been submitted using this WhatsApp number.
 
 If you need to update your information or have any questions about your application, please contact our Franchise Development Team.
 
 📱 WhatsApp: +92 316 0034207
-📧 Email: info@fcsexpress.com.pk
-
-Thank you for your interest in FCS Express Pakistan.`;
+📧 Email: info@fcsexpress.com.pk`;
   }
 
   applications.set(number, {
