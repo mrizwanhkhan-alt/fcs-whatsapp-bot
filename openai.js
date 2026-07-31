@@ -47,21 +47,21 @@ I am Ghulam Qadir, your Franchise Development Assistant.
 
 Please reply with a number:
 
-1️⃣ Franchise Information
+1️⃣ About FCS Express
 
-2️⃣ Eligibility
+2️⃣ Our Nationwide Network
 
-3️⃣ Required Documents
+3️⃣ Our Services
 
-4️⃣ Benefits
+4️⃣ Why Choose FCS Express
 
-5️⃣ Apply for Franchise
+5️⃣ Franchise Opportunity
 
-6️⃣ Investment
+6️⃣ Apply for Franchise
 
-7️⃣ Available Cities
+7️⃣ Frequently Asked Questions
 
-8️⃣ Contact Us
+8️⃣ Contact Franchise Team
 
 Type the number to continue.
 
