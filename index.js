@@ -179,9 +179,22 @@ Please reply with a number:
 if (text === "2") {
   setLanguage(customerNumber, "ur");
 
-  const reply = await getReply(customerNumber, "سلام");
+  sendWhatsAppMessage(customerNumber, `🇵🇰 ایف سی ایس ایکسپریس پاکستان میں خوش آمدید
 
-  sendWhatsAppMessage(customerNumber, reply);
+السلام علیکم!
+
+میں غلام قادر، آپ کا فرنچائز ڈویلپمنٹ اسسٹنٹ ہوں۔
+
+براہِ کرم نمبر منتخب کریں:
+
+1️⃣ ایف سی ایس ایکسپریس کے بارے میں
+2️⃣ ہمارا ملک گیر نیٹ ورک
+3️⃣ ہماری سروسز
+4️⃣ ایف سی ایس ایکسپریس کیوں؟
+5️⃣ فرنچائز کا موقع
+6️⃣ فرنچائز کے لیے درخواست دیں
+7️⃣ اکثر پوچھے جانے والے سوالات
+8️⃣ فرنچائز ٹیم سے رابطہ کریں`);
 
   return;
 }
