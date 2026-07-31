@@ -140,16 +140,13 @@ const server = http.createServer((req, res) => {
 
         console.log("Customer:", customerNumber);
         console.log("Message:", customerText);
-                // Clean customer message
-        const text = customerText.trim();
 
-        // ==============================
+        const text = customerText.trim();
+                // ==============================
         // START FRANCHISE APPLICATION
         // ==============================
-        if (
-          text.toLowerCase() === "apply" ||
-          text === "9"
-        ) {
+        if (text === "5") {
+
           const reply = startApplication(customerNumber);
 
           sendWhatsAppMessage(
@@ -238,11 +235,10 @@ const server = http.createServer((req, res) => {
     "Content-Type": "text/plain"
   });
 
-  res.end("Not Found");
+ res.end("Not Found");
 });
 
 server.listen(PORT, "0.0.0.0", () => {
-
   console.log("--------------------------------");
   console.log("FCS Express WhatsApp Bot Started");
   console.log("--------------------------------");
