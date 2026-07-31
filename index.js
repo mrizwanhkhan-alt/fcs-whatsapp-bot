@@ -4,6 +4,12 @@ const https = require("https");
 const config = require("./config");
 const { getReply } = require("./openai");
 
+const {
+  startApplication,
+  isApplying,
+  handleApplication
+} = require("./applicationHandler");
+
 const PORT = config.PORT;
 const VERIFY_TOKEN = config.VERIFY_TOKEN;
 const PHONE_NUMBER_ID = config.PHONE_NUMBER_ID;
@@ -134,7 +140,64 @@ const server = http.createServer((req, res) => {
 
         console.log("Customer:", customerNumber);
         console.log("Message:", customerText);
+                // Clean customer message
+        const text = customerText.trim();
 
+        // ==============================
+        // START FRANCHISE APPLICATION
+        // ==============================
+        if (
+          text.toLowerCase() === "apply" ||
+          text === "9"
+        ) {
+          const reply = startApplication(customerNumber);
+
+          sendWhatsAppMessage(
+            customerNumber,
+            reply
+          );
+
+          return;
+        }
+
+        // ==============================
+        // CONTINUE FRANCHISE APPLICATION
+        // ==============================
+        if (isApplying(customerNumber)) {
+
+          const result = handleApplication(
+            customerNumber,
+            customerText
+          );
+
+          sendWhatsAppMessage(
+            customerNumber,
+            result.reply
+          );
+
+          if (result.completed) {
+
+            console.log("====================================");
+            console.log("NEW FRANCHISE APPLICATION RECEIVED");
+            console.log("====================================");
+
+            console.log(result.data);
+
+            console.log("====================================");
+
+            /*
+             Google Sheets Integration
+             will be added here
+            */
+
+          }
+
+          return;
+        }
+
+        // ==============================
+        // NORMAL AI CHAT
+        // ==============================
         const reply = await getReply(
           customerNumber,
           customerText
@@ -179,6 +242,7 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, "0.0.0.0", () => {
+
   console.log("--------------------------------");
   console.log("FCS Express WhatsApp Bot Started");
   console.log("--------------------------------");
@@ -204,6 +268,7 @@ server.listen(PORT, "0.0.0.0", () => {
   console.log("Webhook URL:");
   console.log("/webhook");
   console.log("--------------------------------");
+
 });
 
 process.on("uncaughtException", (err) => {
