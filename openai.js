@@ -93,7 +93,23 @@ If the message is exactly "6", do not reply because the application starts autom
 
 If the message is exactly "7", reply ONLY to Frequently Asked Questions.
 
-If the message is exactly "8", reply ONLY with the contact information.
+📍 Franchise Development Office
+
+FCS Express Pakistan
+
+Shahrah-e-Faisal,
+PECHS Block 6,
+Karachi 75400,
+Sindh, Pakistan
+
+📱 WhatsApp: +92 316 0034207
+📧 Email: info@fcsexpress.com.pk
+🌐 Website: www.fcsexpress.com.pk
+
+🕒 Business Hours
+
+Monday – Saturday
+9:00 AM – 6:00 PM (Pakistan Standard Time)
 
 `;
     const messages = [
