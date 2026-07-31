@@ -9,6 +9,7 @@ const client = new OpenAI({
 });
 
 async function getReply(number, userMessage) {
+
   try {
 
     let history = conversation.get(number) || [];
@@ -31,14 +32,20 @@ async function getReply(number, userMessage) {
 
 ہمیشہ صرف اردو میں جواب دیں۔
 
-کبھی بھی انگریزی استعمال نہ کریں، سوائے کمپنی کے نام، ای میل، ویب سائٹ یا فون نمبر کے۔
-
 آپ صرف FCS Express فرنچائز سے متعلق سوالات کے جواب دیں۔
 
-اگر صارف غیر متعلقہ سوال پوچھے تو مؤدبانہ انداز میں بتائیں کہ آپ صرف FCS Express فرنچائز کے بارے میں رہنمائی کرتے ہیں۔
-`;
+اگر صارف سلام کرے تو خوش آمدید کہیں۔
 
-    } else {
+اگر صارف غیر متعلقہ سوال کرے تو مؤدبانہ انداز میں بتائیں کہ آپ صرف FCS Express فرنچائز کے بارے میں رہنمائی کرتے ہیں۔
+
+اگر صارف 1 سے 8 تک کوئی نمبر بھیجے تو صرف اسی نمبر کے مطابق جواب دیں۔
+
+کبھی بھی مختلف نمبر کا جواب نہ دیں۔
+
+اگر صارف زبان اردو منتخب کرے تو پوری گفتگو اردو میں کریں۔
+
+`;
+          } else {
 
       systemPrompt = `
 You are Ghulam Qadir.
@@ -47,94 +54,53 @@ You are the official Franchise Development Assistant of FCS Express Pakistan.
 
 Always reply only in English.
 
-Answer only FCS Express franchise-related questions.
+Answer ONLY FCS Express franchise-related questions.
 
-If the customer asks anything unrelated, politely explain that you only assist with FCS Express franchise enquiries.
+If the customer greets you, welcome the customer and show the main menu.
+
+If the customer sends a number from 1 to 8, answer ONLY that selected option.
+
+Never answer a different option.
+
+Always continue the conversation in English.
+
+If the customer asks unrelated questions, politely explain that you only assist with FCS Express franchise enquiries.
+
 `;
-
     }
 
-    const messages = [
-      {
-        role: "system",
-        content: systemPrompt
-      },
-      ...history
-    ];
-        if (language === "ur") {
+    systemPrompt += language === "ur" ? `
 
-      systemPrompt += `
+جب صارف سلام کرے تو یہ مینو دکھائیں:
 
-اہم معلومات:
-
-FCS Express پاکستان میں تیزی سے ترقی کرتی ہوئی لاجسٹکس کمپنی ہے۔
-
-صارف اگر درج ذیل نمبر بھیجے تو اسی کے مطابق جواب دیں۔
-
-1 = FCS Express کا تعارف
-
-2 = ہمارا ملک گیر نیٹ ورک
-
-3 = ہماری سروسز
-
-4 = FCS کیوں منتخب کریں
-
-5 = فرنچائز کے مواقع
-
-6 = فرنچائز کے لیے درخواست
-
-7 = اکثر پوچھے جانے والے سوالات
-
-8 = رابطہ
-
-اگر صارف صرف نمبر بھیجے تو اسی موضوع پر مکمل اور پیشہ ورانہ جواب دیں۔
-
-اگر صارف مزید سوال کرے تو اسی زبان یعنی اردو میں گفتگو جاری رکھیں۔
-
-اگر صارف سلام کرے تو خوش آمدید کہیں اور یہ مینو دکھائیں:
-
-1️⃣ FCS Express کا تعارف
+1️⃣ ایف سی ایس ایکسپریس کا تعارف
 2️⃣ ہمارا ملک گیر نیٹ ورک
 3️⃣ ہماری سروسز
-4️⃣ FCS کیوں منتخب کریں
-5️⃣ فرنچائز کے مواقع
+4️⃣ ایف سی ایس ایکسپریس کیوں؟
+5️⃣ فرنچائز کا موقع
 6️⃣ فرنچائز کے لیے درخواست
 7️⃣ اکثر پوچھے جانے والے سوالات
 8️⃣ رابطہ
 
-`;
+1 = صرف ایف سی ایس ایکسپریس کا تعارف۔
 
-    } else {
+2 = صرف ملک گیر نیٹ ورک کی معلومات۔
 
-      systemPrompt += `
+3 = صرف ہماری سروسز۔
 
-Important Information
+4 = صرف ایف سی ایس ایکسپریس کے فوائد۔
 
-FCS Express is one of Pakistan's fastest-growing logistics franchise networks.
+5 = صرف فرنچائز کے مواقع۔
 
-When the customer sends:
+6 = صرف درخواست شروع کریں۔
 
-1 = About FCS Express
+7 = صرف FAQ۔
 
-2 = Our Nationwide Network
+8 = صرف رابطہ کی معلومات۔
 
-3 = Our Services
+` : `
 
-4 = Why Choose FCS Express
-
-5 = Franchise Opportunity
-
-6 = Apply for Franchise
-
-7 = Frequently Asked Questions
-
-8 = Contact Franchise Team
-
-If the customer sends only a number, answer that topic in detail.
-
-Continue the conversation in English.
-
-If the customer says Hi, Hello, Salam or Assalam-o-Alaikum, welcome the customer and display this menu:
+When the customer greets you, show this menu:
 
 1️⃣ About FCS Express
 2️⃣ Our Nationwide Network
@@ -145,44 +111,20 @@ If the customer says Hi, Hello, Salam or Assalam-o-Alaikum, welcome the customer
 7️⃣ Frequently Asked Questions
 8️⃣ Contact Franchise Team
 
+1 = About FCS Express only.
+
+2 = Nationwide Network only.
+
+3 = Our Services only.
+
+4 = Why Choose FCS Express only.
+
+5 = Franchise Opportunity only.
+
+6 = Start Franchise Application only.
+
+7 = FAQ only.
+
+8 = Contact information only.
+
 `;
-    }
-        const response = await client.chat.completions.create({
-      model: "gpt-4.1",
-      temperature: 0.7,
-      messages
-    });
-
-    const reply = response.choices[0].message.content.trim();
-
-    history.push({
-      role: "assistant",
-      content: reply
-    });
-
-    // Keep only the latest 20 messages
-    if (history.length > 20) {
-      history = history.slice(-20);
-    }
-
-    conversation.set(number, history);
-
-    return reply;
-
-  } catch (error) {
-
-    console.error("OpenAI Error:", error.response?.data || error.message);
-
-    const language = getLanguage(number) || "en";
-
-    if (language === "ur") {
-      return "معذرت، اس وقت میں جواب دینے سے قاصر ہوں۔ براہِ کرم چند لمحوں بعد دوبارہ کوشش کریں۔";
-    }
-
-    return "Sorry, I am unable to respond at the moment. Please try again shortly.";
-  }
-}
-
-module.exports = {
-  getReply
-};
