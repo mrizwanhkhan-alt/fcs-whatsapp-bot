@@ -2,6 +2,7 @@ const OpenAI = require("openai");
 
 const config = require("./config");
 const conversation = require("./conversation");
+const { getLanguage } = require("./language");
 
 const client = new OpenAI({
   apiKey: config.OPENAI_API_KEY
