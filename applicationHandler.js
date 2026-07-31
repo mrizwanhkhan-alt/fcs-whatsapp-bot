@@ -3,7 +3,7 @@ const {
   completedApplications,
   questions
 } = require("./application");
-
+const { getLanguage } = require("./language");
 const fields = [
   "fullName",
   "fatherName",
