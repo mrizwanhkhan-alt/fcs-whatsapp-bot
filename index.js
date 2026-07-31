@@ -153,28 +153,25 @@ const server = http.createServer((req, res) => {
 // ==============================
 if (!hasLanguage(customerNumber)) {
 
-  if (text === "1") {
-    setLanguage(customerNumber, "en");
+ if (text === "1") {
+  setLanguage(customerNumber, "en");
 
-    sendWhatsAppMessage(
-      customerNumber,
-      "✅ English selected.\n\nType anything to continue."
-    );
+  const reply = await getReply(customerNumber, "Hi");
 
-    return;
-  }
+  sendWhatsAppMessage(customerNumber, reply);
 
-  if (text === "2") {
-    setLanguage(customerNumber, "ur");
+  return;
+}
 
-    sendWhatsAppMessage(
-      customerNumber,
-      "✅ اردو منتخب کر لی گئی۔\n\nجاری رکھنے کے لیے کچھ بھی لکھیں۔"
-    );
+ if (text === "2") {
+  setLanguage(customerNumber, "ur");
 
-    return;
-  }
+  const reply = await getReply(customerNumber, "سلام");
 
+  sendWhatsAppMessage(customerNumber, reply);
+
+  return;
+}
   sendWhatsAppMessage(
     customerNumber,
     languageMenu()
