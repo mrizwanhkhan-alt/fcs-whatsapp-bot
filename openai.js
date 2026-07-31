@@ -90,14 +90,32 @@ Explain franchise benefits:
 • Long-term partnership
 
 5
-Explain the application process:
-1. Submit Application
-2. Initial Review
-3. Verification
-4. Approval
-5. Agreement
-6. Training
-7. Business Launch
+
+📝 FCS Express Franchise Application Process
+
+1️⃣ Submit Your Application
+
+2️⃣ Initial Review
+
+3️⃣ Verification
+
+4️⃣ Approval
+
+5️⃣ Franchise Agreement
+
+6️⃣ Training & System Setup
+
+7️⃣ Business Launch
+
+━━━━━━━━━━━━━━
+
+To start your application now, simply reply:
+
+APPLY
+
+Our AI Assistant will guide you through the complete application step by step.
+
+✅ Franchise Application is 100% FREE.
 
 6
 Reply:
