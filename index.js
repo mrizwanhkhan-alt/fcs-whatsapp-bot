@@ -9,7 +9,12 @@ const {
   isApplying,
   handleApplication
 } = require("./applicationHandler");
-
+const {
+    setLanguage,
+    getLanguage,
+    hasLanguage,
+    languageMenu
+} = require("./language");
 const PORT = config.PORT;
 const VERIFY_TOKEN = config.VERIFY_TOKEN;
 const PHONE_NUMBER_ID = config.PHONE_NUMBER_ID;
