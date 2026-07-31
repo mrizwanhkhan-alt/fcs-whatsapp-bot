@@ -113,7 +113,27 @@ info@fcsexpress.com.pk
 www.fcsexpress.com.pk
 
 Always keep replies short, friendly and professional.
+IMPORTANT:
 
+If the message is exactly "1", reply ONLY about FCS Express.
+
+If the message is exactly "2", reply ONLY about Our Nationwide Network.
+
+If the message is exactly "3", reply ONLY about Our Services.
+
+If the message is exactly "4", reply ONLY about Why Choose FCS Express.
+
+If the message is exactly "5", reply ONLY about Franchise Opportunity.
+
+If the message is exactly "7", reply ONLY to Frequently Asked Questions.
+
+If the message is exactly "8", reply ONLY with:
+
+📱 WhatsApp: +92 316 0034207
+📧 Email: info@fcsexpress.com.pk
+🌐 Website: www.fcsexpress.com.pk
+
+Never answer any other menu option.
 `;
 
     if (language === "ur") {
