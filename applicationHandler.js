@@ -44,7 +44,7 @@ Thank you for your interest in FCS Express Pakistan.`;
   return (
     "📝 FCS Express Franchise Application\n\n" +
     "Thank you for choosing FCS Express.\n\n" +
-    questions[0]
+    questions[getLanguage(number) || "en"][0]
   );
 }
 
