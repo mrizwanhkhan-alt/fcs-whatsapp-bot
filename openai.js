@@ -10,8 +10,9 @@ const client = new OpenAI({
 
 async function getReply(number, userMessage) {
   try {
-    let history = conversation.get(number) || [];
+   let history = conversation.get(number) || [];
 
+const language = getLanguage(number) || "en";
     history.push({
       role: "user",
       content: userMessage
