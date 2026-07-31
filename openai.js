@@ -159,3 +159,56 @@ Never answer another menu option.
 `;
 
     }
+    const messages = [
+      {
+        role: "system",
+        content: systemPrompt
+      },
+      ...history
+    ];
+
+    const response = await client.chat.completions.create({
+      model: "gpt-4.1",
+      temperature: 0.3,
+      messages
+    });
+
+    const reply =
+      response.choices?.[0]?.message?.content ||
+      (language === "ur"
+        ? "معذرت، میں جواب نہیں دے سکا۔"
+        : "Sorry, I couldn't generate a reply.");
+
+    history.push({
+      role: "assistant",
+      content: reply
+    });
+
+    if (history.length > 20) {
+      history = history.slice(-20);
+    }
+
+    conversation.set(number, history);
+
+    return reply;
+
+  } catch (error) {
+
+    console.error("OpenAI Error:", error);
+
+    const language = getLanguage(number) || "en";
+
+    if (language === "ur") {
+      return "معذرت، اس وقت سروس دستیاب نہیں۔ براہ کرم کچھ دیر بعد دوبارہ کوشش کریں۔";
+    }
+
+    return "Sorry, the service is temporarily unavailable. Please try again shortly.";
+  }
+
+}
+
+module.exports = {
+  getReply
+};
+
+  
