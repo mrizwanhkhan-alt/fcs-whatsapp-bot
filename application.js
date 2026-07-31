@@ -1,5 +1,5 @@
 const applications = new Map();
-
+const completedApplications = new Set();
 const questions = [
   "What is your Full Name?",
   "What is your Father's Name?",
@@ -18,5 +18,6 @@ const questions = [
 
 module.exports = {
   applications,
+  completedApplications,
   questions
 };
