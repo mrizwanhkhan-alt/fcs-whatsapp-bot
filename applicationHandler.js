@@ -67,7 +67,9 @@ function handleApplication(number, answer) {
 
   app.step++;
 
-  if (app.step >= questions.length) {
+ const lang = getLanguage(number) || "en";
+
+if (app.step >= questions[lang].length) {
 
     const completedData = app.data;
 
