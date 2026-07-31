@@ -125,7 +125,7 @@ Karachi 75400,
 Sindh, Pakistan
 
 📱 WhatsApp: +92 316 0034207
-📧 Email: info@fcsexpress.com.pk
+📧 Email: franchise@fcsexpress.com.pk
 🌐 Website: www.fcsexpress.com.pk
 
 🕒 Business Hours
