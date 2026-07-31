@@ -1,4 +1,8 @@
-const { applications, questions } = require("./application");
+const {
+  applications,
+  completedApplications,
+  questions
+} = require("./application");
 
 const fields = [
   "fullName",
