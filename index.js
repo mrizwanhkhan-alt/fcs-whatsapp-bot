@@ -185,7 +185,7 @@ if (!hasLanguage(customerNumber)) {
                 // ==============================
         // START FRANCHISE APPLICATION
         // ==============================
-        if (text === "5") {
+      if (text === "6") {
 
           const reply = startApplication(customerNumber);
 
