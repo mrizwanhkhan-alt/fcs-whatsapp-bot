@@ -100,7 +100,7 @@ Thank you for choosing FCS Express Pakistan.
 
   return {
     completed: false,
-    reply: questions[app.step]
+reply: questions[lang][app.step]
   };
 }
 
