@@ -92,7 +92,7 @@ await appendApplication([
     applications.delete(number);
 
     // Mark this WhatsApp number as completed
-    completedApplications.add(number);
+    
 
     return {
       completed: true,
