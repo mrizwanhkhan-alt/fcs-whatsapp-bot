@@ -126,6 +126,8 @@ app.data[fields[app.step]] = answer;
 
     const completedData = app.data;
 
+confirmations.set(number, completedData);
+
 const applicationNumber = await generateApplicationNumber();
 
 await appendApplication([
