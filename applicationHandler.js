@@ -130,7 +130,7 @@ async function saveApplication(number, data, lang) {
 
     new Date().toLocaleString(),
 
-    ""
+   new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toLocaleDateString()
 
   ]);
 
