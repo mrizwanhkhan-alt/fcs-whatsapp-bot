@@ -548,3 +548,23 @@ process.on("unhandledRejection", (err) => {
   );
 
 });
+// ==============================
+// DAILY ENGAGEMENT CHECK
+// ==============================
+
+const { checkEngagement } = require("./engagementChecker");
+
+
+setInterval(() => {
+
+  checkEngagement(sendWhatsAppMessage)
+    .catch((error) => {
+
+      console.error(
+        "Engagement Error:",
+        error.message
+      );
+
+    });
+
+}, 24 * 60 * 60 * 1000);
