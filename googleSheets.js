@@ -44,7 +44,7 @@ async function appendApplication(row) {
 
     spreadsheetId: config.GOOGLE_SHEET_ID,
 
-    range: "A:Q",
+    range: "A:T",
 
     valueInputOption: "USER_ENTERED",
 
@@ -64,7 +64,7 @@ async function numberExists(whatsapp) {
 
     spreadsheetId: config.GOOGLE_SHEET_ID,
 
-    range: "A:Q"
+    range: "A:T"
 
   });
 
