@@ -399,6 +399,21 @@ const server = http.createServer((req, res) => {
 
           }
           // ==============================
+          if (isApplying(customerNumber)) {
+
+  const result = await handleApplication(
+    customerNumber,
+    customerText
+  );
+
+  sendWhatsAppMessage(
+    customerNumber,
+    result.reply
+  );
+
+  return;
+
+}
 // MAIN MENU OPTIONS
 // ==============================
 
