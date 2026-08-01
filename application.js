@@ -1,4 +1,5 @@
 const applications = new Map();
+const confirmations = new Map();
 const completedApplications = new Set();
 const questions = {
   en: [
