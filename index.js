@@ -402,7 +402,97 @@ Please reply with a number:
 
 }
 
+// ==============================
+// MAIN MENU OPTIONS
+// ==============================
 
+if (hasLanguage(customerNumber)) {
+
+
+  if (text === "1") {
+
+    sendWhatsAppMessage(
+      customerNumber,
+      "FCS Express is building Pakistan's trusted logistics network."
+    );
+
+    return;
+
+  }
+
+
+  if (text === "2") {
+
+    sendWhatsAppMessage(
+      customerNumber,
+      "Our nationwide network includes NDCs, RDCs, City Hubs and Service Points across Pakistan."
+    );
+
+    return;
+
+  }
+
+
+  if (text === "3") {
+
+    sendWhatsAppMessage(
+      customerNumber,
+      "Our services include Express Delivery, Corporate Logistics, E-commerce Delivery and COD."
+    );
+
+    return;
+
+  }
+
+
+  if (text === "4") {
+
+    sendWhatsAppMessage(
+      customerNumber,
+      "FCS Express provides reliable technology-driven logistics solutions."
+    );
+
+    return;
+
+  }
+
+
+  if (text === "5") {
+
+    sendWhatsAppMessage(
+      customerNumber,
+      "Join FCS Express Franchise Network and become part of Pakistan's growing logistics future."
+    );
+
+    return;
+
+  }
+
+
+  if (text === "7") {
+
+    sendWhatsAppMessage(
+      customerNumber,
+      "Frequently Asked Questions will be available here. Our franchise team will guide you."
+    );
+
+    return;
+
+  }
+
+
+  if (text === "8") {
+
+    sendWhatsAppMessage(
+      customerNumber,
+      "Contact Franchise Team:\nWhatsApp: 03326237178"
+    );
+
+    return;
+
+  }
+
+}
 
 // ==============================
 // START APPLICATION
