@@ -25,5 +25,6 @@ async function appendApplication(row) {
 
 module.exports = {
   sheets,
-  appendApplication
+  appendApplication,
+  numberExists
 };
