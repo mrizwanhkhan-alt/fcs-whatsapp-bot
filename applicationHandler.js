@@ -120,33 +120,37 @@ await appendApplication([
       data: completedData,
 
 
-      reply:
+    reply:
 
-        lang === "ur"
+lang === "ur"
 
-        ?
+?
 
 `🎉 شکریہ!
 
 آپ کی فرنچائز درخواست کامیابی سے جمع ہو گئی ہے۔
 
-ہماری فرنچائز ڈویلپمنٹ ٹیم جلد آپ سے رابطہ کرے گی۔
+درخواست نمبر: ${applicationNumber}
 
-ایف سی ایس ایکسپریس پاکستان کا انتخاب کرنے کا شکریہ۔
+براہِ کرم یہ درخواست نمبر مستقبل کے لیے محفوظ رکھیں۔
 
-👋 اللہ حافظ۔`
+ہماری فرنچائز ڈویلپمنٹ ٹیم آپ کی درخواست کا جائزہ لے گی اور مزید رابطہ کرے گی۔
 
-        :
+ایف سی ایس ایکسپریس پاکستان کا انتخاب کرنے کا شکریہ۔`
+
+:
 
 `🎉 Thank you!
 
-Your franchise application has been submitted successfully.
+Your FCS Express Franchise Application has been submitted successfully.
 
-Our Franchise Development Team will review your application and contact you shortly.
+Application Number: ${applicationNumber}
 
-Thank you for choosing FCS Express Pakistan.
+Please save this application number for future reference.
 
-👋 Goodbye.`
+Our Franchise Development Team will review your application and contact you further.
+
+Thank you for choosing FCS Express Pakistan.`
 
     };
 
