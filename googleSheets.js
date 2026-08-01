@@ -16,6 +16,25 @@ const sheets = google.sheets({
 
 async function generateApplicationNumber() {
 
+  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+  const randomLetter =
+    letters[Math.floor(Math.random() * letters.length)];
+
+  const randomDigit =
+    Math.floor(Math.random() * 10);
+
+  const randomNumbers =
+    Math.floor(10000000 + Math.random() * 90000000);
+
+  return (
+    randomLetter +
+    randomDigit +
+    "FCS" +
+    randomNumbers
+  );
+}
+
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: config.GOOGLE_SHEET_ID,
     range: "B:B"
