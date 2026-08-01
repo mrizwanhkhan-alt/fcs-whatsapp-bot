@@ -1,20 +1,39 @@
-const { getApplications } = require("./googleSheets");
-const { getEngagementMessage } = require("./engagementManager");
+const {
+  getApplications,
+  updateEngagement
+} = require("./googleSheets");
+
+const {
+  getEngagementMessage
+} = require("./engagementManager");
+
 
 
 // Check applicants needing engagement
+
 async function checkEngagement(sendWhatsAppMessage) {
 
-  const rows = await getApplications();
+
+  const rows =
+    await getApplications();
 
 
-  for (let i = 1; i < rows.length; i++) {
+
+  for (
+    let i = 1;
+    i < rows.length;
+    i++
+  ) {
 
 
     const row = rows[i];
 
 
+    const sheetRow = i + 1;
+
+
     const applicationDate = row[0];
+
     const whatsappNumber = row[5];
 
     const status = row[16];
@@ -65,6 +84,8 @@ async function checkEngagement(sendWhatsAppMessage) {
 
 
 
+    // Send WhatsApp
+
     sendWhatsAppMessage(
       whatsappNumber,
       engagement.message
@@ -72,11 +93,29 @@ async function checkEngagement(sendWhatsAppMessage) {
 
 
 
-    // Future step:
-    // Update Engagement Stage
-    // Update Next Follow Up Date
+    // Calculate next follow up
+
+    const nextDate =
+      new Date();
+
+
+    nextDate.setDate(
+      nextDate.getDate() + engagement.nextDay
+    );
+
+
+
+    // Update Google Sheet
+
+    await updateEngagement(
+      sheetRow,
+      engagement.stage,
+      nextDate.toLocaleDateString()
+    );
+
 
   }
+
 
 }
 
