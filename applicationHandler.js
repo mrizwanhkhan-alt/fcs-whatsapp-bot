@@ -89,7 +89,22 @@ function handleApplication(number, answer) {
 if (app.step >= questions[lang].length) {
 
     const completedData = app.data;
-
+await appendApplication([
+  new Date().toLocaleString(),
+  completedData.fullName,
+  completedData.fatherName,
+  completedData.mobile,
+  completedData.whatsapp,
+  completedData.email,
+  completedData.province,
+  completedData.city,
+  completedData.area,
+  completedData.address,
+  completedData.education,
+  completedData.experience,
+  completedData.shop,
+  completedData.comments
+]);
     // Remove active application
     applications.delete(number);
 
