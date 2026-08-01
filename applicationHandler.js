@@ -27,7 +27,6 @@ const fields = [
   "experience",
   "shop",
   "comments"
-  "Received"
 ];
 
 
@@ -81,8 +80,10 @@ async function saveApplication(number, data, lang) {
     data.education,
     data.experience,
     data.shop,
-    data.comments
+    data.comments,
+    "Received"
   ]);
+
 
   applications.delete(number);
   confirmations.delete(number);
@@ -118,7 +119,6 @@ Our Franchise Development Team will review your application and contact you furt
 // HANDLE APPLICATION
 async function handleApplication(number, answer) {
 
-
   const lang = getLanguage(number) || "en";
 
 
@@ -136,6 +136,7 @@ async function handleApplication(number, answer) {
 
     }
 
+
     if (answer.trim() === "2") {
 
       confirmations.delete(number);
@@ -146,6 +147,7 @@ async function handleApplication(number, answer) {
       };
 
     }
+
 
     return {
       completed: false,
