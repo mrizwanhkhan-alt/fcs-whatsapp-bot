@@ -225,10 +225,10 @@ if (text === "2") {
         // ==============================
         if (isApplying(customerNumber)) {
 
-          const result = handleApplication(
-            customerNumber,
-            customerText
-          );
+          const result = await handleApplication(
+  customerNumber,
+  customerText
+);
 
           sendWhatsAppMessage(
             customerNumber,
