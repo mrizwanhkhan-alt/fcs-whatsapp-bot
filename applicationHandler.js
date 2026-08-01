@@ -74,11 +74,18 @@ async function handleApplication(number, answer) {
   }
 
 
- if (fields[app.step] === "mobile" && answer.length < 11) {
-  return {
-    completed: false,
-    reply: "Please enter a correct mobile number."
-  };
+if (fields[app.step] === "mobile") {
+
+  const mobile = answer.replace(/\s+/g, "");
+
+  if (!/^03\d{9}$/.test(mobile)) {
+
+    return {
+      completed: false,
+      reply: "Please enter a valid mobile number.\n\nExample: 03326237178"
+    };
+
+  }
 }
 if (fields[app.step] === "email") {
 
