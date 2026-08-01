@@ -16,10 +16,15 @@ async function checkEngagement(sendWhatsAppMessage) {
 
     const applicationDate = row[0];
     const whatsappNumber = row[5];
+
     const status = row[16];
 
+    const engagementStage = row[17];
 
-    // Skip completed cases
+
+
+    // Skip completed applications
+
     if (
       status === "Approved" ||
       status === "Operational" ||
@@ -33,7 +38,10 @@ async function checkEngagement(sendWhatsAppMessage) {
 
 
     const engagement =
-      getEngagementMessage(applicationDate);
+      getEngagementMessage(
+        applicationDate,
+        engagementStage
+      );
 
 
 
@@ -57,12 +65,16 @@ async function checkEngagement(sendWhatsAppMessage) {
 
 
 
-    // Send WhatsApp message
     sendWhatsAppMessage(
       whatsappNumber,
       engagement.message
     );
 
+
+
+    // Future step:
+    // Update Engagement Stage
+    // Update Next Follow Up Date
 
   }
 
