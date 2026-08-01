@@ -23,6 +23,9 @@ async function appendApplication(row) {
   });
 }
 
+async function numberExists(whatsapp) {
+}
+
 module.exports = {
   sheets,
   appendApplication,
