@@ -3,55 +3,75 @@ const { getEngagementMessage } = require("./engagementManager");
 
 
 // Check applicants needing engagement
-async function checkEngagement() {
+async function checkEngagement(sendWhatsAppMessage) {
 
   const rows = await getApplications();
 
-  const today = new Date();
-
 
   for (let i = 1; i < rows.length; i++) {
+
 
     const row = rows[i];
 
 
     const applicationDate = row[0];
+    const whatsappNumber = row[5];
     const status = row[16];
-    const lastMessageSent = row[18];
-    const nextFollowUpDate = row[19];
 
 
-    // Skip completed applicants
+    // Skip completed cases
     if (
       status === "Approved" ||
       status === "Operational" ||
       status === "Rejected"
     ) {
+
       continue;
+
     }
+
 
 
     const engagement =
       getEngagementMessage(applicationDate);
 
 
+
     if (!engagement) {
+
       continue;
+
     }
 
 
+
     console.log(
-      "Applicant:",
-      row[2],
-      "Message:",
+      "Sending engagement to:",
+      whatsappNumber
+    );
+
+
+    console.log(
       engagement.message
     );
+
+
+
+    // Send WhatsApp message
+    sendWhatsAppMessage(
+      whatsappNumber,
+      engagement.message
+    );
+
 
   }
 
 }
 
 
+
 module.exports = {
+
   checkEngagement
+
 };
