@@ -35,34 +35,7 @@ async function generateApplicationNumber() {
   );
 }
 
-  const response = await sheets.spreadsheets.values.get({
-    spreadsheetId: config.GOOGLE_SHEET_ID,
-    range: "B:B"
-  });
-
-  const rows = response.data.values || [];
-
-  let lastNumber = 0;
-
-  for (let i = 1; i < rows.length; i++) {
-
-    const value = rows[i][0];
-
-    if (value && value.includes("FCS-FR-")) {
-
-      const num = parseInt(
-        value.replace("FCS-FR-", "")
-      );
-
-      if (num > lastNumber) {
-        lastNumber = num;
-      }
-    }
-  }
-
-  const nextNumber = lastNumber + 1;
-
-  return "FCS-FR-" + String(nextNumber).padStart(5, "0");
+  
 }
 
 
