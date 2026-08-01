@@ -1,8 +1,8 @@
 const {
   applications,
-  questions
+  questions,
+  confirmations
 } = require("./application");
-
 const { getLanguage } = require("./language");
 
 const {
