@@ -73,8 +73,14 @@ async function handleApplication(number, answer) {
   }
 
 
-  app.data[fields[app.step]] = answer;
+ if (fields[app.step] === "mobile" && answer.length < 11) {
+  return {
+    completed: false,
+    reply: "Please enter a correct mobile number."
+  };
+}
 
+app.data[fields[app.step]] = answer;
   app.step++;
 
 
