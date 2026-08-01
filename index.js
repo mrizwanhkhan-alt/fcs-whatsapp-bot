@@ -295,7 +295,20 @@ const server = http.createServer((req, res) => {
 
         const customerNumber =
           message.from;
+// ==============================
+// BLOCKED USER CHECK
+// ==============================
 
+if (isBlocked(customerNumber)) {
+
+  console.log(
+    "Blocked user ignored:",
+    customerNumber
+  );
+
+  return;
+
+}
 
         const customerText =
           message.text?.body ||
