@@ -3,11 +3,11 @@ const {
   questions,
   confirmations
 } = require("./application");
+
 const { getLanguage } = require("./language");
 
 const {
   appendApplication,
-  numberExists,
   generateApplicationNumber
 } = require("./googleSheets");
 
@@ -17,7 +17,7 @@ const fields = [
   "fatherName",
   "mobile",
   "whatsapp",
-    "cnic",
+  "cnic",
   "email",
   "province",
   "city",
@@ -59,10 +59,104 @@ function isApplying(number) {
 }
 
 
+// SAVE APPLICATION
+async function saveApplication(number, data, lang) {
+
+  const applicationNumber = await generateApplicationNumber();
+
+  await appendApplication([
+    new Date().toLocaleString(),
+    applicationNumber,
+    data.fullName,
+    data.fatherName,
+    data.mobile,
+    data.whatsapp,
+    data.cnic,
+    data.email,
+    data.province,
+    data.city,
+    data.area,
+    data.address,
+    data.education,
+    data.experience,
+    data.shop,
+    data.comments
+  ]);
+
+  applications.delete(number);
+  confirmations.delete(number);
+
+
+  return lang === "ur"
+
+    ? `🎉 شکریہ!
+
+آپ کی فرنچائز درخواست کامیابی سے جمع ہو گئی ہے۔
+
+درخواست نمبر: ${applicationNumber}
+
+براہِ کرم یہ درخواست نمبر محفوظ رکھیں۔
+
+ہماری فرنچائز ڈویلپمنٹ ٹیم آپ کی درخواست کا جائزہ لے گی اور مزید رابطہ کرے گی۔`
+
+    :
+
+`🎉 Thank you!
+
+Your FCS Express Franchise Application has been submitted successfully.
+
+Application Number: ${applicationNumber}
+
+Please save this application number for future reference.
+
+Our Franchise Development Team will review your application and contact you further.`;
+
+}
+
+
 // HANDLE APPLICATION
 async function handleApplication(number, answer) {
 
+
+  const lang = getLanguage(number) || "en";
+
+
+  // CONFIRMATION STEP
+  if (confirmations.has(number)) {
+
+    if (answer.trim() === "1") {
+
+      const data = confirmations.get(number);
+
+      return {
+        completed: true,
+        reply: await saveApplication(number, data, lang)
+      };
+
+    }
+
+    if (answer.trim() === "2") {
+
+      confirmations.delete(number);
+
+      return {
+        completed: false,
+        reply: "Application cancelled. Please start again."
+      };
+
+    }
+
+    return {
+      completed: false,
+      reply: "Please reply 1 to confirm or 2 to cancel."
+    };
+
+  }
+
+
+
   const app = applications.get(number);
+
 
   if (!app) {
 
@@ -74,125 +168,95 @@ async function handleApplication(number, answer) {
   }
 
 
-if (fields[app.step] === "mobile") {
 
-  const mobile = answer.replace(/\s+/g, "");
+  // MOBILE CHECK
+  if (fields[app.step] === "mobile") {
 
-  if (!/^03\d{9}$/.test(mobile)) {
+    const mobile = answer.replace(/\s+/g, "");
 
-    return {
-      completed: false,
-      reply: "Please enter a valid mobile number.\n\nExample: 03326237178"
-    };
+    if (!/^03\d{9}$/.test(mobile)) {
+
+      return {
+        completed:false,
+        reply:"Please enter a valid mobile number.\nExample: 03326237178"
+      };
+
+    }
+  }
+
+
+
+  // EMAIL CHECK
+  if (fields[app.step] === "email") {
+
+    const email = answer.trim();
+
+    if (
+      email !== "" &&
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+    ) {
+
+      return {
+        completed:false,
+        reply:"Please enter a valid email address."
+      };
+
+    }
 
   }
-}
-if (fields[app.step] === "email") {
 
-  const email = answer.trim();
 
-  if (email !== "" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
 
-    return {
-      completed: false,
-      reply: "Please enter a valid email address."
-    };
-
-  }
-}
-app.data[fields[app.step]] = answer;
+  // CNIC CHECK
   if (fields[app.step] === "cnic") {
 
-  const cnic = answer.trim();
+    const cnic = answer.trim();
 
-  if (!/^\d{5}-\d{7}-\d$/.test(cnic)) {
+    if (!/^\d{5}-\d{7}-\d$/.test(cnic)) {
 
-    return {
-      completed: false,
-      reply: "Please enter a valid CNIC format.\n\nExample: 12345-1234567-1"
-    };
+      return {
+        completed:false,
+        reply:"Please enter valid CNIC format.\nExample: 12345-1234567-1"
+      };
+
+    }
 
   }
-}
+
+
+
+  app.data[fields[app.step]] = answer;
+
   app.step++;
 
 
-  const lang = getLanguage(number) || "en";
 
-
-  // APPLICATION COMPLETED
+  // LAST QUESTION COMPLETED
   if (app.step >= questions[lang].length) {
 
 
-    const completedData = app.data;
-
-confirmations.set(number, completedData);
+    const data = app.data;
 
 
-
-await appendApplication([
-  new Date().toLocaleString(),
-  applicationNumber,
-  completedData.fullName,
-      completedData.fatherName,
-      completedData.mobile,
-      completedData.whatsapp,
-  completedData.cnic,
-      completedData.email,
-      completedData.province,
-      completedData.city,
-      completedData.area,
-      completedData.address,
-      completedData.education,
-      completedData.experience,
-      completedData.shop,
-      completedData.comments
-
-    ]);
-
-
-    applications.delete(number);
-
+    confirmations.set(number, data);
 
 
     return {
 
-      completed: true,
+      completed:false,
 
-      data: completedData,
+      reply:
 
+`Please confirm your details:
 
-    reply:
+Name: ${data.fullName}
+Father Name: ${data.fatherName}
+Mobile: ${data.mobile}
+CNIC: ${data.cnic}
+City: ${data.city}
 
-lang === "ur"
-
-?
-
-`🎉 شکریہ!
-
-آپ کی فرنچائز درخواست کامیابی سے جمع ہو گئی ہے۔
-
-درخواست نمبر: ${applicationNumber}
-
-براہِ کرم یہ درخواست نمبر مستقبل کے لیے محفوظ رکھیں۔
-
-ہماری فرنچائز ڈویلپمنٹ ٹیم آپ کی درخواست کا جائزہ لے گی اور مزید رابطہ کرے گی۔
-
-ایف سی ایس ایکسپریس پاکستان کا انتخاب کرنے کا شکریہ۔`
-
-:
-
-`🎉 Thank you!
-
-Your FCS Express Franchise Application has been submitted successfully.
-
-Application Number: ${applicationNumber}
-
-Please save this application number for future reference.
-
-Our Franchise Development Team will review your application and contact you further.
-
-Thank you for choosing FCS Express Pakistan.`
+Reply 1 to confirm.
+Reply 2 to cancel.`
 
     };
 
@@ -205,7 +269,7 @@ Thank you for choosing FCS Express Pakistan.`
 
   return {
 
-    completed: false,
+    completed:false,
 
     reply: questions[lang][app.step]
 
@@ -218,9 +282,7 @@ Thank you for choosing FCS Express Pakistan.`
 module.exports = {
 
   startApplication,
-
   isApplying,
-
   handleApplication
 
 };
