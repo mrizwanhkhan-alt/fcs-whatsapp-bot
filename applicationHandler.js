@@ -4,6 +4,8 @@ const {
   questions
 } = require("./application");
 const { getLanguage } = require("./language");
+const { appendApplication } = require("./googleSheets");
+
 const fields = [
   "fullName",
   "fatherName",
