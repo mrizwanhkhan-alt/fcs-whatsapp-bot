@@ -131,7 +131,10 @@ async function getApplications() {
 
 
 
-// Update Engagement Stage + Follow Up Date
+// Update Engagement Tracking
+// R = Engagement Stage
+// S = Last Message Sent
+// T = Next Follow Up Date
 
 async function updateEngagement(
   rowNumber,
@@ -148,7 +151,7 @@ async function updateEngagement(
 
 
     range:
-      `R${rowNumber}:S${rowNumber}`,
+      `R${rowNumber}:T${rowNumber}`,
 
 
     valueInputOption:
@@ -161,6 +164,7 @@ async function updateEngagement(
 
         [
           stage,
+          new Date().toLocaleString(),
           nextDate
         ]
 
