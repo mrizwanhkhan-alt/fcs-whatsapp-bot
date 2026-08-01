@@ -69,7 +69,7 @@ function isApplying(number) {
   return applications.has(number);
 }
 
-function handleApplication(number, answer) {
+async function handleApplication(number, answer) {
 
   const app = applications.get(number);
 
