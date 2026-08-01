@@ -5,7 +5,7 @@ const questions = {
     "What is your Full Name?",
     "What is your Father's Name?",
     "What is your Mobile Number?",
-    "What is your WhatsApp Number? (Type 'Same' if it is the same.)",
+    "What is your CNIC Number?",
     "What is your Email Address? (Optional)",
     "Which Province are you applying from?",
     "Which City?",
