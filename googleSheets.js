@@ -39,7 +39,7 @@ async function appendApplication(row) {
 
   await sheets.spreadsheets.values.append({
     spreadsheetId: config.GOOGLE_SHEET_ID,
-   range: "A:P",
+ range: "A:Q"
     valueInputOption: "USER_ENTERED",
     requestBody: {
       values: [row]
