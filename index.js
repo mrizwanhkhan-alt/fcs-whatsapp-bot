@@ -13,7 +13,8 @@ const {
 const {
   setLanguage,
   hasLanguage,
-  languageMenu
+  languageMenu,
+  mainMenu
 } = require("./language");
 const {
   isBlocked,
