@@ -12,6 +12,7 @@ const {
 
 const {
   setLanguage,
+  getLanguage,
   hasLanguage,
   languageMenu,
   mainMenu
