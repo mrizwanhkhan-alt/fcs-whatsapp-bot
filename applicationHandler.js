@@ -86,13 +86,12 @@ async function handleApplication(number, answer) {
 
     const completedData = app.data;
 
+const applicationNumber = await generateApplicationNumber();
 
-    // SAVE TO GOOGLE SHEET
-    await appendApplication([
-
-      new Date().toLocaleString(),
-
-      completedData.fullName,
+await appendApplication([
+  new Date().toLocaleString(),
+  applicationNumber,
+  completedData.fullName,
       completedData.fatherName,
       completedData.mobile,
       completedData.whatsapp,
