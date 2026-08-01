@@ -24,6 +24,21 @@ async function appendApplication(row) {
 }
 
 async function numberExists(whatsapp) {
+
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: config.GOOGLE_SHEET_ID,
+    range: "A:N"
+  });
+
+  const rows = response.data.values || [];
+
+  for (let i = 1; i < rows.length; i++) {
+    if ((rows[i][4] || "").trim() === whatsapp.trim()) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 module.exports = {
