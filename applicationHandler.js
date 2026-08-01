@@ -30,6 +30,7 @@ const fields = [
 ];
 
 
+
 // START APPLICATION
 function startApplication(number) {
 
@@ -38,63 +39,116 @@ function startApplication(number) {
     data: {}
   });
 
-  const lang = getLanguage(number) || "en";
+
+  const lang =
+    getLanguage(number) || "en";
+
 
   return (
+
     lang === "ur"
-      ? "📝 ایف سی ایس ایکسپریس فرنچائز درخواست\n\n" +
-        "ایف سی ایس ایکسپریس کا انتخاب کرنے کا شکریہ۔\n\n" +
-        questions[lang][0]
-      :
-        "📝 FCS Express Franchise Application\n\n" +
-        "Thank you for choosing FCS Express.\n\n" +
-        questions[lang][0]
+
+    ?
+
+`📝 ایف سی ایس ایکسپریس فرنچائز درخواست
+
+ایف سی ایس ایکسپریس کا انتخاب کرنے کا شکریہ۔
+
+${questions[lang][0]}`
+
+
+:
+
+`📝 FCS Express Franchise Application
+
+Thank you for choosing FCS Express.
+
+${questions[lang][0]}`
+
   );
+
 }
+
 
 
 // CHECK ACTIVE APPLICATION
 function isApplying(number) {
+
   return applications.has(number);
+
 }
+
+
 
 
 // SAVE APPLICATION
 async function saveApplication(number, data, lang) {
 
-  const applicationNumber = await generateApplicationNumber();
+
+  const applicationNumber =
+    await generateApplicationNumber();
+
+
 
   await appendApplication([
+
     new Date().toLocaleString(),
+
     applicationNumber,
+
     data.fullName,
+
     data.fatherName,
+
     data.mobile,
+
     data.whatsapp,
+
     data.cnic,
+
     data.email,
+
     data.province,
+
     data.city,
+
     data.area,
+
     data.address,
+
     data.education,
+
     data.experience,
+
     data.shop,
+
     data.comments,
+
     "Received",
+
     "Application Submitted",
+
     new Date().toLocaleString(),
+
     ""
+
   ]);
 
 
+
   applications.delete(number);
+
   confirmations.delete(number);
+
 
 
   return lang === "ur"
 
-    ? `🎉 شکریہ!
+
+?
+
+
+`🎉 شکریہ!
 
 آپ کی فرنچائز درخواست کامیابی سے جمع ہو گئی ہے۔
 
@@ -104,7 +158,10 @@ async function saveApplication(number, data, lang) {
 
 ہماری فرنچائز ڈویلپمنٹ ٹیم آپ کی درخواست کا جائزہ لے گی اور مزید رابطہ کرے گی۔`
 
-    :
+
+
+:
+
 
 `🎉 Thank you!
 
@@ -119,123 +176,225 @@ Our Franchise Development Team will review your application and contact you furt
 }
 
 
+
 // HANDLE APPLICATION
 async function handleApplication(number, answer) {
 
-  const lang = getLanguage(number) || "en";
+
+  const lang =
+    getLanguage(number) || "en";
+
 
 
   if (confirmations.has(number)) {
 
+
     if (answer.trim() === "1") {
 
-      const data = confirmations.get(number);
+
+      const data =
+        confirmations.get(number);
+
+
 
       return {
+
         completed: true,
-        reply: await saveApplication(number, data, lang)
+
+        reply:
+          await saveApplication(
+            number,
+            data,
+            lang
+          )
+
       };
 
+
     }
+
 
 
     if (answer.trim() === "2") {
 
+
       confirmations.delete(number);
 
+
       return {
-        completed: false,
-        reply: "Application cancelled. Please start again."
+
+        completed:false,
+
+        reply:
+          "Application cancelled. Please start again."
+
       };
+
 
     }
 
 
+
     return {
-      completed: false,
-      reply: "Please reply 1 to confirm or 2 to cancel."
+
+      completed:false,
+
+      reply:
+        "Please reply 1 to confirm or 2 to cancel."
+
     };
+
 
   }
 
 
-  const app = applications.get(number);
+
+
+
+  const app =
+    applications.get(number);
+
 
 
   if (!app) {
 
+
     return {
-      completed: false,
-      reply: "Application not found."
+
+      completed:false,
+
+      reply:
+        "Application not found."
+
     };
+
 
   }
 
+
+
+
+  // MOBILE VALIDATION
 
   if (fields[app.step] === "mobile") {
 
-    const mobile = answer.replace(/\s+/g, "");
+
+    const mobile =
+      answer.replace(/\s+/g,"");
+
+
 
     if (!/^03\d{9}$/.test(mobile)) {
 
+
       return {
+
         completed:false,
-        reply:"Please enter a valid mobile number.\nExample: 0092-3xx-xxxxxxx"
+
+        reply:
+          "Please enter a valid mobile number."
+
       };
 
+
     }
+
+
   }
 
 
+
+
+
+  // EMAIL VALIDATION
 
   if (fields[app.step] === "email") {
 
-    const email = answer.trim();
+
+    const email =
+      answer.trim();
+
+
 
     if (
+
       email !== "" &&
+
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+
     ) {
 
+
       return {
+
         completed:false,
-        reply:"Please enter a valid gmail address like abcdef@gmail.com."
+
+        reply:
+          "Please enter a valid email address."
+
       };
 
+
     }
+
 
   }
 
 
+
+
+
+  // CNIC VALIDATION
 
   if (fields[app.step] === "cnic") {
 
-    const cnic = answer.trim();
+
+    const cnic =
+      answer.trim();
+
+
 
     if (!/^\d{5}-\d{7}-\d$/.test(cnic)) {
 
+
       return {
+
         completed:false,
-        reply:"Please enter valid CNIC format.\nExample: 12345-1234567-1"
+
+        reply:
+          "Please enter valid CNIC format.\nExample: 12345-1234567-1"
+
       };
 
+
     }
+
 
   }
 
 
-  app.data[fields[app.step]] = answer;
+
+
+
+  app.data[fields[app.step]] =
+    answer;
+
 
   app.step++;
 
 
-  if (app.step >= questions[lang].length) {
 
 
-    const data = app.data;
+  if (
+    app.step >= questions[lang].length
+  ) {
 
 
-    confirmations.set(number, data);
+    confirmations.set(
+      number,
+      app.data
+    );
+
 
 
     return {
@@ -246,30 +405,44 @@ async function handleApplication(number, answer) {
 
 `Please confirm your details:
 
-Name: ${data.fullName}
-Father Name: ${data.fatherName}
-Mobile: ${data.mobile}
-CNIC: ${data.cnic}
-City: ${data.city}
+Name: ${app.data.fullName}
+
+Father Name: ${app.data.fatherName}
+
+Mobile: ${app.data.mobile}
+
+CNIC: ${app.data.cnic}
+
+City: ${app.data.city}
+
 
 Reply 1 to confirm.
 Reply 2 to cancel.`
 
     };
 
+
   }
 
 
-  applications.set(number, app);
+
+
+  applications.set(
+    number,
+    app
+  );
+
 
 
   return {
 
     completed:false,
 
-    reply: questions[lang][app.step]
+    reply:
+      questions[lang][app.step]
 
   };
+
 
 }
 
@@ -278,7 +451,9 @@ Reply 2 to cancel.`
 module.exports = {
 
   startApplication,
+
   isApplying,
+
   handleApplication
 
 };
