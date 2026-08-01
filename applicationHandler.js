@@ -80,7 +80,19 @@ async function handleApplication(number, answer) {
     reply: "Please enter a correct mobile number."
   };
 }
+if (fields[app.step] === "email") {
 
+  const email = answer.trim();
+
+  if (email !== "" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+
+    return {
+      completed: false,
+      reply: "Please enter a valid email address."
+    };
+
+  }
+}
 app.data[fields[app.step]] = answer;
   if (fields[app.step] === "cnic") {
 
