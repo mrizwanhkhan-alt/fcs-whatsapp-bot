@@ -1,142 +1,104 @@
-// ==============================
-// MAIN MENU OPTIONS
-// ==============================
+const languages = new Map();
 
-const lang = getLanguage(customerNumber);
 
+// Set customer language
+function setLanguage(number, language) {
 
-if (hasLanguage(customerNumber)) {
-
-
-  if (text === "1") {
-
-    sendWhatsAppMessage(
-      customerNumber,
-
-      lang === "ur"
-
-      ? "ایف سی ایس ایکسپریس پاکستان کا ایک قابل اعتماد لاجسٹکس نیٹ ورک بنا رہا ہے۔"
-
-      : "FCS Express is building Pakistan's trusted logistics network."
-
-    );
-
-    return;
-
-  }
-
-
-
-  if (text === "2") {
-
-    sendWhatsAppMessage(
-      customerNumber,
-
-      lang === "ur"
-
-      ? "ہمارا ملک گیر نیٹ ورک NDCs، RDCs، سٹی ہبز اور سروس پوائنٹس پر مشتمل ہے۔"
-
-      : "Our nationwide network includes NDCs, RDCs, City Hubs and Service Points across Pakistan."
-
-    );
-
-    return;
-
-  }
-
-
-
-  if (text === "3") {
-
-    sendWhatsAppMessage(
-      customerNumber,
-
-      lang === "ur"
-
-      ? "ہماری سروسز میں ایکسپریس ڈلیوری، کارپوریٹ لاجسٹکس، ای کامرس ڈلیوری اور COD شامل ہیں۔"
-
-      : "Our services include Express Delivery, Corporate Logistics, E-commerce Delivery and COD."
-
-    );
-
-    return;
-
-  }
-
-
-
-  if (text === "4") {
-
-    sendWhatsAppMessage(
-      customerNumber,
-
-      lang === "ur"
-
-      ? "ایف سی ایس ایکسپریس جدید ٹیکنالوجی کے ساتھ قابل اعتماد لاجسٹکس حل فراہم کرتا ہے۔"
-
-      : "FCS Express provides reliable technology-driven logistics solutions."
-
-    );
-
-    return;
-
-  }
-
-
-
-  if (text === "5") {
-
-    sendWhatsAppMessage(
-      customerNumber,
-
-      lang === "ur"
-
-      ? "ایف سی ایس ایکسپریس فرنچائز نیٹ ورک کا حصہ بنیں اور پاکستان کے بڑھتے ہوئے لاجسٹکس نیٹ ورک کے ساتھ ترقی کریں۔"
-
-      : "Join FCS Express Franchise Network and become part of Pakistan's growing logistics future."
-
-    );
-
-    return;
-
-  }
-
-
-
-  if (text === "7") {
-
-    sendWhatsAppMessage(
-      customerNumber,
-
-      lang === "ur"
-
-      ? "اکثر پوچھے جانے والے سوالات کے لیے ہماری فرنچائز ٹیم آپ کی رہنمائی کرے گی۔"
-
-      : "Frequently Asked Questions will be available here. Our franchise team will guide you."
-
-    );
-
-    return;
-
-  }
-
-
-
-  if (text === "8") {
-
-    sendWhatsAppMessage(
-      customerNumber,
-
-      lang === "ur"
-
-      ? "فرنچائز ٹیم سے رابطہ کریں:\nواٹس ایپ: 03326237178"
-
-      : "Contact Franchise Team:\nWhatsApp: 03326237178"
-
-    );
-
-    return;
-
-  }
+  languages.set(number, language);
 
 }
+
+
+// Get customer language
+function getLanguage(number) {
+
+  return languages.get(number);
+
+}
+
+
+// Check language selected
+function hasLanguage(number) {
+
+  return languages.has(number);
+
+}
+
+
+// First language selection menu
+function languageMenu() {
+
+  return `🌍 Welcome to FCS Express Pakistan
+
+Assalam-o-Alaikum!
+
+Please select your preferred language.
+
+براہِ کرم اپنی پسندیدہ زبان منتخب کریں۔
+
+1️⃣ English
+2️⃣ اردو`;
+
+}
+
+
+
+// Main menu
+function mainMenu(language) {
+
+
+  if (language === "ur") {
+
+
+    return `🇵🇰 ایف سی ایس ایکسپریس پاکستان میں خوش آمدید
+
+السلام علیکم!
+
+میں غلام قادر، آپ کا فرنچائز ڈویلپمنٹ اسسٹنٹ ہوں۔
+
+براہِ کرم نمبر منتخب کریں:
+
+1️⃣ ایف سی ایس ایکسپریس کے بارے میں
+2️⃣ ہمارا ملک گیر نیٹ ورک
+3️⃣ ہماری سروسز
+4️⃣ ایف سی ایس ایکسپریس کیوں؟
+5️⃣ فرنچائز کا موقع
+6️⃣ فرنچائز کے لیے درخواست دیں
+7️⃣ اکثر پوچھے جانے والے سوالات
+8️⃣ فرنچائز ٹیم سے رابطہ کریں`;
+
+  }
+
+
+
+  return `🇵🇰 Welcome to FCS Express Pakistan
+
+Assalam-o-Alaikum!
+
+I am Ghulam Qadir, your Franchise Development Assistant.
+
+Please reply with a number:
+
+1️⃣ About FCS Express
+2️⃣ Our Nationwide Network
+3️⃣ Our Services
+4️⃣ Why Choose FCS Express
+5️⃣ Franchise Opportunity
+6️⃣ Apply for Franchise
+7️⃣ Frequently Asked Questions
+8️⃣ Contact Franchise Team`;
+
+}
+
+
+
+
+module.exports = {
+
+  setLanguage,
+  getLanguage,
+  hasLanguage,
+  languageMenu,
+  mainMenu
+
+};
