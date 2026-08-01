@@ -15,7 +15,10 @@ const {
   hasLanguage,
   languageMenu
 } = require("./language");
-
+const {
+  isBlocked,
+  recordAbuse
+} = require("./blockedUsers");
 
 const PORT = config.PORT;
 const VERIFY_TOKEN = config.VERIFY_TOKEN;
