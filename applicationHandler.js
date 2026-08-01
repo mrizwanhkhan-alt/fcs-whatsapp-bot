@@ -103,6 +103,7 @@ await appendApplication([
       completedData.fatherName,
       completedData.mobile,
       completedData.whatsapp,
+  completedData.cnic,
       completedData.email,
       completedData.province,
       completedData.city,
