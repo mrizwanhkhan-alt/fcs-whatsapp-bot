@@ -81,7 +81,10 @@ async function saveApplication(number, data, lang) {
     data.experience,
     data.shop,
     data.comments,
-    "Received"
+    "Received",
+    "Application Submitted",
+    new Date().toLocaleString(),
+    ""
   ]);
 
 
@@ -122,7 +125,6 @@ async function handleApplication(number, answer) {
   const lang = getLanguage(number) || "en";
 
 
-  // CONFIRMATION STEP
   if (confirmations.has(number)) {
 
     if (answer.trim() === "1") {
@@ -157,7 +159,6 @@ async function handleApplication(number, answer) {
   }
 
 
-
   const app = applications.get(number);
 
 
@@ -171,8 +172,6 @@ async function handleApplication(number, answer) {
   }
 
 
-
-  // MOBILE CHECK
   if (fields[app.step] === "mobile") {
 
     const mobile = answer.replace(/\s+/g, "");
@@ -189,7 +188,6 @@ async function handleApplication(number, answer) {
 
 
 
-  // EMAIL CHECK
   if (fields[app.step] === "email") {
 
     const email = answer.trim();
@@ -210,7 +208,6 @@ async function handleApplication(number, answer) {
 
 
 
-  // CNIC CHECK
   if (fields[app.step] === "cnic") {
 
     const cnic = answer.trim();
@@ -227,14 +224,11 @@ async function handleApplication(number, answer) {
   }
 
 
-
   app.data[fields[app.step]] = answer;
 
   app.step++;
 
 
-
-  // LAST QUESTION COMPLETED
   if (app.step >= questions[lang].length) {
 
 
@@ -264,7 +258,6 @@ Reply 2 to cancel.`
     };
 
   }
-
 
 
   applications.set(number, app);
