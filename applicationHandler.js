@@ -7,7 +7,8 @@ const { getLanguage } = require("./language");
 
 const {
   appendApplication,
-  numberExists
+  numberExists,
+  generateApplicationNumber
 } = require("./googleSheets");
 
 
