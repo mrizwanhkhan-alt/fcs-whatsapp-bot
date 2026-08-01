@@ -27,7 +27,7 @@ const fields = [
 
 function startApplication(number) {
 
-  if (app.step === questions[lang].length) {
+
   // Prevent duplicate applications
   if (completedApplications.has(number)) {
     const lang = getLanguage(number) || "en";
