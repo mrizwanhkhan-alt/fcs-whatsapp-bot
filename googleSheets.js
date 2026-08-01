@@ -35,10 +35,6 @@ async function generateApplicationNumber() {
   );
 }
 
-  
-}
-
-
 async function appendApplication(row) {
 
   await sheets.spreadsheets.values.append({
