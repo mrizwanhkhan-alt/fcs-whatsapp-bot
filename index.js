@@ -10,7 +10,6 @@ const {
   handleApplication
 } = require("./applicationHandler");
 
-
 const {
   setLanguage,
   getLanguage,
@@ -18,7 +17,6 @@ const {
   languageMenu,
   mainMenu
 } = require("./language");
-
 
 const {
   isBlocked,
@@ -38,29 +36,6 @@ const WHATSAPP_TOKEN = config.WHATSAPP_TOKEN;
 // ==============================
 
 function sendWhatsAppMessage(to, message) {
-
-
-  if (!PHONE_NUMBER_ID) {
-
-    console.error(
-      "PHONE_NUMBER_ID is missing."
-    );
-
-    return;
-
-  }
-
-
-  if (!WHATSAPP_TOKEN) {
-
-    console.error(
-      "WHATSAPP_TOKEN is missing."
-    );
-
-    return;
-
-  }
-
 
 
   const data = JSON.stringify({
@@ -108,14 +83,10 @@ function sendWhatsAppMessage(to, message) {
 
 
   const request = https.request(
-
     options,
-
     (response) => {
 
-
       let result = "";
-
 
       response.on(
         "data",
@@ -127,39 +98,19 @@ function sendWhatsAppMessage(to, message) {
       );
 
 
-
       response.on(
         "end",
         () => {
 
-
-          if (response.statusCode >= 400) {
-
-
-            console.error(
-              "WhatsApp Error:",
-              result
-            );
-
-
-          } else {
-
-
-            console.log(
-              "WhatsApp Sent:",
-              result
-            );
-
-
-          }
-
+          console.log(
+            "WhatsApp Response:",
+            result
+          );
 
         }
       );
 
-
     }
-
   );
 
 
@@ -169,7 +120,7 @@ function sendWhatsAppMessage(to, message) {
     (error) => {
 
       console.error(
-        "WhatsApp Request Error:",
+        "WhatsApp Error:",
         error.message
       );
 
@@ -177,27 +128,32 @@ function sendWhatsAppMessage(to, message) {
   );
 
 
-
   request.write(data);
 
   request.end();
-
 
 }
 const server = http.createServer((req, res) => {
 
 
-  const host = req.headers.host || "localhost";
+  const host =
+    req.headers.host || "localhost";
 
 
-  const url = new URL(
-    req.url,
-    `http://${host}`
-  );
+  const url =
+    new URL(
+      req.url,
+      `http://${host}`
+    );
 
 
 
-  if (req.method === "GET" && url.pathname === "/") {
+  // HOME
+
+  if (
+    req.method === "GET" &&
+    url.pathname === "/"
+  ) {
 
 
     res.writeHead(200, {
@@ -209,25 +165,35 @@ const server = http.createServer((req, res) => {
       "FCS Express WhatsApp Bot Running"
     );
 
-
   }
 
 
 
 
-  if (req.method === "GET" && url.pathname === "/webhook") {
+  // VERIFY WEBHOOK
+
+  if (
+    req.method === "GET" &&
+    url.pathname === "/webhook"
+  ) {
 
 
     const mode =
-      url.searchParams.get("hub.mode");
+      url.searchParams.get(
+        "hub.mode"
+      );
 
 
     const token =
-      url.searchParams.get("hub.verify_token");
+      url.searchParams.get(
+        "hub.verify_token"
+      );
 
 
     const challenge =
-      url.searchParams.get("hub.challenge");
+      url.searchParams.get(
+        "hub.challenge"
+      );
 
 
 
@@ -243,9 +209,8 @@ const server = http.createServer((req, res) => {
 
 
       return res.end(
-        challenge || ""
+        challenge
       );
-
 
     }
 
@@ -262,6 +227,7 @@ const server = http.createServer((req, res) => {
 
 
 
+  // RECEIVE MESSAGE
 
   if (
     req.method === "POST" &&
@@ -273,311 +239,268 @@ const server = http.createServer((req, res) => {
 
 
 
-    req.on("data", (chunk) => {
+    req.on(
+      "data",
+      (chunk) => {
 
-      body += chunk.toString();
+        body += chunk.toString();
 
-    });
-
-
-
-    req.on("end", async () => {
-
-
-      res.writeHead(200, {
-        "Content-Type": "text/plain"
-      });
-
-
-      res.end(
-        "EVENT_RECEIVED"
-      );
+      }
+    );
 
 
 
-      try {
+    req.on(
+      "end",
+      async () => {
 
 
-        const webhookData =
-          JSON.parse(body);
+        res.writeHead(200);
 
-
-
-        const value =
-          webhookData.entry?.[0]
-          ?.changes?.[0]
-          ?.value;
-
-
-
-        const message =
-          value?.messages?.[0];
+        res.end(
+          "EVENT_RECEIVED"
+        );
 
 
 
-        if (!message) {
+        try {
+
+
+          const data =
+            JSON.parse(body);
+
+
+
+          const message =
+            data.entry?.[0]
+            ?.changes?.[0]
+            ?.value
+            ?.messages?.[0];
+
+
+
+          if (!message) {
+
+            return;
+
+          }
+
+
+
+          const customerNumber =
+            message.from;
+
+
+
+          if (
+            isBlocked(customerNumber)
+          ) {
+
+
+            console.log(
+              "Blocked:",
+              customerNumber
+            );
+
+
+            return;
+
+          }
+
+
+
+          const customerText =
+            message.text?.body || "";
+
+
+
+          const text =
+            customerText.trim();
+
+
 
           console.log(
-            "No customer message found."
-          );
-
-          return;
-
-        }
-
-
-
-        const customerNumber =
-          message.from;
-
-
-
-        // ==============================
-        // BLOCKED USER CHECK
-        // ==============================
-
-        if (isBlocked(customerNumber)) {
-
-          console.log(
-            "Blocked user ignored:",
+            "Customer:",
             customerNumber
           );
 
-          return;
 
-        }
-
-
-
-
-        const customerText =
-          message.text?.body ||
-          `[${message.type || "unknown"} message]`;
-
-
-
-        const text =
-          customerText.trim();
-
-
-
-        console.log(
-          "Customer:",
-          customerNumber
-        );
-
-
-        console.log(
-          "Message:",
-          customerText
-        );
-
-
-
-
-
-        // ==============================
-        // LANGUAGE SELECTION
-        // ==============================
-
-
-        if (!hasLanguage(customerNumber)) {
-
-
-
-          if (text === "1") {
-
-
-            setLanguage(
-              customerNumber,
-              "en"
-            );
-
-
-            sendWhatsAppMessage(
-              customerNumber,
-              mainMenu(
-                getLanguage(customerNumber)
-              )
-            );
-
-
-            return;
-
-          }
-
-
-
-
-
-          if (text === "2") {
-
-
-            setLanguage(
-              customerNumber,
-              "ur"
-            );
-
-
-            sendWhatsAppMessage(
-              customerNumber,
-              mainMenu(
-                getLanguage(customerNumber)
-              )
-            );
-
-
-            return;
-
-          }
-
-
-
-
-
-          sendWhatsAppMessage(
-            customerNumber,
-            languageMenu()
+          console.log(
+            "Message:",
+            text
           );
 
 
-          return;
+
+          // LANGUAGE SELECTION
 
 
-        }
-        // ==============================
+          if (
+            !hasLanguage(customerNumber)
+          ) {
+
+
+
+            if (text === "1") {
+
+
+              setLanguage(
+                customerNumber,
+                "en"
+              );
+
+
+              sendWhatsAppMessage(
+                customerNumber,
+                mainMenu(
+                  getLanguage(customerNumber)
+                )
+              );
+
+
+              return;
+
+            }
+
+
+
+
+
+            if (text === "2") {
+
+
+              setLanguage(
+                customerNumber,
+                "ur"
+              );
+
+
+              sendWhatsAppMessage(
+                customerNumber,
+                mainMenu(
+                  getLanguage(customerNumber)
+                )
+              );
+
+
+              return;
+
+            }
+
+
+
+            sendWhatsAppMessage(
+              customerNumber,
+              languageMenu()
+            );
+
+
+            return;
+
+          }
+          // ==============================
 // MAIN MENU OPTIONS
 // ==============================
 
-if (hasLanguage(customerNumber)) {
 
+const lang =
+  getLanguage(customerNumber);
 
-  const lang =
-    getLanguage(customerNumber);
 
 
+if (text === "1") {
 
-  if (text === "1") {
+  sendWhatsAppMessage(
+    customerNumber,
 
+    lang === "ur"
 
-    sendWhatsAppMessage(
-      customerNumber,
+    ? "ایف سی ایس ایکسپریس پاکستان کا ایک قابل اعتماد لاجسٹکس نیٹ ورک بنا رہا ہے۔"
 
-      lang === "ur"
+    : "FCS Express is building Pakistan's trusted logistics network."
 
-      ? "ایف سی ایس ایکسپریس پاکستان کا ایک قابل اعتماد لاجسٹکس نیٹ ورک بنا رہا ہے۔"
+  );
 
-      : "FCS Express is building Pakistan's trusted logistics network."
-
-    );
-
-
-    return;
-
-  }
-
-
-
-
-
-  if (text === "2") {
-
-
-    sendWhatsAppMessage(
-      customerNumber,
-
-      lang === "ur"
-
-      ? "ہمارا ملک گیر نیٹ ورک NDCs، RDCs، سٹی ہبز اور سروس پوائنٹس پر مشتمل ہے۔"
-
-      : "Our nationwide network includes NDCs, RDCs, City Hubs and Service Points across Pakistan."
-
-    );
-
-
-    return;
-
-  }
-
-
-
-
-
-  if (text === "3") {
-
-
-    sendWhatsAppMessage(
-      customerNumber,
-
-      lang === "ur"
-
-      ? "ہماری سروسز میں ایکسپریس ڈلیوری، کارپوریٹ لاجسٹکس، ای کامرس ڈلیوری اور COD شامل ہیں۔"
-
-      : "Our services include Express Delivery, Corporate Logistics, E-commerce Delivery and COD."
-
-    );
-
-
-    return;
-
-  }
-
-
-
-
-
-  if (text === "4") {
-
-
-    sendWhatsAppMessage(
-      customerNumber,
-
-      lang === "ur"
-
-      ? "ایف سی ایس ایکسپریس جدید ٹیکنالوجی کے ساتھ قابل اعتماد لاجسٹکس حل فراہم کرتا ہے۔"
-
-      : "FCS Express provides reliable technology-driven logistics solutions."
-
-    );
-
-
-    return;
-
-  }
-
-
-
-
-
-  if (text === "5") {
-
-
-    sendWhatsAppMessage(
-      customerNumber,
-
-      lang === "ur"
-
-      ? "ایف سی ایس ایکسپریس فرنچائز نیٹ ورک کا حصہ بنیں اور ہمارے ساتھ ترقی کریں۔"
-
-      : "Join FCS Express Franchise Network and become part of Pakistan's growing logistics future."
-
-    );
-
-
-    return;
-
-  }
-
-
+  return;
 
 }
 
 
 
+if (text === "2") {
 
-// ==============================
-// START APPLICATION
-// ==============================
+  sendWhatsAppMessage(
+    customerNumber,
+
+    lang === "ur"
+
+    ? "ہمارا ملک گیر نیٹ ورک NDCs، RDCs، سٹی ہبز اور سروس پوائنٹس پر مشتمل ہے۔"
+
+    : "Our nationwide network includes NDCs, RDCs, City Hubs and Service Points across Pakistan."
+
+  );
+
+  return;
+
+}
+
+
+
+if (text === "3") {
+
+  sendWhatsAppMessage(
+    customerNumber,
+
+    lang === "ur"
+
+    ? "ہماری سروسز میں ایکسپریس ڈلیوری، کارپوریٹ لاجسٹکس، ای کامرس ڈلیوری اور COD شامل ہیں۔"
+
+    : "Our services include Express Delivery, Corporate Logistics, E-commerce Delivery and COD."
+
+  );
+
+  return;
+
+}
+
+
+
+if (text === "4") {
+
+  sendWhatsAppMessage(
+    customerNumber,
+
+    lang === "ur"
+
+    ? "ایف سی ایس ایکسپریس جدید ٹیکنالوجی کے ساتھ قابل اعتماد لاجسٹکس حل فراہم کرتا ہے۔"
+
+    : "FCS Express provides reliable technology-driven logistics solutions."
+
+  );
+
+  return;
+
+}
+
+
+
+if (text === "5") {
+
+  sendWhatsAppMessage(
+    customerNumber,
+
+    lang === "ur"
+
+    ? "ایف سی ایس ایکسپریس فرنچائز نیٹ ورک کا حصہ بنیں اور ہمارے ساتھ ترقی کریں۔"
+
+    : "Join FCS Express Franchise Network and become part of Pakistan's growing logistics future."
+
+  );
+
+  return;
+
+}
+
 
 
 if (text === "6") {
@@ -596,9 +519,45 @@ if (text === "6") {
 
   return;
 
+}
+
+
+
+if (text === "7") {
+
+  sendWhatsAppMessage(
+    customerNumber,
+
+    lang === "ur"
+
+    ? "اکثر پوچھے جانے والے سوالات کے لیے ہماری فرنچائز ٹیم آپ کی رہنمائی کرے گی۔"
+
+    : "Frequently Asked Questions will be available here. Our franchise team will guide you."
+
+  );
+
+  return;
 
 }
 
+
+
+if (text === "8") {
+
+  sendWhatsAppMessage(
+    customerNumber,
+
+    lang === "ur"
+
+    ? "فرنچائز ٹیم سے رابطہ کریں:\nواٹس ایپ: 03326237178"
+
+    : "Contact Franchise Team:\nWhatsApp: 03326237178"
+
+  );
+
+  return;
+
+}
 
 
 
@@ -618,7 +577,6 @@ if (isApplying(customerNumber)) {
     );
 
 
-
   sendWhatsAppMessage(
     customerNumber,
     result.reply
@@ -627,14 +585,8 @@ if (isApplying(customerNumber)) {
 
   return;
 
-
 }
-
-
-
-
-
-// ==============================
+          // ==============================
 // AI CHAT
 // ==============================
 
@@ -646,7 +598,6 @@ const reply =
   );
 
 
-
 sendWhatsAppMessage(
   customerNumber,
   reply
@@ -654,54 +605,43 @@ sendWhatsAppMessage(
 
 
 
-} catch (error) {
+        } catch (error) {
 
 
-console.error(
-  "Webhook Error:",
-  error.message
-);
+          console.error(
+            "Webhook Error:",
+            error.message
+          );
 
 
-}
+        }
 
 
-});
+      });
 
 
-req.on("error", (error) => {
+      return;
 
 
-console.error(
-  "Webhook request error:",
-  error.message
-);
-
-
-});
-
-
-return;
-
-
-}
+  }
 
 
 
 
-// 404
+  // 404
 
-res.writeHead(404, {
-  "Content-Type": "text/plain"
-});
+  res.writeHead(404, {
+    "Content-Type": "text/plain"
+  });
 
 
-res.end(
-  "Not Found"
-);
+  res.end(
+    "Not Found"
+  );
 
 
 });
+
 
 
 
@@ -798,6 +738,7 @@ process.on(
 // DAILY ENGAGEMENT CHECK
 // ==============================
 
+
 const {
   checkEngagement
 } = require("./engagementChecker");
@@ -810,6 +751,7 @@ setInterval(() => {
   checkEngagement(
     sendWhatsAppMessage
   )
+
 
   .catch((error) => {
 
