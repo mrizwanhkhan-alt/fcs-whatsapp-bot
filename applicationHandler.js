@@ -180,7 +180,7 @@ async function handleApplication(number, answer) {
 
       return {
         completed:false,
-        reply:"Please enter a valid mobile number.\nExample: 03326237178"
+        reply:"Please enter a valid mobile number.\nExample: 0092-3xx-xxxxxxx"
       };
 
     }
