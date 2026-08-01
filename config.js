@@ -11,5 +11,8 @@ module.exports = {
     (process.env.WHATSAPP_TOKEN || "").trim(),
 
   OPENAI_API_KEY:
-    (process.env.OPENAI_API_KEY || "").trim()
+    (process.env.OPENAI_API_KEY || "").trim(),
+
+  GOOGLE_SHEET_ID:
+    (process.env.GOOGLE_SHEET_ID || "").trim()
 };
