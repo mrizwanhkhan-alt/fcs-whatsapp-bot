@@ -37,5 +37,6 @@ const questions = {
 module.exports = {
   applications,
   completedApplications,
+  confirmations,
   questions
 };
