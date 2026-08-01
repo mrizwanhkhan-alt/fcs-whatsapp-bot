@@ -199,7 +199,7 @@ async function handleApplication(number, answer) {
 
       return {
         completed:false,
-        reply:"Please enter a valid email address."
+        reply:"Please enter a valid gmail address like abcdef@gmail.com."
       };
 
     }
