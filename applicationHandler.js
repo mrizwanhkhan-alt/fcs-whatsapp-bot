@@ -28,7 +28,7 @@ function startApplication(number) {
 
 
  
-  }
+  
 
   applications.set(number, {
     step: 0,
