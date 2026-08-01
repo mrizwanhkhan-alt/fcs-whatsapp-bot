@@ -27,6 +27,7 @@ const fields = [
   "experience",
   "shop",
   "comments"
+  "Received"
 ];
 
 
