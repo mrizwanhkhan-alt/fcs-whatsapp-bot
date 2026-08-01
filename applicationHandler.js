@@ -1,6 +1,5 @@
 const {
   applications,
-  completedApplications,
   questions
 } = require("./application");
 const { getLanguage } = require("./language");
@@ -29,7 +28,6 @@ function startApplication(number) {
 
 
   // Prevent duplicate applications
-  if (completedApplications.has(number)) {
     const lang = getLanguage(number) || "en";
 
 return lang === "ur"
