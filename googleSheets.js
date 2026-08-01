@@ -1,6 +1,6 @@
 const { google } = require("googleapis");
 const config = require("./config");
-const serviceAccount = require("./service-account.json");
+const serviceAccount = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
 
 const auth = new google.auth.GoogleAuth({
   credentials: serviceAccount,
