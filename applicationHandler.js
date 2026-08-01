@@ -82,6 +82,19 @@ async function handleApplication(number, answer) {
 }
 
 app.data[fields[app.step]] = answer;
+  if (fields[app.step] === "cnic") {
+
+  const cnic = answer.trim();
+
+  if (!/^\d{5}-\d{7}-\d$/.test(cnic)) {
+
+    return {
+      completed: false,
+      reply: "Please enter a valid CNIC format.\n\nExample: 12345-1234567-1"
+    };
+
+  }
+}
   app.step++;
 
 
