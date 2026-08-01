@@ -57,19 +57,28 @@ async function appendApplication(row) {
 }
 
 
+// Read Applications
+async function getApplications() {
+
+  const response =
+    await sheets.spreadsheets.values.get({
+
+      spreadsheetId: config.GOOGLE_SHEET_ID,
+
+      range: "A:T"
+
+    });
+
+
+  return response.data.values || [];
+
+}
+
+
 // Check Duplicate WhatsApp
 async function numberExists(whatsapp) {
 
-  const response = await sheets.spreadsheets.values.get({
-
-    spreadsheetId: config.GOOGLE_SHEET_ID,
-
-    range: "A:T"
-
-  });
-
-
-  const rows = response.data.values || [];
+  const rows = await getApplications();
 
 
   for (let i = 1; i < rows.length; i++) {
@@ -93,6 +102,7 @@ module.exports = {
   sheets,
   appendApplication,
   numberExists,
-  generateApplicationNumber
+  generateApplicationNumber,
+  getApplications
 
 };
