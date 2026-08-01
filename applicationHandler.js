@@ -128,7 +128,7 @@ app.data[fields[app.step]] = answer;
 
 confirmations.set(number, completedData);
 
-const applicationNumber = await generateApplicationNumber();
+
 
 await appendApplication([
   new Date().toLocaleString(),
