@@ -12,6 +12,12 @@ const {
 } = require("./googleSheets");
 
 
+const {
+  registerUser
+} = require("./registeredUsers");
+
+
+
 const fields = [
   "fullName",
   "fatherName",
@@ -32,6 +38,7 @@ const fields = [
 
 
 // START APPLICATION
+
 function startApplication(number) {
 
   applications.set(number, {
@@ -71,7 +78,10 @@ ${questions[lang][0]}`
 
 
 
+
+
 // CHECK ACTIVE APPLICATION
+
 function isApplying(number) {
 
   return applications.has(number);
@@ -81,7 +91,9 @@ function isApplying(number) {
 
 
 
+
 // SAVE APPLICATION
+
 async function saveApplication(number, data, lang) {
 
 
@@ -130,9 +142,19 @@ async function saveApplication(number, data, lang) {
 
     new Date().toLocaleString(),
 
-   new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toLocaleDateString()
+    new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toLocaleDateString()
 
   ]);
+
+
+
+
+  registerUser(
+    number,
+    "Franchise",
+    applicationNumber
+  );
+
 
 
 
@@ -156,7 +178,7 @@ async function saveApplication(number, data, lang) {
 
 براہِ کرم یہ درخواست نمبر محفوظ رکھیں۔
 
-ہماری فرنچائز ڈویلپمنٹ ٹیم آپ کی درخواست کا جائزہ لے گی اور مزید رابطہ کرے گی۔`
+ہماری فرنچائز ڈویلپمنٹ ٹیم آپ کی درخواست کا جائزہ لے گی اور مزید رابطہ کرے گی.`
 
 
 
@@ -177,7 +199,10 @@ Our Franchise Development Team will review your application and contact you furt
 
 
 
+
+
 // HANDLE APPLICATION
+
 async function handleApplication(number, answer) {
 
 
@@ -251,6 +276,8 @@ async function handleApplication(number, answer) {
 
 
 
+
+
   const app =
     applications.get(number);
 
@@ -274,7 +301,6 @@ async function handleApplication(number, answer) {
 
 
 
-  // MOBILE VALIDATION
 
   if (fields[app.step] === "mobile") {
 
@@ -306,7 +332,7 @@ async function handleApplication(number, answer) {
 
 
 
-  // EMAIL VALIDATION
+
 
   if (fields[app.step] === "email") {
 
@@ -344,7 +370,7 @@ async function handleApplication(number, answer) {
 
 
 
-  // CNIC VALIDATION
+
 
   if (fields[app.step] === "cnic") {
 
@@ -376,11 +402,15 @@ async function handleApplication(number, answer) {
 
 
 
+
+
   app.data[fields[app.step]] =
     answer;
 
 
   app.step++;
+
+
 
 
 
@@ -427,6 +457,9 @@ Reply 2 to cancel.`
 
 
 
+
+
+
   applications.set(
     number,
     app
@@ -445,6 +478,8 @@ Reply 2 to cancel.`
 
 
 }
+
+
 
 
 
