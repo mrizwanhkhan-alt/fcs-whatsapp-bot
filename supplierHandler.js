@@ -9,11 +9,12 @@ const {
   generateApplicationNumber
 } = require("./googleSheets");
 
-registerUser(
-  number,
-  "Supplier",
-  supplierNumber
-);
+
+const {
+  registerUser
+} = require("./registeredUsers");
+
+
 
 const supplierFields = [
 
@@ -178,6 +179,22 @@ async function handleSupplier(number, answer) {
 
 
 
+    registerUser(
+
+      number,
+
+      data.mobile,
+
+      "Supplier",
+
+      supplierNumber
+
+    );
+
+
+
+
+
 
     suppliers.delete(number);
 
@@ -231,6 +248,7 @@ Our team will review your details and contact you.`
 
 
 }
+
 
 
 
