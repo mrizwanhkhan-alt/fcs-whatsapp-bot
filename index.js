@@ -28,7 +28,7 @@ const {
   isWarehouseRegistering,
   handleWarehouse
 } = require("./warehouseHandler");
-
+const faq = require("./faq");
 const {
   setLanguage,
   getLanguage,
