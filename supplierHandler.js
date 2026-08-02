@@ -12,15 +12,29 @@ const {
 
 
 const supplierFields = [
+
   "companyName",
+
   "contactPerson",
+
   "mobile",
-  "email",
+
   "city",
-  "products",
-  "address",
-  "comments"
+
+  "province",
+
+  "cnic",
+
+  "governmentLicence",
+
+  "category",
+
+  "pastProjects",
+
+  "additionalDetails"
+
 ];
+
 
 
 
@@ -28,6 +42,7 @@ const supplierFields = [
 // START SUPPLIER REGISTRATION
 
 function startSupplier(number, lang = "en") {
+
 
   suppliers.set(number, {
 
@@ -65,11 +80,13 @@ function isSupplierRegistering(number) {
 async function handleSupplier(number, answer) {
 
 
-  const supplier = suppliers.get(number);
+  const supplier =
+    suppliers.get(number);
 
 
 
   if (!supplier) {
+
 
     return {
 
@@ -100,6 +117,7 @@ async function handleSupplier(number, answer) {
 
 
 
+
   if (
     supplier.step >=
     supplierQuestions[supplier.lang].length
@@ -118,7 +136,10 @@ async function handleSupplier(number, answer) {
 
 
 
+
+
     await appendSupplier([
+
 
       new Date().toLocaleString(),
 
@@ -130,19 +151,22 @@ async function handleSupplier(number, answer) {
 
       data.mobile,
 
-      data.email,
-
       data.city,
 
-      data.products,
+      data.province,
 
-      data.address,
+      data.cnic,
 
-      data.comments,
+      data.governmentLicence,
 
-      "Received",
+      data.category,
 
-      ""
+      data.pastProjects,
+
+      data.additionalDetails,
+
+      "Received"
+
 
     ]);
 
@@ -150,7 +174,9 @@ async function handleSupplier(number, answer) {
 
 
 
+
     suppliers.delete(number);
+
 
 
 
@@ -182,7 +208,9 @@ Our team will review your details and contact you.`
 
 
 
+
   suppliers.set(number, supplier);
+
 
 
 
