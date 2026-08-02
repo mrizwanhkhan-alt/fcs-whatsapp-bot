@@ -552,7 +552,8 @@ Our team will contact you for further processing.`
 
 
               });
-
+reply +=
+"\n↩️ Reply 8 to view FAQ categories again.\n🏠 Reply 0 for Main Menu.";
 
 
               sendWhatsAppMessage(
