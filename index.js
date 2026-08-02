@@ -564,9 +564,20 @@ if (text === "8") {
 
     lang === "ur"
 
-    ? "فرنچائز ٹیم سے رابطہ کریں:\nواٹس ایپ: 03326237178"
+? `FCS Express Offices
 
-    : "Contact Franchise Team:\nWhatsApp: 03326237178"
+📍 کراچی
+📍 لاہور
+📍 اسلام آباد
+📍 پشاور
+📍 کوئٹہ
+📍 مظفرآباد
+
+رابطہ کریں
+
+📧 info@fcsexpress.com.pk
+📱 WhatsApp: 031600344207
+🌐 www.fcsexpress.com.pk`
 
   );
 
