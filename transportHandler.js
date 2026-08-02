@@ -10,6 +10,11 @@ const {
 } = require("./googleSheets");
 
 
+const {
+  registerUser
+} = require("./registeredUsers");
+
+
 
 const transportFields = [
 
@@ -181,6 +186,15 @@ async function handleTransport(number, answer) {
 
     ]);
 
+
+
+
+
+    registerUser(
+      number,
+      "Transport",
+      partnerId
+    );
 
 
 
