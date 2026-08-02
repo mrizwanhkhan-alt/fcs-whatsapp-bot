@@ -16,7 +16,18 @@ const {
   isSupplierRegistering,
   handleSupplier
 } = require("./supplierHandler");
+const {
+  startTransport,
+  isTransportRegistering,
+  handleTransport
+} = require("./transportHandler");
 
+
+const {
+  startWarehouse,
+  isWarehouseRegistering,
+  handleWarehouse
+} = require("./warehouseHandler");
 
 const {
   setLanguage,
