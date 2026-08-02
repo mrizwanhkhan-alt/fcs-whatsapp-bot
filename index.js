@@ -751,28 +751,46 @@ if (text === "7") {
 
 
 
-          // 8 - FAQ
+         // 8 - FAQ
 
-          if (text === "8") {
-
-
-            sendWhatsAppMessage(
-
-              customerNumber,
+if (text === "8") {
 
 
-              lang === "ur"
+  sendWhatsAppMessage(
 
-              ? "اکثر پوچھے جانے والے سوالات کے لیے ہماری ٹیم آپ کی رہنمائی کرے گی۔"
-
-              : "Frequently Asked Questions will be available here. Our team will guide you."
-
-            );
+    customerNumber,
 
 
-            return;
+    lang === "ur"
 
-          }
+    ?
+
+`❓ اکثر پوچھے جانے والے سوالات
+
+کیٹیگری منتخب کریں:
+
+1️⃣ فرنچائز پارٹنر
+2️⃣ ٹرانسپورٹ پارٹنر
+3️⃣ ویئر ہاؤس اور ٹرک اڈہ
+4️⃣ سپلائر / وینڈر`
+
+    :
+
+`❓ Frequently Asked Questions
+
+Select Category:
+
+1️⃣ Franchise Partner
+2️⃣ Transport Partner
+3️⃣ Warehouse & Truck Adda
+4️⃣ Supplier / Vendor`
+
+  );
+
+
+  return;
+
+}
 
 
 
