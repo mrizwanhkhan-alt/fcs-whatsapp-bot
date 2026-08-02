@@ -499,71 +499,143 @@ Our team will contact you for further processing.`
             return;
 
           }
-                    // ==============================
-          // MAIN MENU OPTIONS (1 - 10)
-          // ==============================
+                 // ==============================
+// MAIN MENU OPTIONS (1 - 10)
+// ==============================
 
 
+if (text === "1") {
 
-          if (text === "1") {
+  sendWhatsAppMessage(
+    customerNumber,
 
-            sendWhatsAppMessage(
-              customerNumber,
+    lang === "ur"
 
-              lang === "ur"
+    ?
 
-              ? "ایف سی ایس ایکسپریس پاکستان کا ایک قابل اعتماد لاجسٹکس نیٹ ورک بنا رہا ہے۔"
+`🇵🇰 ایف سی ایس ایکسپریس پاکستان
 
-              : "FCS Express is building Pakistan's trusted logistics network."
+ایف سی ایس ایکسپریس ایک لاجسٹکس نیٹ ورک ہے جو پارسل ڈیلیوری، بزنس لاجسٹکس، ای کامرس اور لاسٹ مائل ڈیلیوری کی سہولیات فراہم کرتا ہے۔
 
-            );
+ہم پاکستان بھر میں ایک مضبوط پارٹنر نیٹ ورک بنا رہے ہیں۔
 
-            return;
+مزید معلومات:
+www.fcsexpress.com.pk`
 
-          }
+    :
 
+`🇵🇰 FCS Express Pakistan
 
+FCS Express is a logistics network providing parcel delivery, business logistics, e-commerce and last-mile delivery solutions.
 
+We are building a strong partner network across Pakistan.
 
+More information:
+www.fcsexpress.com.pk`
 
-          if (text === "2") {
+  );
 
-            sendWhatsAppMessage(
-              customerNumber,
+  return;
 
-              lang === "ur"
-
-              ? "ہمارا ملک گیر نیٹ ورک NDCs، RDCs، سٹی ہبز اور سروس پوائنٹس پر مشتمل ہے۔"
-
-              : "Our nationwide network includes NDCs, RDCs, City Hubs and Service Points across Pakistan."
-
-            );
-
-            return;
-
-          }
+}
 
 
 
 
 
-          if (text === "3") {
 
-            sendWhatsAppMessage(
-              customerNumber,
 
-              lang === "ur"
+if (text === "2") {
 
-              ? "ہماری سروسز میں ایکسپریس ڈلیوری، کارپوریٹ لاجسٹکس، ای کامرس ڈلیوری اور COD شامل ہیں۔"
+  sendWhatsAppMessage(
+    customerNumber,
 
-              : "Our services include Express Delivery, Corporate Logistics, E-commerce Delivery and COD."
+    lang === "ur"
 
-            );
+    ?
 
-            return;
+`🌐 ایف سی ایس ایکسپریس نیٹ ورک
 
-          }
+ہمارے نیٹ ورک میں شامل ہیں:
 
+🏢 نیشنل ڈسٹری بیوشن سینٹرز
+🏬 ریجنل ڈسٹری بیوشن سینٹرز
+📍 سٹی ہبز
+📦 ایف سی ایس سروس پوائنٹس
+
+ہم پاکستان بھر میں اپنی لاجسٹکس کوریج کو بڑھا رہے ہیں۔
+
+مزید معلومات:
+www.fcsexpress.com.pk`
+
+    :
+
+`🌐 FCS Express Network
+
+Our network includes:
+
+🏢 National Distribution Centers
+🏬 Regional Distribution Centers
+📍 City Hubs
+📦 FCS Service Points
+
+We are expanding our logistics coverage across Pakistan.
+
+More information:
+www.fcsexpress.com.pk`
+
+  );
+
+  return;
+
+}
+
+
+
+
+
+
+
+if (text === "3") {
+
+  sendWhatsAppMessage(
+    customerNumber,
+
+    lang === "ur"
+
+    ?
+
+`🚚 ایف سی ایس ایکسپریس سروسز
+
+• ایکسپریس پارسل ڈیلیوری
+• کارپوریٹ لاجسٹکس
+• ای کامرس ڈیلیوری
+• کیش آن ڈیلیوری (COD)
+• ویئر ہاؤسنگ
+• لاسٹ مائل ڈیلیوری
+
+مکمل معلومات:
+www.fcsexpress.com.pk`
+
+    :
+
+`🚚 FCS Express Services
+
+• Express Parcel Delivery
+• Corporate Logistics
+• E-commerce Delivery
+• Cash on Delivery (COD)
+• Warehousing
+• Last-Mile Delivery
+
+Complete information:
+www.fcsexpress.com.pk`
+
+  );
+
+  return;
+
+}
 
 
 
