@@ -247,7 +247,7 @@ async function handleApplication(number, answer) {
 
 
       confirmations.delete(number);
-
+applications.delete(number);
 
       return {
 
