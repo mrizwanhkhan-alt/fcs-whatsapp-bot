@@ -787,7 +787,7 @@ Select Category:
 
   );
 
-
+faqMode.set(customerNumber, true);
   return;
 
 }
