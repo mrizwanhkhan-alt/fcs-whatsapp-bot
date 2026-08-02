@@ -494,7 +494,18 @@ Our team will contact you for further processing.`
 
           if (
             faqMode.has(customerNumber)
-          ) {
+          ) {if (text === "0") {
+
+  faqMode.delete(customerNumber);
+
+  sendWhatsAppMessage(
+    customerNumber,
+    mainMenu(lang)
+  );
+
+  return;
+
+}
 
 
             let category;
