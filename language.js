@@ -54,18 +54,20 @@ function mainMenu(language) {
 
 السلام علیکم!
 
-میں غلام قادر، آپ کا فرنچائز ڈویلپمنٹ اسسٹنٹ ہوں۔
+میں غلام قادر، آپ کا ایف سی ایس اسسٹنٹ ہوں۔
 
 براہِ کرم نمبر منتخب کریں:
 
 1️⃣ ایف سی ایس ایکسپریس کے بارے میں
 2️⃣ ہمارا ملک گیر نیٹ ورک
 3️⃣ ہماری سروسز
-4️⃣ ایف سی ایس ایکسپریس کیوں؟
-5️⃣ فرنچائز کا موقع
-6️⃣ فرنچائز کے لیے درخواست دیں
-7️⃣ اکثر پوچھے جانے والے سوالات
-8️⃣ فرنچائز ٹیم سے رابطہ کریں`;
+4️⃣ فرنچائز کے لیے درخواست دیں
+5️⃣ جنرل سپلائر / وینڈر رجسٹریشن
+6️⃣ ٹرانسپورٹ پارٹنر رجسٹریشن
+7️⃣ ویئر ہاؤس رجسٹریشن
+8️⃣ اکثر پوچھے جانے والے سوالات
+9️⃣ ایف سی ایس ایکسپریس کیوں؟
+🔟 رابطہ کریں`;
 
   }
 
@@ -75,18 +77,20 @@ function mainMenu(language) {
 
 Assalam-o-Alaikum!
 
-I am Ghulam Qadir, your Franchise Development Assistant.
+I am Ghulam Qadir, your FCS Express Assistant.
 
 Please reply with a number:
 
 1️⃣ About FCS Express
 2️⃣ Our Nationwide Network
 3️⃣ Our Services
-4️⃣ Why Choose FCS Express
-5️⃣ Franchise Opportunity
-6️⃣ Apply for Franchise
-7️⃣ Frequently Asked Questions
-8️⃣ Contact Franchise Team`;
+4️⃣ Apply for Franchise
+5️⃣ General Supplier / Vendor Registration
+6️⃣ Transport Partner Registration
+7️⃣ Warehouse Registration
+8️⃣ Frequently Asked Questions
+9️⃣ Why Choose FCS Express
+🔟 Contact Us`;
 
 }
 
