@@ -564,7 +564,7 @@ if (text === "8") {
 
     lang === "ur"
 
-? `FCS Express Offices
+    ? `FCS Express Offices
 
 📍 کراچی
 📍 لاہور
@@ -579,12 +579,26 @@ if (text === "8") {
 📱 WhatsApp: 031600344207
 🌐 www.fcsexpress.com.pk`
 
+    : `FCS Express Offices
+
+📍 Karachi
+📍 Lahore
+📍 Islamabad
+📍 Peshawar
+📍 Quetta
+📍 Muzaffarabad
+
+Contact Us
+
+📧 info@fcsexpress.com.pk
+📱 WhatsApp: 031600344207
+🌐 www.fcsexpress.com.pk`
+
   );
 
   return;
 
 }
-
 
 
 
