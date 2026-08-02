@@ -37,6 +37,8 @@ const fields = [
 
 
 
+
+
 // START APPLICATION
 
 function startApplication(number) {
@@ -80,6 +82,8 @@ ${questions[lang][0]}`
 
 
 
+
+
 // CHECK ACTIVE APPLICATION
 
 function isApplying(number) {
@@ -87,6 +91,8 @@ function isApplying(number) {
   return applications.has(number);
 
 }
+
+
 
 
 
@@ -150,9 +156,15 @@ async function saveApplication(number, data, lang) {
 
 
   registerUser(
+
     number,
+
+    data.mobile,
+
     "Franchise",
+
     applicationNumber
+
   );
 
 
@@ -166,9 +178,7 @@ async function saveApplication(number, data, lang) {
 
   return lang === "ur"
 
-
 ?
-
 
 `🎉 شکریہ!
 
@@ -181,9 +191,7 @@ async function saveApplication(number, data, lang) {
 ہماری فرنچائز ڈویلپمنٹ ٹیم آپ کی درخواست کا جائزہ لے گی اور مزید رابطہ کرے گی.`
 
 
-
 :
-
 
 `🎉 Thank you!
 
@@ -196,11 +204,6 @@ Please save this application number for future reference.
 Our Franchise Development Team will review your application and contact you further.`;
 
 }
-
-
-
-
-
 // HANDLE APPLICATION
 
 async function handleApplication(number, answer) {
@@ -302,6 +305,10 @@ async function handleApplication(number, answer) {
 
 
 
+
+
+  // MOBILE VALIDATION
+
   if (fields[app.step] === "mobile") {
 
 
@@ -333,6 +340,8 @@ async function handleApplication(number, answer) {
 
 
 
+
+  // EMAIL VALIDATION
 
   if (fields[app.step] === "email") {
 
@@ -372,6 +381,8 @@ async function handleApplication(number, answer) {
 
 
 
+  // CNIC VALIDATION
+
   if (fields[app.step] === "cnic") {
 
 
@@ -409,6 +420,7 @@ async function handleApplication(number, answer) {
 
 
   app.step++;
+
 
 
 
