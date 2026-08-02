@@ -190,11 +190,19 @@ async function handleTransport(number, answer) {
 
 
 
+
     registerUser(
+
       number,
+
+      data.mobile,
+
       "Transport",
+
       partnerId
+
     );
+
 
 
 
