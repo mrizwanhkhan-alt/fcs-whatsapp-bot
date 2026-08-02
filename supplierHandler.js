@@ -9,7 +9,11 @@ const {
   generateApplicationNumber
 } = require("./googleSheets");
 
-
+registerUser(
+  number,
+  "Supplier",
+  supplierNumber
+);
 
 const supplierFields = [
 
