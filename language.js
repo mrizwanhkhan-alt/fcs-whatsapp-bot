@@ -64,7 +64,7 @@ function mainMenu(language) {
 4️⃣ فرنچائز کے لیے درخواست دیں
 5️⃣ جنرل سپلائر / وینڈر رجسٹریشن
 6️⃣ ٹرانسپورٹ پارٹنر رجسٹریشن
-7️⃣ ویئر ہاؤس رجسٹریشن
+7️⃣ ویئر ہاؤس اور ٹرک اڈہ رجسٹریشن
 8️⃣ اکثر پوچھے جانے والے سوالات
 9️⃣ ایف سی ایس ایکسپریس کیوں؟
 🔟 رابطہ کریں`;
@@ -87,7 +87,7 @@ Please reply with a number:
 4️⃣ Apply for Franchise
 5️⃣ General Supplier / Vendor Registration
 6️⃣ Transport Partner Registration
-7️⃣ Warehouse Registration
+7️⃣ Warehouse & Truck Adda Registration
 8️⃣ Frequently Asked Questions
 9️⃣ Why Choose FCS Express
 🔟 Contact Us`;
