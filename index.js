@@ -796,32 +796,52 @@ Select Category:
 
 
 
-          // 9 - WHY CHOOSE FCS
+         // 9 - WHY CHOOSE FCS
 
-          if (text === "9") {
-
-
-            sendWhatsAppMessage(
-
-              customerNumber,
+if (text === "9") {
 
 
-              lang === "ur"
+  sendWhatsAppMessage(
 
-              ? "ایف سی ایس ایکسپریس جدید ٹیکنالوجی، مضبوط نیٹ ورک اور قابل اعتماد لاجسٹکس حل فراہم کرتا ہے۔"
-
-              : "FCS Express provides reliable logistics solutions with technology, network strength and professional service."
-
-            );
+    customerNumber,
 
 
-            return;
+    lang === "ur"
 
-          }
+    ?
+
+`⭐ ایف سی ایس ایکسپریس کیوں؟
+
+ایف سی ایس ایکسپریس ایک جدید لاجسٹکس نیٹ ورک ہے جو قابل اعتماد ڈیلیوری، مضبوط پارٹنر نیٹ ورک، ٹیکنالوجی پر مبنی آپریشنز اور کاروباری ترقی کے مواقع فراہم کرتا ہے۔
+
+ہماری ترجیحات:
+
+✅ ملک گیر نیٹ ورک
+✅ فرنچائز اور بزنس پارٹنرشپ کے مواقع
+✅ جدید ٹریکنگ اور آپریشنل سسٹم
+✅ کاروباری اداروں کے لیے قابل اعتماد لاجسٹکس حل
+✅ صارفین اور پارٹنرز کے لیے بہتر سروس کا معیار`
+
+    :
+
+`⭐ Why Choose FCS Express?
+
+FCS Express is a modern logistics network built to provide reliable delivery solutions, strong partner opportunities, technology-driven operations and long-term business growth.
+
+Our strengths:
+
+✅ Nationwide logistics network
+✅ Franchise and business partnership opportunities
+✅ Technology-based tracking and operations
+✅ Reliable solutions for businesses and customers
+✅ Focus on quality service and partner growth`
+
+  );
 
 
+  return;
 
-
+}
 
           // 10 - CONTACT US
 
