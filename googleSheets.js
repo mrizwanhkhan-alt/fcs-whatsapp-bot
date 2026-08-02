@@ -103,6 +103,44 @@ async function appendApplication(row) {
 
 
 
+
+// Save Supplier
+
+async function appendSupplier(row) {
+
+
+  await sheets.spreadsheets.values.append({
+
+
+    spreadsheetId:
+      config.GOOGLE_SHEET_ID,
+
+
+    range:
+      "Suppliers!A:L",
+
+
+    valueInputOption:
+      "USER_ENTERED",
+
+
+    requestBody: {
+
+      values: [
+        row
+      ]
+
+    }
+
+
+  });
+
+
+}
+
+
+
+
 // Read Applications
 
 async function getApplications() {
@@ -127,6 +165,7 @@ async function getApplications() {
   return response.data.values || [];
 
 }
+
 
 
 
@@ -181,6 +220,7 @@ async function updateEngagement(
 
 
 
+
 // Check Duplicate WhatsApp
 
 async function numberExists(whatsapp) {
@@ -228,6 +268,8 @@ module.exports = {
   sheets,
 
   appendApplication,
+
+  appendSupplier,
 
   numberExists,
 
