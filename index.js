@@ -690,29 +690,27 @@ if (text === "4") {
 
 
 
-          // 6 - TRANSPORT PARTNER
+          // 6 - TRANSPORT PARTNER REGISTRATION
 
-          if (text === "6") {
-
-
-            sendWhatsAppMessage(
-
-              customerNumber,
+if (text === "6") {
 
 
-              lang === "ur"
-
-              ? "ٹرانسپورٹ پارٹنر رجسٹریشن جلد شروع کی جائے گی۔"
-
-              : "Transport Partner Registration will be available soon."
-
-            );
+  const reply =
+    startTransport(
+      customerNumber,
+      lang
+    );
 
 
-            return;
+  sendWhatsAppMessage(
+    customerNumber,
+    reply
+  );
 
-          }
 
+  return;
+
+}
 
 
 
