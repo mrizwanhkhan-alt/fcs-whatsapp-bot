@@ -30,6 +30,7 @@ const sheets = google.sheets({
 
 
 
+
 // Generate Application Number
 
 async function generateApplicationNumber() {
@@ -66,25 +67,23 @@ async function generateApplicationNumber() {
 
 
 
-// Save Application
+
+
+// Save Franchise Application
 
 async function appendApplication(row) {
 
 
   await sheets.spreadsheets.values.append({
 
-
     spreadsheetId:
       config.GOOGLE_SHEET_ID,
 
-
     range:
-      "A:T",
-
+      "Franchise_Applications!A:T",
 
     valueInputOption:
       "USER_ENTERED",
-
 
     requestBody: {
 
@@ -94,9 +93,7 @@ async function appendApplication(row) {
 
     }
 
-
   });
-
 
 }
 
@@ -104,25 +101,23 @@ async function appendApplication(row) {
 
 
 
-// Save Supplier
+
+
+// Save General Supplier
 
 async function appendSupplier(row) {
 
 
   await sheets.spreadsheets.values.append({
 
-
     spreadsheetId:
       config.GOOGLE_SHEET_ID,
 
-
     range:
-      "Suppliers!A:L",
-
+      "General_Suppliers!A:Q",
 
     valueInputOption:
       "USER_ENTERED",
-
 
     requestBody: {
 
@@ -132,16 +127,86 @@ async function appendSupplier(row) {
 
     }
 
-
   });
-
 
 }
 
 
 
 
-// Read Applications
+
+
+
+// Save Warehouse & Truck Adda
+
+async function appendWarehouse(row) {
+
+
+  await sheets.spreadsheets.values.append({
+
+    spreadsheetId:
+      config.GOOGLE_SHEET_ID,
+
+    range:
+      "Warehouse_Truck_Adda!A:V",
+
+    valueInputOption:
+      "USER_ENTERED",
+
+    requestBody: {
+
+      values: [
+        row
+      ]
+
+    }
+
+  });
+
+}
+
+
+
+
+
+
+
+// Save Transport Partner
+
+async function appendTransport(row) {
+
+
+  await sheets.spreadsheets.values.append({
+
+    spreadsheetId:
+      config.GOOGLE_SHEET_ID,
+
+    range:
+      "Transport_Partners!A:T",
+
+    valueInputOption:
+      "USER_ENTERED",
+
+    requestBody: {
+
+      values: [
+        row
+      ]
+
+    }
+
+  });
+
+}
+
+
+
+
+
+
+
+
+// Read Franchise Applications
 
 async function getApplications() {
 
@@ -149,14 +214,12 @@ async function getApplications() {
   const response =
     await sheets.spreadsheets.values.get({
 
-
       spreadsheetId:
         config.GOOGLE_SHEET_ID,
 
 
       range:
-        "A:T"
-
+        "Franchise_Applications!A:T"
 
     });
 
@@ -170,10 +233,10 @@ async function getApplications() {
 
 
 
-// Update Engagement Tracking
-// R = Engagement Stage
-// S = Last Message Sent
-// T = Next Follow Up Date
+
+
+
+// Update Follow Up
 
 async function updateEngagement(
   rowNumber,
@@ -184,13 +247,12 @@ async function updateEngagement(
 
   await sheets.spreadsheets.values.update({
 
-
     spreadsheetId:
       config.GOOGLE_SHEET_ID,
 
 
     range:
-      `R${rowNumber}:T${rowNumber}`,
+      `Franchise_Applications!R${rowNumber}:T${rowNumber}`,
 
 
     valueInputOption:
@@ -211,11 +273,12 @@ async function updateEngagement(
 
     }
 
-
   });
 
-
 }
+
+
+
 
 
 
@@ -246,9 +309,7 @@ async function numberExists(whatsapp) {
 
       return true;
 
-
     }
-
 
   }
 
@@ -256,8 +317,11 @@ async function numberExists(whatsapp) {
 
   return false;
 
-
 }
+
+
+
+
 
 
 
@@ -271,6 +335,10 @@ module.exports = {
 
   appendSupplier,
 
+  appendWarehouse,
+
+  appendTransport,
+
   numberExists,
 
   generateApplicationNumber,
@@ -278,6 +346,5 @@ module.exports = {
   getApplications,
 
   updateEngagement
-
 
 };
