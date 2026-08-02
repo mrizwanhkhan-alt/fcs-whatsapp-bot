@@ -43,11 +43,13 @@ function getRegisteredUser(number) {
 
 
 
-// Remove registration (admin use later)
+// Admin unlock user
 
-function removeRegisteredUser(number) {
+function unlockUser(number) {
 
   registeredUsers.delete(number);
+
+  return true;
 
 }
 
@@ -61,6 +63,6 @@ module.exports = {
 
   getRegisteredUser,
 
-  removeRegisteredUser
+  unlockUser
 
 };
