@@ -32,6 +32,11 @@ const {
   recordAbuse
 } = require("./blockedUsers");
 
+const {
+  registerUser,
+  isRegistered,
+  getRegisteredUser
+} = require("./registeredUsers");
 
 const PORT = config.PORT;
 const VERIFY_TOKEN = config.VERIFY_TOKEN;
