@@ -640,27 +640,26 @@ www.fcsexpress.com.pk`
 
 
 
-          // 4 - FRANCHISE APPLICATION
+        // 4 - FRANCHISE APPLICATION
 
-          if (text === "4") {
-
-
-            const reply =
-              startApplication(
-                customerNumber
-              );
+if (text === "4") {
 
 
-            sendWhatsAppMessage(
-              customerNumber,
-              reply
-            );
+  const reply =
+    startApplication(
+      customerNumber
+    );
 
 
-            return;
+  sendWhatsAppMessage(
+    customerNumber,
+    reply
+  );
 
-          }
 
+  return;
+
+}
 
 
 
