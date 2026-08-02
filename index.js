@@ -332,7 +332,9 @@ Reference ID: ${user.referenceId}
 Our team will contact you for further processing.`
   );
 
-
+if (faqMode.has(customerNumber)) {
+  return;
+}
   return;
 
 }
