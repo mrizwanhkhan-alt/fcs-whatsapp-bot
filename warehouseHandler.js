@@ -200,9 +200,15 @@ async function handleWarehouse(number, answer) {
 
 
     registerUser(
+
       number,
+
+      data.mobile,
+
       "Warehouse",
+
       partnerId
+
     );
 
 
