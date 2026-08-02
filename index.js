@@ -16,6 +16,7 @@ const {
   isSupplierRegistering,
   handleSupplier
 } = require("./supplierHandler");
+
 const {
   startTransport,
   isTransportRegistering,
@@ -28,7 +29,13 @@ const {
   isWarehouseRegistering,
   handleWarehouse
 } = require("./warehouseHandler");
+
+
 const faq = require("./faq");
+
+const faqMode = new Map();
+
+
 const {
   setLanguage,
   getLanguage,
@@ -43,11 +50,13 @@ const {
   recordAbuse
 } = require("./blockedUsers");
 
+
 const {
   registerUser,
   isRegistered,
   getRegisteredUser
 } = require("./registeredUsers");
+
 
 const PORT = config.PORT;
 const VERIFY_TOKEN = config.VERIFY_TOKEN;
@@ -158,11 +167,7 @@ function sendWhatsAppMessage(to, message) {
   request.end();
 
 }
-
-
-
-
-
+id="part2"
 const server = http.createServer((req, res) => {
 
 
@@ -253,7 +258,10 @@ const server = http.createServer((req, res) => {
 
 
   }
-    // RECEIVE MESSAGE
+
+
+
+  // RECEIVE MESSAGE
 
   if (
     req.method === "POST" &&
@@ -262,7 +270,6 @@ const server = http.createServer((req, res) => {
 
 
     let body = "";
-
 
 
     req.on(
@@ -316,28 +323,32 @@ const server = http.createServer((req, res) => {
           const customerNumber =
             message.from;
 
-if (isRegistered(customerNumber)) {
-
-  const user =
-    getRegisteredUser(customerNumber);
 
 
-  sendWhatsAppMessage(
-    customerNumber,
+          if (isRegistered(customerNumber)) {
 
-    `Your registration is already received.
+
+            const user =
+              getRegisteredUser(customerNumber);
+
+
+
+            sendWhatsAppMessage(
+              customerNumber,
+
+              `Your registration is already received.
 
 Reference ID: ${user.referenceId}
 
 Our team will contact you for further processing.`
-  );
+            );
 
-if (faqMode.has(customerNumber)) {
-  return;
-}
-  return;
 
-}
+            return;
+
+          }
+
+
 
           if (
             isBlocked(customerNumber)
@@ -374,8 +385,6 @@ if (faqMode.has(customerNumber)) {
             "Message:",
             text
           );
-
-
 
 
 
@@ -448,13 +457,8 @@ if (faqMode.has(customerNumber)) {
 
 
 
-
-
           const lang =
             getLanguage(customerNumber);
-
-
-
 
 
 
@@ -484,71 +488,88 @@ if (faqMode.has(customerNumber)) {
           }
 
 
-// CONTINUE FAQ
 
-if (faqMode.has(customerNumber)) {
-
-
-  let category;
+          // CONTINUE FAQ
 
 
-  if (customerText === "1") {
-    category = "franchise";
-  }
-
-  else if (customerText === "2") {
-    category = "transport";
-  }
-
-  else if (customerText === "3") {
-    category = "warehouse";
-  }
-
-  else if (customerText === "4") {
-    category = "supplier";
-  }
+          if (
+            faqMode.has(customerNumber)
+          ) {
 
 
-  if (category) {
-
-
-    const faqList = faq[lang][category];
-
-
-    let reply =
-      lang === "ur"
-
-      ? "❓ اکثر پوچھے جانے والے سوالات\n\n"
-
-      : "❓ Frequently Asked Questions\n\n";
-
-
-    faqList.forEach((item, index) => {
-
-      reply +=
-      `${index + 1}. ${item.question}\n\n${item.answer}\n\n`;
-
-    });
-
-
-    sendWhatsAppMessage(
-      customerNumber,
-      reply
-    );
-
-
-    faqMode.delete(customerNumber);
-
-
-    return;
-
-  }
-
-}
+            let category;
 
 
 
-          // CONTINUE SUPPLIER REGISTRATION
+            if (text === "1") {
+
+              category = "franchise";
+
+            }
+
+            else if (text === "2") {
+
+              category = "transport";
+
+            }
+
+            else if (text === "3") {
+
+              category = "warehouse";
+
+            }
+
+            else if (text === "4") {
+
+              category = "supplier";
+
+            }
+
+
+
+            if (category) {
+
+
+              const faqList =
+                faq[lang][category];
+
+
+
+              let reply =
+                lang === "ur"
+
+                ? "❓ اکثر پوچھے جانے والے سوالات\n\n"
+
+                : "❓ Frequently Asked Questions\n\n";
+
+
+
+              faqList.forEach((item, index) => {
+
+
+                reply +=
+                `${index + 1}. ${item.question}\n\n${item.answer}\n\n`;
+
+
+              });
+
+
+
+              sendWhatsAppMessage(
+                customerNumber,
+                reply
+              );
+
+
+              faqMode.delete(customerNumber);
+
+
+              return;
+
+            }
+
+          }
+                    // CONTINUE SUPPLIER REGISTRATION
 
 
           if (
@@ -572,76 +593,39 @@ if (faqMode.has(customerNumber)) {
             return;
 
           }
-                 // ==============================
-// MAIN MENU OPTIONS (1 - 10)
-// ==============================
 
 
-if (text === "1") {
 
-  sendWhatsAppMessage(
-    customerNumber,
 
-    lang === "ur"
 
-    ?
+          // MAIN MENU OPTIONS
 
-`🇵🇰 ایف سی ایس ایکسپریس پاکستان
 
-ایف سی ایس ایکسپریس ایک لاجسٹکس نیٹ ورک ہے جو پارسل ڈیلیوری، بزنس لاجسٹکس، ای کامرس اور لاسٹ مائل ڈیلیوری کی سہولیات فراہم کرتا ہے۔
+          if (text === "1") {
 
-ہم پاکستان بھر میں ایک مضبوط پارٹنر نیٹ ورک بنا رہے ہیں۔
-
-مزید معلومات:
-www.fcsexpress.com.pk`
-
-    :
+            sendWhatsAppMessage(
+              customerNumber,
 
 `🇵🇰 FCS Express Pakistan
 
 FCS Express is a logistics network providing parcel delivery, business logistics, e-commerce and last-mile delivery solutions.
 
-We are building a strong partner network across Pakistan.
-
-More information:
 www.fcsexpress.com.pk`
 
-  );
+            );
 
-  return;
+            return;
 
-}
-
-
+          }
 
 
 
 
 
-if (text === "2") {
+          if (text === "2") {
 
-  sendWhatsAppMessage(
-    customerNumber,
-
-    lang === "ur"
-
-    ?
-
-`🌐 ایف سی ایس ایکسپریس نیٹ ورک
-
-ہمارے نیٹ ورک میں شامل ہیں:
-
-🏢 نیشنل ڈسٹری بیوشن سینٹرز
-🏬 ریجنل ڈسٹری بیوشن سینٹرز
-📍 سٹی ہبز
-📦 ایف سی ایس سروس پوائنٹس
-
-ہم پاکستان بھر میں اپنی لاجسٹکس کوریج کو بڑھا رہے ہیں۔
-
-مزید معلومات:
-www.fcsexpress.com.pk`
-
-    :
+            sendWhatsAppMessage(
+              customerNumber,
 
 `🌐 FCS Express Network
 
@@ -650,47 +634,22 @@ Our network includes:
 🏢 National Distribution Centers
 🏬 Regional Distribution Centers
 📍 City Hubs
-📦 FCS Service Points
+📦 FCS Service Points`
 
-We are expanding our logistics coverage across Pakistan.
+            );
 
-More information:
-www.fcsexpress.com.pk`
+            return;
 
-  );
-
-  return;
-
-}
+          }
 
 
 
 
 
+          if (text === "3") {
 
-
-if (text === "3") {
-
-  sendWhatsAppMessage(
-    customerNumber,
-
-    lang === "ur"
-
-    ?
-
-`🚚 ایف سی ایس ایکسپریس سروسز
-
-• ایکسپریس پارسل ڈیلیوری
-• کارپوریٹ لاجسٹکس
-• ای کامرس ڈیلیوری
-• کیش آن ڈیلیوری (COD)
-• ویئر ہاؤسنگ
-• لاسٹ مائل ڈیلیوری
-
-مکمل معلومات:
-www.fcsexpress.com.pk`
-
-    :
+            sendWhatsAppMessage(
+              customerNumber,
 
 `🚚 FCS Express Services
 
@@ -699,45 +658,40 @@ www.fcsexpress.com.pk`
 • E-commerce Delivery
 • Cash on Delivery (COD)
 • Warehousing
-• Last-Mile Delivery
+• Last-Mile Delivery`
 
-Complete information:
-www.fcsexpress.com.pk`
+            );
 
-  );
+            return;
 
-  return;
-
-}
+          }
 
 
 
 
-        // 4 - FRANCHISE APPLICATION
 
-if (text === "4") {
-
-
-  const reply =
-    startApplication(
-      customerNumber
-    );
+          if (text === "4") {
 
 
-  sendWhatsAppMessage(
-    customerNumber,
-    reply
-  );
+            const reply =
+              startApplication(
+                customerNumber
+              );
 
 
-  return;
+            sendWhatsAppMessage(
+              customerNumber,
+              reply
+            );
 
-}
 
+            return;
+
+          }
 
 
 
-          // 5 - SUPPLIER
+
 
           if (text === "5") {
 
@@ -763,69 +717,68 @@ if (text === "4") {
 
 
 
-          // 6 - TRANSPORT PARTNER REGISTRATION
-
-if (text === "6") {
+          if (text === "6") {
 
 
-  const reply =
-    startTransport(
-      customerNumber,
-      lang
-    );
+            const reply =
+              startTransport(
+                customerNumber,
+                lang
+              );
 
 
-  sendWhatsAppMessage(
-    customerNumber,
-    reply
-  );
+            sendWhatsAppMessage(
+              customerNumber,
+              reply
+            );
 
 
-  return;
+            return;
 
-}
+          }
 
 
 
 
-         // 7 - WAREHOUSE & TRUCK ADDA
 
-if (text === "7") {
-
-
-  const reply =
-    startWarehouse(
-      customerNumber,
-      lang
-    );
+          if (text === "7") {
 
 
-  sendWhatsAppMessage(
-    customerNumber,
-    reply
-  );
+            const reply =
+              startWarehouse(
+                customerNumber,
+                lang
+              );
 
 
-  return;
+            sendWhatsAppMessage(
+              customerNumber,
+              reply
+            );
 
-}
 
+            return;
+
+          }
 
 
 
-         // 8 - FAQ
-
-if (text === "8") {
 
 
-  sendWhatsAppMessage(
-
-    customerNumber,
+          // 8 - FAQ
 
 
-    lang === "ur"
+          if (text === "8") {
 
-    ?
+
+            sendWhatsAppMessage(
+
+              customerNumber,
+
+
+              lang === "ur"
+
+              ?
 
 `❓ اکثر پوچھے جانے والے سوالات
 
@@ -836,7 +789,7 @@ if (text === "8") {
 3️⃣ ویئر ہاؤس اور ٹرک اڈہ
 4️⃣ سپلائر / وینڈر`
 
-    :
+              :
 
 `❓ Frequently Asked Questions
 
@@ -847,65 +800,51 @@ Select Category:
 3️⃣ Warehouse & Truck Adda
 4️⃣ Supplier / Vendor`
 
-  );
-
-faqMode.set(customerNumber, true);
-  return;
-
-}
+            );
 
 
+            faqMode.set(
+              customerNumber,
+              true
+            );
+
+
+            return;
+
+          }
 
 
 
-         // 9 - WHY CHOOSE FCS
-
-if (text === "9") {
 
 
-  sendWhatsAppMessage(
-
-    customerNumber,
+          // 9 - WHY CHOOSE FCS
 
 
-    lang === "ur"
+          if (text === "9") {
 
-    ?
 
-`⭐ ایف سی ایس ایکسپریس کیوں؟
+            sendWhatsAppMessage(
 
-ایف سی ایس ایکسپریس ایک جدید لاجسٹکس نیٹ ورک ہے جو قابل اعتماد ڈیلیوری، مضبوط پارٹنر نیٹ ورک، ٹیکنالوجی پر مبنی آپریشنز اور کاروباری ترقی کے مواقع فراہم کرتا ہے۔
+              customerNumber,
 
-ہماری ترجیحات:
-
-✅ ملک گیر نیٹ ورک
-✅ فرنچائز اور بزنس پارٹنرشپ کے مواقع
-✅ جدید ٹریکنگ اور آپریشنل سسٹم
-✅ کاروباری اداروں کے لیے قابل اعتماد لاجسٹکس حل
-✅ صارفین اور پارٹنرز کے لیے بہتر سروس کا معیار`
-
-    :
 
 `⭐ Why Choose FCS Express?
 
-FCS Express is a modern logistics network built to provide reliable delivery solutions, strong partner opportunities, technology-driven operations and long-term business growth.
+FCS Express provides reliable logistics solutions with nationwide coverage, technology-driven operations, strong partnerships and business growth opportunities.`
 
-Our strengths:
-
-✅ Nationwide logistics network
-✅ Franchise and business partnership opportunities
-✅ Technology-based tracking and operations
-✅ Reliable solutions for businesses and customers
-✅ Focus on quality service and partner growth`
-
-  );
+            );
 
 
-  return;
+            return;
 
-}
+          }
+
+
+
+
 
           // 10 - CONTACT US
+
 
           if (text === "10") {
 
@@ -915,26 +854,7 @@ Our strengths:
               customerNumber,
 
 
-              lang === "ur"
-
-              ? `FCS Express Offices
-
-📍 کراچی
-📍 لاہور
-📍 اسلام آباد
-📍 پشاور
-📍 کوئٹہ
-📍 مظفرآباد
-
-رابطہ کریں
-
-📧 info@fcsexpress.com.pk
-📱 WhatsApp: 03160034207
-🌐 www.fcsexpress.com.pk`
-
-              :
-
-              `FCS Express Offices
+`FCS Express Offices
 
 📍 Karachi
 📍 Lahore
@@ -942,8 +862,6 @@ Our strengths:
 📍 Peshawar
 📍 Quetta
 📍 Muzaffarabad
-
-Contact Us
 
 📧 info@fcsexpress.com.pk
 📱 WhatsApp: 03160034207
@@ -955,9 +873,10 @@ Contact Us
             return;
 
           }
-                    // ==============================
-          // AI CHAT
-          // ==============================
+
+
+
+
 
 
           const reply =
@@ -996,9 +915,6 @@ Contact Us
 
 
 
-
-  // 404
-
   res.writeHead(404, {
 
     "Content-Type": "text/plain"
@@ -1017,12 +933,6 @@ Contact Us
 
 
 
-
-// ==============================
-// SERVER START
-// ==============================
-
-
 server.listen(
 
   PORT,
@@ -1032,14 +942,9 @@ server.listen(
   () => {
 
 
-    console.log("--------------------------------");
-
     console.log(
       "FCS Express WhatsApp Bot Started"
     );
-
-
-    console.log("--------------------------------");
 
 
     console.log(
@@ -1048,126 +953,6 @@ server.listen(
     );
 
 
-    console.log(
-      "PHONE_NUMBER_ID:",
-      PHONE_NUMBER_ID ? "Loaded" : "Missing"
-    );
-
-
-    console.log(
-      "WHATSAPP_TOKEN:",
-      WHATSAPP_TOKEN ? "Loaded" : "Missing"
-    );
-
-
-    console.log(
-      "VERIFY_TOKEN:",
-      VERIFY_TOKEN ? "Loaded" : "Missing"
-    );
-
-
-    console.log("--------------------------------");
-
-
   }
 
 );
-
-
-
-
-
-
-// ==============================
-// ERROR HANDLING
-// ==============================
-
-
-process.on(
-
-  "uncaughtException",
-
-  (err) => {
-
-
-    console.error(
-
-      "Uncaught Exception:",
-
-      err
-
-    );
-
-
-  }
-
-);
-
-
-
-
-
-process.on(
-
-  "unhandledRejection",
-
-  (err) => {
-
-
-    console.error(
-
-      "Unhandled Rejection:",
-
-      err
-
-    );
-
-
-  }
-
-);
-
-
-
-
-
-
-// ==============================
-// DAILY ENGAGEMENT CHECK
-// ==============================
-
-
-const {
-  checkEngagement
-} = require("./engagementChecker");
-
-
-
-
-setInterval(() => {
-
-
-  checkEngagement(
-
-    sendWhatsAppMessage
-
-  )
-
-
-  .catch((error) => {
-
-
-    console.error(
-
-      "Engagement Error:",
-
-      error.message
-
-    );
-
-
-  });
-
-
-
-}, 24 * 60 * 60 * 1000);
