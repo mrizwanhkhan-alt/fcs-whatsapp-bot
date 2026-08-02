@@ -11,19 +11,47 @@ const warehouseQuestions = {
 
     "What is your Mobile / WhatsApp Number?",
 
-    "Which City and Area is your facility located in?",
+    "Which City are you operating from?",
 
-    "What facility do you have? (Warehouse / Truck Adda / Both)",
+    "Which Province are you operating from?",
 
-    "What is the available space? (Example: 1000 sq ft, 5000 sq ft)",
+    "What is your CNIC Number?",
 
-    "Do you provide loading / unloading facility? (Yes / No)",
+    "What is your Government Registration / Licence Number?",
+
+    `Select Facility Type:
+
+1️⃣ Warehouse
+
+2️⃣ Truck Adda
+
+3️⃣ Both Warehouse & Truck Adda`,
+
+    `Select Facility Category:
+
+1️⃣ General Storage Warehouse
+
+2️⃣ E-commerce Fulfillment Warehouse
+
+3️⃣ Cold Storage
+
+4️⃣ Industrial / Commercial Warehouse
+
+5️⃣ Open Yard / Truck Parking
+
+6️⃣ Other`,
+
+    "What are the available space and capacity details?",
 
     "How many trucks can be accommodated?",
 
-    "What is the complete address?",
+    "Is loading / unloading facility available?",
 
-    "Any additional details?"
+    "What is the complete location address?",
+
+    "Please provide details of previous projects / existing clients.",
+
+    "Any further additional details?"
 
   ],
 
@@ -37,19 +65,47 @@ const warehouseQuestions = {
 
     "آپ کا موبائل / واٹس ایپ نمبر کیا ہے؟",
 
-    "آپ کی سہولت کس شہر اور علاقے میں موجود ہے؟",
+    "آپ کس شہر میں کام کر رہے ہیں؟",
 
-    "آپ کے پاس کون سی سہولت موجود ہے؟ (ویئر ہاؤس / ٹرک اڈہ / دونوں)",
+    "آپ کس صوبے میں کام کر رہے ہیں؟",
 
-    "دستیاب جگہ کتنی ہے؟ (مثال: 1000 مربع فٹ، 5000 مربع فٹ)",
+    "آپ کا شناختی کارڈ نمبر کیا ہے؟",
 
-    "کیا لوڈنگ / ان لوڈنگ کی سہولت موجود ہے؟ (ہاں / نہیں)",
+    "آپ کا سرکاری رجسٹریشن / لائسنس نمبر کیا ہے؟",
 
-    "کتنے ٹرک کھڑے کرنے کی جگہ ہے؟",
+    `سہولت کی قسم منتخب کریں:
 
-    "مکمل پتہ کیا ہے؟",
+1️⃣ ویئر ہاؤس
 
-    "کوئی اضافی معلومات؟"
+2️⃣ ٹرک اڈہ
+
+3️⃣ دونوں ویئر ہاؤس اور ٹرک اڈہ`,
+
+    `سہولت کی کیٹیگری منتخب کریں:
+
+1️⃣ جنرل اسٹوریج ویئر ہاؤس
+
+2️⃣ ای کامرس فل فلمنٹ ویئر ہاؤس
+
+3️⃣ کولڈ اسٹوریج
+
+4️⃣ انڈسٹریل / کمرشل ویئر ہاؤس
+
+5️⃣ اوپن یارڈ / ٹرک پارکنگ
+
+6️⃣ دیگر`,
+
+    "دستیاب جگہ اور گنجائش کی تفصیلات کیا ہیں؟",
+
+    "کتنے ٹرک کھڑے کرنے کی گنجائش ہے؟",
+
+    "کیا لوڈنگ / ان لوڈنگ کی سہولت موجود ہے؟",
+
+    "مکمل مقام کا پتہ کیا ہے؟",
+
+    "سابقہ پروجیکٹس / موجودہ کلائنٹس کی تفصیلات فراہم کریں۔",
+
+    "مزید اضافی معلومات؟"
 
   ]
 
