@@ -562,7 +562,6 @@ reply +=
               );
 
 
-              faqMode.delete(customerNumber);
 
 
               return;
