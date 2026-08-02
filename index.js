@@ -10,6 +10,14 @@ const {
   handleApplication
 } = require("./applicationHandler");
 
+
+const {
+  startSupplier,
+  isSupplierRegistering,
+  handleSupplier
+} = require("./supplierHandler");
+
+
 const {
   setLanguage,
   getLanguage,
@@ -17,6 +25,7 @@ const {
   languageMenu,
   mainMenu
 } = require("./language");
+
 
 const {
   isBlocked,
@@ -133,6 +142,11 @@ function sendWhatsAppMessage(to, message) {
   request.end();
 
 }
+
+
+
+
+
 const server = http.createServer((req, res) => {
 
 
@@ -223,11 +237,7 @@ const server = http.createServer((req, res) => {
 
 
   }
-
-
-
-
-  // RECEIVE MESSAGE
+    // RECEIVE MESSAGE
 
   if (
     req.method === "POST" &&
@@ -296,12 +306,10 @@ const server = http.createServer((req, res) => {
             isBlocked(customerNumber)
           ) {
 
-
             console.log(
               "Blocked:",
               customerNumber
             );
-
 
             return;
 
@@ -329,6 +337,8 @@ const server = http.createServer((req, res) => {
             "Message:",
             text
           );
+
+
 
 
 
@@ -365,7 +375,6 @@ const server = http.createServer((req, res) => {
 
 
 
-
             if (text === "2") {
 
 
@@ -398,173 +407,315 @@ const server = http.createServer((req, res) => {
             return;
 
           }
+
+
+
+
+
+
+          const lang =
+            getLanguage(customerNumber);
+
+
+
+
+
+
+          // CONTINUE FRANCHISE APPLICATION
+
+
+          if (
+            isApplying(customerNumber)
+          ) {
+
+
+            const result =
+              await handleApplication(
+                customerNumber,
+                customerText
+              );
+
+
+            sendWhatsAppMessage(
+              customerNumber,
+              result.reply
+            );
+
+
+            return;
+
+          }
+
+
+
+
+
+
+          // CONTINUE SUPPLIER REGISTRATION
+
+
+          if (
+            isSupplierRegistering(customerNumber)
+          ) {
+
+
+            const result =
+              await handleSupplier(
+                customerNumber,
+                customerText
+              );
+
+
+            sendWhatsAppMessage(
+              customerNumber,
+              result.reply
+            );
+
+
+            return;
+
+          }
+                    // ==============================
+          // MAIN MENU OPTIONS (1 - 10)
           // ==============================
-          if (isApplying(customerNumber)) {
 
-  const result = await handleApplication(
-    customerNumber,
-    customerText
-  );
 
-  sendWhatsAppMessage(
-    customerNumber,
-    result.reply
-  );
 
-  return;
+          if (text === "1") {
 
-}
-// MAIN MENU OPTIONS
-// ==============================
+            sendWhatsAppMessage(
+              customerNumber,
 
+              lang === "ur"
 
-const lang =
-  getLanguage(customerNumber);
+              ? "ایف سی ایس ایکسپریس پاکستان کا ایک قابل اعتماد لاجسٹکس نیٹ ورک بنا رہا ہے۔"
 
+              : "FCS Express is building Pakistan's trusted logistics network."
 
+            );
 
-if (text === "1") {
+            return;
 
-  sendWhatsAppMessage(
-    customerNumber,
+          }
 
-    lang === "ur"
 
-    ? "ایف سی ایس ایکسپریس پاکستان کا ایک قابل اعتماد لاجسٹکس نیٹ ورک بنا رہا ہے۔"
 
-    : "FCS Express is building Pakistan's trusted logistics network."
 
-  );
 
-  return;
+          if (text === "2") {
 
-}
+            sendWhatsAppMessage(
+              customerNumber,
 
+              lang === "ur"
 
+              ? "ہمارا ملک گیر نیٹ ورک NDCs، RDCs، سٹی ہبز اور سروس پوائنٹس پر مشتمل ہے۔"
 
-if (text === "2") {
+              : "Our nationwide network includes NDCs, RDCs, City Hubs and Service Points across Pakistan."
 
-  sendWhatsAppMessage(
-    customerNumber,
+            );
 
-    lang === "ur"
+            return;
 
-    ? "ہمارا ملک گیر نیٹ ورک NDCs، RDCs، سٹی ہبز اور سروس پوائنٹس پر مشتمل ہے۔"
+          }
 
-    : "Our nationwide network includes NDCs, RDCs, City Hubs and Service Points across Pakistan."
 
-  );
 
-  return;
 
-}
 
+          if (text === "3") {
 
+            sendWhatsAppMessage(
+              customerNumber,
 
-if (text === "3") {
+              lang === "ur"
 
-  sendWhatsAppMessage(
-    customerNumber,
+              ? "ہماری سروسز میں ایکسپریس ڈلیوری، کارپوریٹ لاجسٹکس، ای کامرس ڈلیوری اور COD شامل ہیں۔"
 
-    lang === "ur"
+              : "Our services include Express Delivery, Corporate Logistics, E-commerce Delivery and COD."
 
-    ? "ہماری سروسز میں ایکسپریس ڈلیوری، کارپوریٹ لاجسٹکس، ای کامرس ڈلیوری اور COD شامل ہیں۔"
+            );
 
-    : "Our services include Express Delivery, Corporate Logistics, E-commerce Delivery and COD."
+            return;
 
-  );
+          }
 
-  return;
 
-}
 
 
 
-if (text === "4") {
+          // 4 - FRANCHISE APPLICATION
 
-  sendWhatsAppMessage(
-    customerNumber,
+          if (text === "4") {
 
-    lang === "ur"
 
-    ? "ایف سی ایس ایکسپریس جدید ٹیکنالوجی کے ساتھ قابل اعتماد لاجسٹکس حل فراہم کرتا ہے۔"
+            const reply =
+              startApplication(
+                customerNumber
+              );
 
-    : "FCS Express provides reliable technology-driven logistics solutions."
 
-  );
+            sendWhatsAppMessage(
+              customerNumber,
+              reply
+            );
 
-  return;
 
-}
+            return;
 
+          }
 
 
-if (text === "5") {
 
-  sendWhatsAppMessage(
-    customerNumber,
 
-    lang === "ur"
 
-    ? "ایف سی ایس ایکسپریس فرنچائز نیٹ ورک کا حصہ بنیں اور ہمارے ساتھ ترقی کریں۔"
+          // 5 - SUPPLIER
 
-    : "Join FCS Express Franchise Network and become part of Pakistan's growing logistics future."
+          if (text === "5") {
 
-  );
 
-  return;
+            const reply =
+              startSupplier(
+                customerNumber,
+                lang
+              );
 
-}
 
+            sendWhatsAppMessage(
+              customerNumber,
+              reply
+            );
 
 
-if (text === "6") {
+            return;
 
+          }
 
-  const reply =
-    startApplication(customerNumber);
 
 
 
-  sendWhatsAppMessage(
-    customerNumber,
-    reply
-  );
 
+          // 6 - TRANSPORT PARTNER
 
-  return;
+          if (text === "6") {
 
-}
 
+            sendWhatsAppMessage(
 
+              customerNumber,
 
-if (text === "7") {
 
-  sendWhatsAppMessage(
-    customerNumber,
+              lang === "ur"
 
-    lang === "ur"
+              ? "ٹرانسپورٹ پارٹنر رجسٹریشن جلد شروع کی جائے گی۔"
 
-    ? "اکثر پوچھے جانے والے سوالات کے لیے ہماری فرنچائز ٹیم آپ کی رہنمائی کرے گی۔"
+              : "Transport Partner Registration will be available soon."
 
-    : "Frequently Asked Questions will be available here. Our franchise team will guide you."
+            );
 
-  );
 
-  return;
+            return;
 
-}
+          }
 
 
 
-if (text === "8") {
 
-  sendWhatsAppMessage(
-    customerNumber,
 
-    lang === "ur"
+          // 7 - WAREHOUSE & TRUCK ADDA
 
-    ? `FCS Express Offices
+          if (text === "7") {
+
+
+            sendWhatsAppMessage(
+
+              customerNumber,
+
+
+              lang === "ur"
+
+              ? "ویئر ہاؤس اور ٹرک اڈہ رجسٹریشن جلد شروع کی جائے گی۔"
+
+              : "Warehouse & Truck Adda Registration will be available soon."
+
+            );
+
+
+            return;
+
+          }
+
+
+
+
+
+          // 8 - FAQ
+
+          if (text === "8") {
+
+
+            sendWhatsAppMessage(
+
+              customerNumber,
+
+
+              lang === "ur"
+
+              ? "اکثر پوچھے جانے والے سوالات کے لیے ہماری ٹیم آپ کی رہنمائی کرے گی۔"
+
+              : "Frequently Asked Questions will be available here. Our team will guide you."
+
+            );
+
+
+            return;
+
+          }
+
+
+
+
+
+          // 9 - WHY CHOOSE FCS
+
+          if (text === "9") {
+
+
+            sendWhatsAppMessage(
+
+              customerNumber,
+
+
+              lang === "ur"
+
+              ? "ایف سی ایس ایکسپریس جدید ٹیکنالوجی، مضبوط نیٹ ورک اور قابل اعتماد لاجسٹکس حل فراہم کرتا ہے۔"
+
+              : "FCS Express provides reliable logistics solutions with technology, network strength and professional service."
+
+            );
+
+
+            return;
+
+          }
+
+
+
+
+
+          // 10 - CONTACT US
+
+          if (text === "10") {
+
+
+            sendWhatsAppMessage(
+
+              customerNumber,
+
+
+              lang === "ur"
+
+              ? `FCS Express Offices
 
 📍 کراچی
 📍 لاہور
@@ -579,7 +730,9 @@ if (text === "8") {
 📱 WhatsApp: 031600344207
 🌐 www.fcsexpress.com.pk`
 
-    : `FCS Express Offices
+              :
+
+              `FCS Express Offices
 
 📍 Karachi
 📍 Lahore
@@ -594,54 +747,28 @@ Contact Us
 📱 WhatsApp: 031600344207
 🌐 www.fcsexpress.com.pk`
 
-  );
-
-  return;
-
-}
+            );
 
 
+            return;
 
-// ==============================
-// CONTINUE APPLICATION
-// ==============================
-
-
-if (isApplying(customerNumber)) {
-
-
-  const result =
-    await handleApplication(
-      customerNumber,
-      customerText
-    );
-
-
-  sendWhatsAppMessage(
-    customerNumber,
-    result.reply
-  );
-
-
-  return;
-
-}
+          }
+                    // ==============================
+          // AI CHAT
           // ==============================
-// AI CHAT
-// ==============================
 
 
-const reply =
-  await getReply(
-    customerNumber,
-    customerText
-  );
+          const reply =
+            await getReply(
+              customerNumber,
+              customerText
+            );
 
 
-sendWhatsAppMessage(
-  customerNumber,
-  reply
-);
+          sendWhatsAppMessage(
+            customerNumber,
+            reply
+          );
 
 
 
@@ -671,7 +798,9 @@ sendWhatsAppMessage(
   // 404
 
   res.writeHead(404, {
+
     "Content-Type": "text/plain"
+
   });
 
 
@@ -686,14 +815,18 @@ sendWhatsAppMessage(
 
 
 
+
 // ==============================
 // SERVER START
 // ==============================
 
 
 server.listen(
+
   PORT,
+
   "0.0.0.0",
+
   () => {
 
 
@@ -735,7 +868,10 @@ server.listen(
 
 
   }
+
 );
+
+
 
 
 
@@ -746,30 +882,50 @@ server.listen(
 
 
 process.on(
+
   "uncaughtException",
+
   (err) => {
 
+
     console.error(
+
       "Uncaught Exception:",
+
       err
+
     );
 
+
   }
+
 );
+
+
 
 
 
 process.on(
+
   "unhandledRejection",
+
   (err) => {
 
+
     console.error(
+
       "Unhandled Rejection:",
+
       err
+
     );
 
+
   }
+
 );
+
+
 
 
 
@@ -785,11 +941,14 @@ const {
 
 
 
+
 setInterval(() => {
 
 
   checkEngagement(
+
     sendWhatsAppMessage
+
   )
 
 
@@ -797,12 +956,16 @@ setInterval(() => {
 
 
     console.error(
+
       "Engagement Error:",
+
       error.message
+
     );
 
 
   });
+
 
 
 }, 24 * 60 * 60 * 1000);
