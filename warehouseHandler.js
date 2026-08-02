@@ -10,6 +10,11 @@ const {
 } = require("./googleSheets");
 
 
+const {
+  registerUser
+} = require("./registeredUsers");
+
+
 
 const warehouseFields = [
 
@@ -44,6 +49,7 @@ const warehouseFields = [
   "additionalDetails"
 
 ];
+
 
 
 
@@ -187,6 +193,17 @@ async function handleWarehouse(number, answer) {
       "Received"
 
     ]);
+
+
+
+
+
+
+    registerUser(
+      number,
+      "Warehouse",
+      partnerId
+    );
 
 
 
