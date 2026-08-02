@@ -305,7 +305,26 @@ const server = http.createServer((req, res) => {
           const customerNumber =
             message.from;
 
+if (isRegistered(customerNumber)) {
 
+  const user =
+    getRegisteredUser(customerNumber);
+
+
+  sendWhatsAppMessage(
+    customerNumber,
+
+    `Your registration is already received.
+
+Reference ID: ${user.referenceId}
+
+Our team will contact you for further processing.`
+  );
+
+
+  return;
+
+}
 
           if (
             isBlocked(customerNumber)
