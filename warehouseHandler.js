@@ -14,15 +14,34 @@ const {
 const warehouseFields = [
 
   "companyName",
+
   "contactPerson",
+
   "mobile",
-  "location",
+
+  "city",
+
+  "province",
+
+  "cnic",
+
+  "governmentRegistration",
+
   "facilityType",
-  "space",
-  "loadingFacility",
+
+  "facilityCategory",
+
+  "capacity",
+
   "truckCapacity",
+
+  "loadingFacility",
+
   "address",
-  "comments"
+
+  "pastProjects",
+
+  "additionalDetails"
 
 ];
 
@@ -43,7 +62,6 @@ function startWarehouse(number, lang = "en") {
     lang: lang
 
   });
-
 
 
   return warehouseQuestions[lang][0];
@@ -92,6 +110,7 @@ async function handleWarehouse(number, answer) {
 
 
 
+
   const field =
     warehouseFields[warehouse.step];
 
@@ -107,10 +126,12 @@ async function handleWarehouse(number, answer) {
 
 
 
+
   if (
     warehouse.step >=
     warehouseQuestions[warehouse.lang].length
   ) {
+
 
 
     const data =
@@ -125,7 +146,9 @@ async function handleWarehouse(number, answer) {
 
 
 
+
     await appendWarehouse([
+
 
       new Date().toLocaleString(),
 
@@ -137,19 +160,29 @@ async function handleWarehouse(number, answer) {
 
       data.mobile,
 
-      data.location,
+      data.city,
+
+      data.province,
+
+      data.cnic,
+
+      data.governmentRegistration,
 
       data.facilityType,
 
-      data.space,
+      data.facilityCategory,
 
-      data.loadingFacility,
+      data.capacity,
 
       data.truckCapacity,
 
+      data.loadingFacility,
+
       data.address,
 
-      data.comments,
+      data.pastProjects,
+
+      data.additionalDetails,
 
       "Received"
 
@@ -159,7 +192,9 @@ async function handleWarehouse(number, answer) {
 
 
 
+
     warehouses.delete(number);
+
 
 
 
@@ -189,7 +224,9 @@ Our team will review your details and contact you.`
 
 
 
+
   warehouses.set(number, warehouse);
+
 
 
 
@@ -206,6 +243,7 @@ Our team will review your details and contact you.`
 
 
 }
+
 
 
 
