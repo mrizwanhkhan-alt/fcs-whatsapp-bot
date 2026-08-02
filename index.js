@@ -715,29 +715,27 @@ if (text === "6") {
 
 
 
-          // 7 - WAREHOUSE & TRUCK ADDA
+         // 7 - WAREHOUSE & TRUCK ADDA
 
-          if (text === "7") {
-
-
-            sendWhatsAppMessage(
-
-              customerNumber,
+if (text === "7") {
 
 
-              lang === "ur"
-
-              ? "ویئر ہاؤس اور ٹرک اڈہ رجسٹریشن جلد شروع کی جائے گی۔"
-
-              : "Warehouse & Truck Adda Registration will be available soon."
-
-            );
+  const reply =
+    startWarehouse(
+      customerNumber,
+      lang
+    );
 
 
-            return;
+  sendWhatsAppMessage(
+    customerNumber,
+    reply
+  );
 
-          }
 
+  return;
+
+}
 
 
 
