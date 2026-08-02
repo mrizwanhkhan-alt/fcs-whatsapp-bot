@@ -482,7 +482,67 @@ Our team will contact you for further processing.`
           }
 
 
+// CONTINUE FAQ
 
+if (faqMode.has(customerNumber)) {
+
+
+  let category;
+
+
+  if (customerText === "1") {
+    category = "franchise";
+  }
+
+  else if (customerText === "2") {
+    category = "transport";
+  }
+
+  else if (customerText === "3") {
+    category = "warehouse";
+  }
+
+  else if (customerText === "4") {
+    category = "supplier";
+  }
+
+
+  if (category) {
+
+
+    const faqList = faq[lang][category];
+
+
+    let reply =
+      lang === "ur"
+
+      ? "❓ اکثر پوچھے جانے والے سوالات\n\n"
+
+      : "❓ Frequently Asked Questions\n\n";
+
+
+    faqList.forEach((item, index) => {
+
+      reply +=
+      `${index + 1}. ${item.question}\n\n${item.answer}\n\n`;
+
+    });
+
+
+    sendWhatsAppMessage(
+      customerNumber,
+      reply
+    );
+
+
+    faqMode.delete(customerNumber);
+
+
+    return;
+
+  }
+
+}
 
 
 
