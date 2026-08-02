@@ -1,5 +1,6 @@
 const suppliers = new Map();
 
+
 const supplierQuestions = {
 
   en: [
@@ -8,15 +9,11 @@ const supplierQuestions = {
 
     "What is your Contact Person Name?",
 
-    "What is your Mobile Number?",
-
-    "What is your Email Address?",
+    "What is your Mobile / WhatsApp Number?",
 
     "Which City are you operating from?",
 
     "What products or services do you provide?",
-
-    "What is your complete address?",
 
     "Any additional details?"
 
@@ -29,21 +26,18 @@ const supplierQuestions = {
 
     "رابطہ شخص کا نام کیا ہے؟",
 
-    "آپ کا موبائل نمبر کیا ہے؟",
-
-    "آپ کا ای میل ایڈریس کیا ہے؟",
+    "آپ کا موبائل / واٹس ایپ نمبر کیا ہے؟",
 
     "آپ کس شہر میں کام کر رہے ہیں؟",
 
     "آپ کون سی مصنوعات یا سروسز فراہم کرتے ہیں؟",
-
-    "آپ کا مکمل پتہ کیا ہے؟",
 
     "کوئی اضافی معلومات؟"
 
   ]
 
 };
+
 
 
 module.exports = {
