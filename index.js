@@ -933,26 +933,66 @@ Select Category:
           // 9 - WHY CHOOSE FCS
 
 
-          if (text === "9") {
+         if (text === "9") {
 
+  const lang = getLanguage(customerNumber);
 
-            sendWhatsAppMessage(
+  sendWhatsAppMessage(
+    customerNumber,
 
-              customerNumber,
+    lang === "ur"
 
+? `⭐ ایف سی ایس ایکسپریس کیوں منتخب کریں؟
 
-`⭐ Why Choose FCS Express?
+ایف سی ایس ایکسپریس پاکستان جدید ٹیکنالوجی، مضبوط لاجسٹکس نیٹ ورک اور بہترین کسٹمر سروس کے ذریعے محفوظ، قابلِ اعتماد اور بروقت ترسیلی خدمات فراہم کرنے کے لیے پرعزم ہے۔
 
-FCS Express provides reliable logistics solutions with nationwide coverage, technology-driven operations, strong partnerships and business growth opportunities.`
+ہمیں منتخب کرنے کی وجوہات:
 
-            );
+✅ ملک گیر لاجسٹکس نیٹ ورک
+✅ تیز رفتار اور قابلِ اعتماد ترسیل
+✅ ہر شپمنٹ کی محفوظ ہینڈلنگ
+✅ ریئل ٹائم شپمنٹ ٹریکنگ
+✅ پیشہ ور کسٹمر سپورٹ
+✅ کاروباری، کارپوریٹ اور ای کامرس سلوشنز
+✅ مضبوط فرنچائز اور ڈسٹری بیوشن نیٹ ورک
+✅ جدید ٹیکنالوجی پر مبنی آپریشنز
+✅ اعلیٰ معیار کی خدمات کا عزم
 
+چاہے آپ ایک پارسل بھیج رہے ہوں یا اپنے کاروبار کے لیے مکمل لاجسٹکس سروس چاہتے ہوں، ایف سی ایس ایکسپریس مؤثر، محفوظ اور پیشہ ورانہ خدمات فراہم کرنے کے لیے تیار ہے۔
 
-            return;
+🌐 ویب سائٹ:
+www.fcsexpress.com.pk
 
-          }
+ایف سی ایس ایکسپریس پاکستان کا انتخاب کرنے کا شکریہ۔
+ہم آپ کی خدمت کے منتظر ہیں۔`
 
+: `⭐ Why Choose FCS Express?
 
+FCS Express Pakistan delivers reliable, secure, and technology-driven logistics solutions for individuals and businesses across the country.
+
+Why choose us?
+
+✅ Nationwide Logistics Network
+✅ Fast & Reliable Deliveries
+✅ Safe & Secure Shipment Handling
+✅ Real-Time Shipment Tracking
+✅ Professional Customer Support
+✅ Business, Corporate & E-commerce Solutions
+✅ Strong Franchise & Distribution Network
+✅ Modern Technology-Driven Operations
+✅ Commitment to Service Excellence
+
+Whether you are sending a single parcel or managing large-scale business logistics, FCS Express provides dependable, efficient and professional logistics solutions designed around your needs.
+
+🌐 Website:
+www.fcsexpress.com.pk
+
+Thank you for choosing FCS Express Pakistan.
+We look forward to serving you.`
+  );
+
+  return;
+}
 
 
 
