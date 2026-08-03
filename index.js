@@ -659,26 +659,60 @@ We look forward to serving you.`
 
 
 
-          if (text === "2") {
+         if (text === "2") {
 
-            sendWhatsAppMessage(
-              customerNumber,
+  const lang = getLanguage(customerNumber);
 
-`🌐 FCS Express Network
+  sendWhatsAppMessage(
+    customerNumber,
 
-Our network includes:
+    lang === "ur"
 
-🏢 National Distribution Centers
-🏬 Regional Distribution Centers
-📍 City Hubs
-📦 FCS Service Points`
+      ? `🌍 ہمارا ملک گیر نیٹ ورک
 
-            );
+ایف سی ایس ایکسپریس پاکستان بھر میں ایک جدید، مضبوط اور تیزی سے ترقی کرتا ہوا لاجسٹکس اور کورئیر نیٹ ورک قائم کر رہا ہے، جس کا مقصد ملک کے ہر شہر اور علاقے تک محفوظ، بروقت اور قابلِ اعتماد ترسیلی خدمات فراہم کرنا ہے۔
 
-            return;
+ہمارا بڑھتا ہوا نیٹ ورک شامل ہے:
 
-          }
+🏢 7 نیشنل ڈسٹری بیوشن سینٹرز (NDCs)
+🏢 14 ریجنل ڈسٹری بیوشن سینٹرز (RDCs)
+🏙️ 170 سٹی ہبز
+📦 2,530 سے زائد سروس پوائنٹ فرنچائزز
 
+بڑے شہروں سے لے کر تحصیل اور دور دراز علاقوں تک ہمارا نیٹ ورک وسیع تر کوریج، تیز تر ترسیل اور معیاری لاجسٹکس خدمات فراہم کرنے کے لیے مسلسل وسعت اختیار کر رہا ہے۔
+
+آئیے، مل کر پاکستان کے مستقبل کا جدید لاجسٹکس نیٹ ورک تعمیر کریں۔
+
+🌐 ویب سائٹ:
+www.fcsexpress.com.pk
+
+ایف سی ایس ایکسپریس پاکستان کا انتخاب کرنے کا شکریہ۔
+ہم آپ کی خدمت کے منتظر ہیں۔`
+
+      : `🌍 Our Nationwide Network
+
+FCS Express is developing one of Pakistan's most comprehensive logistics and courier networks, designed to provide fast, reliable, and seamless delivery services across the country.
+
+Our growing network includes:
+
+🏢 7 National Distribution Centers (NDCs)
+🏢 14 Regional Distribution Centers (RDCs)
+🏙️ 170 City Hubs
+📦 2,530+ Service Point Franchises
+
+From major metropolitan cities to tehsils and remote areas, our expanding infrastructure ensures wider coverage, faster transit times, and dependable logistics solutions for businesses and individuals alike.
+
+Together, we are building the future of logistics in Pakistan.
+
+🌐 Website:
+www.fcsexpress.com.pk
+
+Thank you for choosing FCS Express Pakistan.
+We look forward to serving you.`
+  );
+
+  return;
+}
 
 
 
