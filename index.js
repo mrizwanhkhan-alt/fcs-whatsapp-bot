@@ -717,26 +717,68 @@ We look forward to serving you.`
 
 
 
-          if (text === "3") {
+         if (text === "3") {
 
-            sendWhatsAppMessage(
-              customerNumber,
+  const lang = getLanguage(customerNumber);
 
-`🚚 FCS Express Services
+  sendWhatsAppMessage(
+    customerNumber,
 
-• Express Parcel Delivery
-• Corporate Logistics
-• E-commerce Delivery
-• Cash on Delivery (COD)
-• Warehousing
-• Last-Mile Delivery`
+    lang === "ur"
 
-            );
+      ? `🚚 ہماری سروسز
 
-            return;
+ایف سی ایس ایکسپریس پاکستان افراد، کاروباری اداروں اور کارپوریٹ صارفین کی ضروریات کو مدِنظر رکھتے ہوئے جدید، محفوظ اور قابلِ اعتماد لاجسٹکس اور کورئیر خدمات فراہم کرتا ہے۔
 
-          }
+ہماری خدمات میں شامل ہیں:
 
+📦 ایکسپریس پارسل ڈیلیوری
+🚀 سیم ڈے اور نیکسٹ ڈے ڈیلیوری
+🏢 کارپوریٹ لاجسٹکس سلوشنز
+🛒 ای کامرس ڈیلیوری
+💰 کیش آن ڈیلیوری (COD)
+🏬 ویئرہاؤسنگ اور فل فلمنٹ
+🚛 لاسٹ مائل ڈیلیوری
+🌍 ملک گیر ڈسٹری بیوشن
+📄 دستاویزات اور پارسل کی ترسیل
+🤝 بزنس اور سپلائی چین سلوشنز
+
+جدید ٹیکنالوجی، مضبوط آپریشنز اور اعلیٰ معیار کی کسٹمر سروس کے ذریعے ایف سی ایس ایکسپریس ہر ترسیل کو محفوظ، بروقت اور مؤثر بنانے کے لیے پرعزم ہے۔
+
+🌐 ویب سائٹ:
+www.fcsexpress.com.pk
+
+ایف سی ایس ایکسپریس پاکستان کا انتخاب کرنے کا شکریہ۔
+ہم آپ کی خدمت کے منتظر ہیں۔`
+
+      : `🚚 Our Services
+
+FCS Express Pakistan offers a comprehensive range of logistics and courier solutions designed to meet the needs of individuals, businesses, and corporate clients across the country.
+
+Our services include:
+
+📦 Express Parcel Delivery
+🚀 Same-Day & Next-Day Delivery
+🏢 Corporate Logistics Solutions
+🛒 E-commerce Delivery
+💰 Cash on Delivery (COD)
+🏬 Warehousing & Fulfilment
+🚛 Last-Mile Delivery
+🌍 Nationwide Distribution
+📄 Document & Parcel Delivery
+🤝 Business & Supply Chain Solutions
+
+Driven by innovation, advanced technology, and a commitment to excellence, FCS Express delivers reliable, secure, and efficient logistics solutions that help businesses grow and customers stay connected.
+
+🌐 Website:
+www.fcsexpress.com.pk
+
+Thank you for choosing FCS Express Pakistan.
+We look forward to serving you.`
+  );
+
+  return;
+}
 
 
 
