@@ -6,7 +6,7 @@ const questions = {
 
   en: [
 "Please Enter Your Complete Name",
-    "What is your Full Name?",
+    
 "Please Enter Your Father's Complete Name",
   "Please Enter Your Mobile Number",
 
