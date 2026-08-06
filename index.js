@@ -420,7 +420,12 @@ return;
 
           // LANGUAGE SELECTION
 
-
+console.log(
+  "LANG CHECK:",
+  customerNumber,
+  hasLanguage(customerNumber),
+  getLanguage(customerNumber)
+);
           if (
             !hasLanguage(customerNumber)
           ) {
