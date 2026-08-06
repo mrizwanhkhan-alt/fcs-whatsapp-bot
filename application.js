@@ -16,7 +16,7 @@ const questions = {
 
     "What is your Email Address? (Optional)",
 
-    "Which Province are you applying from?",
+    "Which Province are you applying from?\n\n1. Punjab\n2. Sindh\n3. KPK\n4. Balochistan\n5. AJK\n6. Gilgit Baltistan\n7. Islamabad",
 
     "Which City?",
 
@@ -48,7 +48,7 @@ const questions = {
 
     "آپ کا ای میل ایڈریس کیا ہے؟ (اختیاری)",
 
-    "آپ کس صوبے سے درخواست دے رہے ہیں؟",
+    "آپ کس صوبے سے درخواست دے رہے ہیں؟\n\n1. پنجاب\n2. سندھ\n3. خیبر پختونخوا\n4. بلوچستان\n5. آزاد کشمیر\n6. گلگت بلتستان\n7. اسلام آباد",
 
     "آپ کا شہر کون سا ہے؟",
 
