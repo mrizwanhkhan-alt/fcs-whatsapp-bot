@@ -18,17 +18,21 @@ function registerUser(
 
   registeredUsers.set(key, {
 
-    whatsappNumber: whatsappNumber,
+  whatsappNumber: whatsappNumber,
 
-    mobileNumber: mobileNumber,
+  mobileNumber: mobileNumber,
 
-    registrationType: registrationType,
+  registrationType: registrationType,
 
-    referenceId: referenceId,
+  referenceId: referenceId,
 
-    registeredAt: new Date().toLocaleString()
+  registeredAt: new Date().toLocaleString(),
 
-  });
+  postMessages: 0,
+
+  warnings: 0
+
+});
 
 }
 
