@@ -333,18 +333,48 @@ const server = http.createServer((req, res) => {
 
 
 
-            sendWhatsAppMessage(
-              customerNumber,
+            user.postMessages++;
 
-              `Your registration is already received.
+if (user.postMessages <= 2) {
+  return;
+}
 
-Reference ID: ${user.referenceId}
+user.warnings++;
 
-Our team will contact you for further processing.`
-            );
+if (user.warnings === 1) {
 
+  sendWhatsAppMessage(
+    customerNumber,
+    "Warning 1/3\n\nApplication received. Avoid unnecessary messages. Otherwise, your application may be rejected, and you may be permanently blocked."
+  );
 
-            return;
+  return;
+
+}
+
+if (user.warnings === 2) {
+
+  sendWhatsAppMessage(
+    customerNumber,
+    "Warning 2/3\n\nApplication received. Avoid unnecessary messages. Otherwise, your application may be rejected, and you may be permanently blocked."
+  );
+
+  return;
+
+}
+
+if (user.warnings === 3) {
+
+  sendWhatsAppMessage(
+    customerNumber,
+    "Warning 3/3\n\nApplication received. Avoid unnecessary messages. Otherwise, your application may be rejected, and you may be permanently blocked."
+  );
+
+  return;
+
+}
+
+return;
 
           }
 
