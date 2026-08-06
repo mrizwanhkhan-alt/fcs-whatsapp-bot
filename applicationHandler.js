@@ -42,10 +42,11 @@ const fields = [
 
 function startApplication(number) {
 
-  applications.set(number, {
-    step: 0,
-    data: {}
-  });
+ applications.set(number, {
+  step: 0,
+  data: {},
+  startedAt: Date.now()
+});
 
 
   const lang =
