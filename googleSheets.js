@@ -1,11 +1,8 @@
 const { google } = require("googleapis");
 const config = require("./config");
 
-
 const serviceAccount =
   JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
-
-
 
 const auth = new google.auth.GoogleAuth({
 
@@ -17,8 +14,6 @@ const auth = new google.auth.GoogleAuth({
 
 });
 
-
-
 const sheets = google.sheets({
 
   version: "v4",
@@ -27,33 +22,23 @@ const sheets = google.sheets({
 
 });
 
-
-
-
-
 // Generate Application Number
 
 async function generateApplicationNumber() {
 
-
   const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-
 
   const randomLetter =
     letters[Math.floor(Math.random() * letters.length)];
 
-
   const randomDigit =
     Math.floor(Math.random() * 10);
-
 
   const randomNumbers =
     Math.floor(
       10000000 +
       Math.random() * 90000000
     );
-
-
 
   return (
     randomLetter +
@@ -64,44 +49,35 @@ async function generateApplicationNumber() {
 
 }
 
-
-
-
-
-
 // Save Franchise Application
 
 async function appendApplication(row) {
 
+  await sheets.spreadsheets.values.append({
 
- await sheets.spreadsheets.values.append({
+    spreadsheetId:
+      config.GOOGLE_SHEET_ID,
 
-  spreadsheetId:
-    config.GOOGLE_SHEET_ID,
+    range:
+      "Franchise_Applications!A1:T",
 
-  range: "Franchise_Applications!A1:T",
-  valueInputOption:
-    "USER_ENTERED",
+    valueInputOption:
+      "USER_ENTERED",
 
-  requestBody: {
+    requestBody: {
 
-    values: [
-      row
-    ]
+      values: [
+        row
+      ]
 
-  }
+    }
 
-});
+  });
 
-
-
-
-
-
+}
 // Save General Supplier
 
 async function appendSupplier(row) {
-
 
   await sheets.spreadsheets.values.append({
 
@@ -126,16 +102,9 @@ async function appendSupplier(row) {
 
 }
 
-
-
-
-
-
-
 // Save Warehouse & Truck Adda
 
 async function appendWarehouse(row) {
-
 
   await sheets.spreadsheets.values.append({
 
@@ -160,16 +129,9 @@ async function appendWarehouse(row) {
 
 }
 
-
-
-
-
-
-
 // Save Transport Partner
 
 async function appendTransport(row) {
-
 
   await sheets.spreadsheets.values.append({
 
@@ -193,18 +155,9 @@ async function appendTransport(row) {
   });
 
 }
-
-
-
-
-
-
-
-
 // Read Franchise Applications
 
 async function getApplications() {
-
 
   const response =
     await sheets.spreadsheets.values.get({
@@ -212,24 +165,14 @@ async function getApplications() {
       spreadsheetId:
         config.GOOGLE_SHEET_ID,
 
-
       range:
         "Franchise_Applications!A:T"
 
     });
 
-
-
   return response.data.values || [];
 
 }
-
-
-
-
-
-
-
 
 // Update Follow Up
 
@@ -239,20 +182,16 @@ async function updateEngagement(
   nextDate
 ) {
 
-
   await sheets.spreadsheets.values.update({
 
     spreadsheetId:
       config.GOOGLE_SHEET_ID,
 
-
     range:
       `Franchise_Applications!R${rowNumber}:T${rowNumber}`,
 
-
     valueInputOption:
       "USER_ENTERED",
-
 
     requestBody: {
 
@@ -271,75 +210,3 @@ async function updateEngagement(
   });
 
 }
-
-
-
-
-
-
-
-
-// Check Duplicate WhatsApp
-
-async function numberExists(whatsapp) {
-
-
-  const rows =
-    await getApplications();
-
-
-
-  for (
-    let i = 1;
-    i < rows.length;
-    i++
-  ) {
-
-
-    if (
-      (rows[i][5] || "").trim()
-      === whatsapp.trim()
-    ) {
-
-
-      return true;
-
-    }
-
-  }
-
-
-
-  return false;
-
-}
-
-
-
-
-
-
-
-
-module.exports = {
-
-
-  sheets,
-
-  appendApplication,
-
-  appendSupplier,
-
-  appendWarehouse,
-
-  appendTransport,
-
-  numberExists,
-
-  generateApplicationNumber,
-
-  getApplications,
-
-  updateEngagement
-
-};
