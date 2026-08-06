@@ -414,11 +414,28 @@ applications.delete(number);
 
 
 
-  app.data[fields[app.step]] =
+  if (fields[app.step] === "shop") {
+
+  const value = answer.trim().toLowerCase();
+
+  if (!["yes","no","ہاں","نہیں"].includes(value)) {
+
+    return {
+      completed: false,
+      reply:
+        lang === "ur"
+          ? "براہِ کرم صرف ہاں یا نہیں میں جواب دیں۔"
+          : "Please reply only Yes or No."
+    };
+
+  }
+
+}
+
+app.data[fields[app.step]] =
     answer;
 
-
-  app.step++;
+app.step++;
 
 
 
