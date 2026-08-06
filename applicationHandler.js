@@ -431,7 +431,22 @@ applications.delete(number);
   }
 
 }
+if (fields[app.step] === "province") {
 
+  const province = answer.trim();
+
+  if (!["Punjab","Sindh","KPK","Balochistan","AJK","Gilgit Baltistan","Islamabad","پنجاب","سندھ","خیبر پختونخوا","بلوچستان","آزاد کشمیر","گلگت بلتستان","اسلام آباد"].includes(province)) {
+
+    return {
+      completed: false,
+      reply: lang === "ur"
+        ? "براہِ کرم درست صوبہ درج کریں۔"
+        : "Please enter a valid province."
+    };
+
+  }
+
+}
 app.data[fields[app.step]] =
     answer;
 
