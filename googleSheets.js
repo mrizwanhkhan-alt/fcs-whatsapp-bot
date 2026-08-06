@@ -80,8 +80,7 @@ async function appendApplication(row) {
       config.GOOGLE_SHEET_ID,
 
     range:
-      "Franchise_Applications!A:T",
-
+     range: "Franchise_Applications!A1:T",
     valueInputOption:
       "USER_ENTERED",
 
