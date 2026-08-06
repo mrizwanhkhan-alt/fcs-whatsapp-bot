@@ -74,28 +74,26 @@ async function generateApplicationNumber() {
 async function appendApplication(row) {
 
 
-  await sheets.spreadsheets.values.append({
+  aawait sheets.spreadsheets.values.append({
 
-    spreadsheetId:
-      config.GOOGLE_SHEET_ID,
+  spreadsheetId:
+    config.GOOGLE_SHEET_ID,
 
-    range:
-     range: "Franchise_Applications!A1:T",
-    valueInputOption:
-      "USER_ENTERED",
+  range:
+      "Franchise_Applications!A1:T",
 
-    requestBody: {
+  valueInputOption:
+    "USER_ENTERED",
 
-      values: [
-        row
-      ]
+  requestBody: {
 
-    }
+    values: [
+      row
+    ]
 
-  });
+  }
 
-}
-
+});
 
 
 
