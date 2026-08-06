@@ -47,7 +47,10 @@ function startApplication(number) {
   data: {},
   startedAt: Date.now()
 });
-
+setTimeout(() => {
+  applications.delete(number);
+  confirmations.delete(number);
+}, 10 * 60 * 1000);
 
   const lang =
     getLanguage(number) || "en";
