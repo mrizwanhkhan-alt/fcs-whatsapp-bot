@@ -74,7 +74,7 @@ async function generateApplicationNumber() {
 async function appendApplication(row) {
 
 
-  aawait sheets.spreadsheets.values.append({
+ await sheets.spreadsheets.values.append({
 
   spreadsheetId:
     config.GOOGLE_SHEET_ID,
