@@ -22,7 +22,6 @@ const fields = [
   "fullName",
   "fatherName",
   "mobile",
-  "whatsapp",
   "cnic",
   "email",
   "province",
