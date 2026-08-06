@@ -119,7 +119,7 @@ async function saveApplication(number, data, lang) {
 
     data.mobile,
 
-    data.whatsapp,
+    number,
 
     data.cnic,
 
