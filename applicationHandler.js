@@ -11,11 +11,9 @@ const {
   generateApplicationNumber
 } = require("./googleSheets");
 
-
 const {
   registerUser
 } = require("./registeredUsers");
-
 
 
 const fields = [
@@ -37,16 +35,16 @@ const fields = [
 
 
 
-
 // START APPLICATION
 
 function startApplication(number) {
 
- applications.set(number, {
-  step: 0,
-  data: {},
-  startedAt: Date.now()
-});
+  applications.set(number, {
+    step: 0,
+    data: {},
+    startedAt: Date.now()
+  });
+
 
   const lang =
     getLanguage(number) || "en";
@@ -56,7 +54,7 @@ function startApplication(number) {
 
     lang === "ur"
 
-    ?
+      ?
 
 `📝 ایف سی ایس ایکسپریس فرنچائز درخواست
 
@@ -65,7 +63,7 @@ function startApplication(number) {
 ${questions[lang][0]}`
 
 
-:
+      :
 
 `📝 FCS Express Franchise Application
 
@@ -76,8 +74,6 @@ ${questions[lang][0]}`
   );
 
 }
-
-
 
 
 
@@ -95,89 +91,84 @@ function isApplying(number) {
 
 
 
-
-
 // SAVE APPLICATION
 
 async function saveApplication(number, data, lang) {
 
+  try {
 
-  const applicationNumber =
-    await generateApplicationNumber();
-
-
-
-  await appendApplication([
-
-    new Date().toLocaleString(),
-
-    applicationNumber,
-
-    data.fullName,
-
-    data.fatherName,
-
-    data.mobile,
-
-    number,
-
-    data.cnic,
-
-    data.email,
-
-    data.province,
-
-    data.city,
-
-    data.area,
-
-    data.address,
-
-    data.education,
-
-    data.experience,
-
-    data.shop,
-
-    data.comments,
-
-    "Received",
-
-    "Application Submitted",
-
-    new Date().toLocaleString(),
-
-    new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toLocaleDateString()
-
-  ]);
+    const applicationNumber =
+      await generateApplicationNumber();
 
 
+    await appendApplication([
 
+      new Date().toLocaleString(),
 
-  registerUser(
+      applicationNumber,
 
-    number,
+      data.fullName,
 
-    data.mobile,
+      data.fatherName,
 
-    "Franchise",
+      data.mobile,
 
-    applicationNumber
+      number,
 
-  );
+      data.cnic,
+
+      data.email,
+
+      data.province,
+
+      data.city,
+
+      data.area,
+
+      data.address,
+
+      data.education,
+
+      data.experience,
+
+      data.shop,
+
+      data.comments,
+
+      "Received",
+
+      "Application Submitted",
+
+      new Date().toLocaleString(),
+
+      new Date(
+        Date.now() + 3 * 24 * 60 * 60 * 1000
+      ).toLocaleDateString()
+
+    ]);
 
 
 
+    registerUser(
 
-  applications.delete(number);
+      number,
 
-  confirmations.delete(number);
+      data.mobile,
+
+      "Franchise",
+
+      applicationNumber
+
+    );
 
 
 
-  return lang === "ur"
+    applications.delete(number);
 
-?
+    confirmations.delete(number);
+        return lang === "ur"
+
+      ?
 
 `🎉 شکریہ!
 
@@ -190,7 +181,7 @@ async function saveApplication(number, data, lang) {
 ہماری فرنچائز ڈویلپمنٹ ٹیم آپ کی درخواست کا جائزہ لے گی اور مزید رابطہ کرے گی.`
 
 
-:
+      :
 
 `🎉 Thank you!
 
@@ -202,7 +193,38 @@ Please save this application number for future reference.
 
 Our Franchise Development Team will review your application and contact you further.`;
 
+
+
+  } catch (error) {
+
+    console.error(
+      "SAVE APPLICATION ERROR:",
+      error
+    );
+
+
+    return lang === "ur"
+
+      ?
+
+`❌ درخواست جمع نہیں ہو سکی۔
+
+براہِ کرم کچھ دیر بعد دوبارہ کوشش کریں۔`
+
+      :
+
+`❌ Application submission failed.
+
+Please try again later.`;
+
+  }
+
 }
+
+
+
+
+
 // HANDLE APPLICATION
 
 async function handleApplication(number, answer) {
@@ -246,13 +268,24 @@ async function handleApplication(number, answer) {
 
 
       confirmations.delete(number);
-applications.delete(number);
+
+      applications.delete(number);
+
+
 
       return {
 
         completed:false,
 
         reply:
+          lang === "ur"
+
+          ?
+
+          "درخواست منسوخ کر دی گئی ہے۔ براہِ کرم دوبارہ شروع کریں۔"
+
+          :
+
           "Application cancelled. Please start again."
 
       };
@@ -278,8 +311,6 @@ applications.delete(number);
 
 
 
-
-
   const app =
     applications.get(number);
 
@@ -299,8 +330,6 @@ applications.delete(number);
 
 
   }
-
-
 
 
 
@@ -333,205 +362,3 @@ applications.delete(number);
 
 
   }
-
-
-
-
-
-
-
-  // EMAIL VALIDATION
-
-  if (fields[app.step] === "email") {
-
-
-    const email =
-      answer.trim();
-
-
-
-    if (
-
-      email !== "" &&
-
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-
-    ) {
-
-
-      return {
-
-        completed:false,
-
-        reply:
-          "Please enter a valid email address."
-
-      };
-
-
-    }
-
-
-  }
-
-
-
-
-
-
-
-  // CNIC VALIDATION
-
-  if (fields[app.step] === "cnic") {
-
-
-    const cnic =
-      answer.trim();
-
-
-
-    if (!/^\d{5}-\d{7}-\d$/.test(cnic)) {
-
-
-      return {
-
-        completed:false,
-
-        reply:
-          "Please enter valid CNIC format.\nExample: 12345-1234567-1"
-
-      };
-
-
-    }
-
-
-  }
-
-
-
-
-
-
-
-  if (fields[app.step] === "shop") {
-
-  const value = answer.trim().toLowerCase();
-
-  if (!["yes","no","ہاں","نہیں"].includes(value)) {
-
-    return {
-      completed: false,
-      reply:
-        lang === "ur"
-          ? "براہِ کرم صرف ہاں یا نہیں میں جواب دیں۔"
-          : "Please reply only Yes or No."
-    };
-
-  }
-
-}
-if (fields[app.step] === "province") {
-
-  const province = answer.trim();
-
-  if (!["Punjab","Sindh","KPK","Balochistan","AJK","Gilgit Baltistan","Islamabad","پنجاب","سندھ","خیبر پختونخوا","بلوچستان","آزاد کشمیر","گلگت بلتستان","اسلام آباد"].includes(province)) {
-
-    return {
-      completed: false,
-      reply: lang === "ur"
-        ? "براہِ کرم درست صوبہ درج کریں۔"
-        : "Please enter a valid province."
-    };
-
-  }
-
-}
-app.data[fields[app.step]] =
-    answer;
-
-app.step++;
-
-
-
-
-
-
-
-  if (
-    app.step >= questions[lang].length
-  ) {
-
-
-    confirmations.set(
-      number,
-      app.data
-    );
-
-
-
-    return {
-
-      completed:false,
-
-      reply:
-
-`Please confirm your details:
-
-Name: ${app.data.fullName}
-
-Father Name: ${app.data.fatherName}
-
-Mobile: ${app.data.mobile}
-
-CNIC: ${app.data.cnic}
-
-City: ${app.data.city}
-
-
-Reply 1 to confirm.
-Reply 2 to cancel.`
-
-    };
-
-
-  }
-
-
-
-
-
-
-
-  applications.set(
-    number,
-    app
-  );
-
-
-
-  return {
-
-    completed:false,
-
-    reply:
-      questions[lang][app.step]
-
-  };
-
-
-}
-
-
-
-
-
-module.exports = {
-
-  startApplication,
-
-  isApplying,
-
-  handleApplication
-
-};
