@@ -282,20 +282,7 @@ applications.delete(number);
 
   const app =
     applications.get(number);
-if (Date.now() - app.startedAt > 10 * 60 * 1000) {
 
-  applications.delete(number);
-  confirmations.delete(number);
-
-  return {
-    completed: false,
-    reply:
-      lang === "ur"
-        ? "آپ کی درخواست 10 منٹ تک جواب نہ ملنے کی وجہ سے منسوخ کر دی گئی ہے۔ براہِ کرم دوبارہ شروع کریں۔"
-        : "Your application has expired due to 10 minutes of inactivity. Please start again."
-  };
-
-}
 
 
   if (!app) {
