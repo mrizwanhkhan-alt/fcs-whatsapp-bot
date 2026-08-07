@@ -1,12 +1,12 @@
 const {
-  transports,
-  transportQuestions
-} = require("./transport");
+  warehouses,
+  warehouseQuestions
+} = require("./warehouse");
 
 const {
-  appendTransport,
+  appendWarehouse,
   generateApplicationNumber,
-  transportExists
+  warehouseExists
 } = require("./googleSheets");
 
 const {
@@ -15,7 +15,7 @@ const {
 
 const SESSION_TIMEOUT = 10 * 60 * 1000;
 
-const transportFields = [
+const warehouseFields = [
   "companyName",
   "contactPerson",
   "mobile",
@@ -23,99 +23,167 @@ const transportFields = [
   "province",
   "cnic",
   "governmentRegistration",
-  "partnerType",
-  "vehicleTypes",
-  "vehicleCount",
-  "routes",
+  "facilityType",
+  "facilityCategory",
+  "capacity",
+  "truckCapacity",
+  "loadingFacility",
+  "address",
   "pastProjects",
   "additionalDetails"
 ];
 
-function startTransport(number, lang = "en") {
-  transports.set(number, {
+const provinceMap = {
+  "1": "Punjab",
+  "2": "Sindh",
+  "3": "Khyber Pakhtunkhwa (KPK)",
+  "4": "Balochistan",
+  "5": "Azad Jammu & Kashmir (AJK)",
+  "6": "Gilgit-Baltistan",
+  "7": "Islamabad Capital Territory"
+};
+
+const facilityTypeMap = {
+  "1": "Warehouse",
+  "2": "Truck Adda",
+  "3": "Both Warehouse & Truck Adda"
+};
+
+const facilityCategoryMap = {
+  "1": "General Storage Warehouse",
+  "2": "E-commerce Fulfillment Warehouse",
+  "3": "Cold Storage",
+  "4": "Industrial / Commercial Warehouse",
+  "5": "Open Yard / Truck Parking",
+  "6": "Other"
+};
+
+function convertAnswer(field, answer) {
+  const value = String(answer || "").trim();
+
+  if (field === "province") {
+    return provinceMap[value] || value;
+  }
+
+  if (field === "facilityType") {
+    return facilityTypeMap[value] || value;
+  }
+
+  if (field === "facilityCategory") {
+    return facilityCategoryMap[value] || value;
+  }
+
+  if (field === "loadingFacility") {
+    const lower = value.toLowerCase();
+
+    if (
+      lower === "yes" ||
+      value === "ہاں" ||
+      value === "1"
+    ) {
+      return "Yes";
+    }
+
+    if (
+      lower === "no" ||
+      value === "نہیں" ||
+      value === "2"
+    ) {
+      return "No";
+    }
+  }
+
+  return value;
+}
+
+function startWarehouse(number, lang = "en") {
+  warehouses.set(number, {
     step: 0,
     data: {},
     lang,
     lastActivity: Date.now()
   });
 
-  return transportQuestions[lang][0];
+  return warehouseQuestions[lang][0];
 }
 
-function isTransportRegistering(number) {
-  const transport = transports.get(number);
+function isWarehouseRegistering(number) {
+  const warehouse = warehouses.get(number);
 
-  if (!transport) return false;
+  if (!warehouse) {
+    return false;
+  }
 
   if (
-    Date.now() - transport.lastActivity >
+    Date.now() - warehouse.lastActivity >
     SESSION_TIMEOUT
   ) {
-    transports.delete(number);
+    warehouses.delete(number);
     return false;
   }
 
   return true;
 }
 
-async function handleTransport(number, answer) {
-  const transport = transports.get(number);
+async function handleWarehouse(number, answer) {
+  const warehouse = warehouses.get(number);
 
-  if (!transport) {
+  if (!warehouse) {
     return {
       completed: false,
-      reply: "Transport registration not found."
+      reply: "Warehouse registration not found."
     };
   }
 
   if (
-    Date.now() - transport.lastActivity >
+    Date.now() - warehouse.lastActivity >
     SESSION_TIMEOUT
   ) {
-    transports.delete(number);
+    warehouses.delete(number);
 
     return {
       completed: true,
       expired: true,
       reply:
-        transport.lang === "ur"
-          ? "⏰ آپ کی ٹرانسپورٹ رجسٹریشن 10 منٹ کی غیر فعالیت کی وجہ سے ختم ہو گئی ہے۔ براہِ کرم دوبارہ شروع کریں۔"
-          : "⏰ Your Transport Registration expired after 10 minutes of inactivity. Please start again."
+        warehouse.lang === "ur"
+          ? "⏰ آپ کی ویئر ہاؤس / ٹرک اڈہ رجسٹریشن 10 منٹ کی غیر فعالیت کی وجہ سے ختم ہو گئی ہے۔ براہِ کرم دوبارہ شروع کریں۔"
+          : "⏰ Your Warehouse / Truck Adda Registration expired after 10 minutes of inactivity. Please start again."
     };
   }
 
-  transport.lastActivity = Date.now();
+  warehouse.lastActivity = Date.now();
 
   const field =
-    transportFields[transport.step];
+    warehouseFields[warehouse.step];
 
-  transport.data[field] = answer;
+  warehouse.data[field] =
+    convertAnswer(field, answer);
 
   if (field === "mobile") {
     const alreadyExists =
-      await transportExists(answer);
+      await warehouseExists(answer);
 
     if (alreadyExists) {
-      transports.delete(number);
+      warehouses.delete(number);
 
       return {
         completed: true,
         duplicate: true,
         reply:
-          transport.lang === "ur"
-            ? "⚠️ اس موبائل نمبر سے ٹرانسپورٹ پارٹنر رجسٹریشن پہلے ہی جمع ہو چکی ہے۔"
-            : "⚠️ A Transport Partner Registration has already been submitted using this mobile number."
+          warehouse.lang === "ur"
+            ? "⚠️ اس موبائل نمبر سے ویئر ہاؤس / ٹرک اڈہ رجسٹریشن پہلے ہی جمع ہو چکی ہے۔"
+            : "⚠️ A Warehouse / Truck Adda Registration has already been submitted using this mobile number."
       };
     }
   }
 
-  transport.step++;
+  warehouse.step++;
 
   if (
-    transport.step >=
-    transportQuestions[transport.lang].length
+    warehouse.step >=
+    warehouseQuestions[warehouse.lang].length
   ) {
-    const data = transport.data;
+    const data = warehouse.data;
 
     const partnerId =
       await generateApplicationNumber();
@@ -127,7 +195,7 @@ async function handleTransport(number, answer) {
       nextFollowUp.getDate() + 7
     );
 
-    await appendTransport([
+    await appendWarehouse([
       now.toLocaleString(),
       partnerId,
       data.companyName || "",
@@ -137,10 +205,12 @@ async function handleTransport(number, answer) {
       data.province || "",
       data.cnic || "",
       data.governmentRegistration || "",
-      data.partnerType || "",
-      data.vehicleTypes || "",
-      data.vehicleCount || "",
-      data.routes || "",
+      data.facilityType || "",
+      data.facilityCategory || "",
+      data.capacity || "",
+      data.truckCapacity || "",
+      data.loadingFacility || "",
+      data.address || "",
       data.pastProjects || "",
       data.additionalDetails || "",
       "Received",
@@ -153,21 +223,21 @@ async function handleTransport(number, answer) {
     registerUser(
       number,
       data.mobile,
-      "Transport",
+      "Warehouse",
       partnerId
     );
 
-    transports.delete(number);
+    warehouses.delete(number);
 
     return {
       completed: true,
       data,
       referenceId: partnerId,
       reply:
-        transport.lang === "ur"
+        warehouse.lang === "ur"
           ? `✅ شکریہ!
 
-آپ کی ٹرانسپورٹ پارٹنر رجسٹریشن موصول ہو گئی ہے۔
+آپ کی ویئر ہاؤس / ٹرک اڈہ رجسٹریشن موصول ہو گئی ہے۔
 
 پارٹنر آئی ڈی:
 ${partnerId}
@@ -175,7 +245,7 @@ ${partnerId}
 ہماری ٹیم آپ کی معلومات کا جائزہ لے گی اور آپ سے رابطہ کرے گی۔`
           : `✅ Thank you!
 
-Your Transport & Vehicle Partner Registration has been received.
+Your Warehouse & Truck Adda Registration has been received.
 
 Partner ID:
 ${partnerId}
@@ -184,19 +254,19 @@ Our team will review your details and contact you.`
     };
   }
 
-  transports.set(number, transport);
+  warehouses.set(number, warehouse);
 
   return {
     completed: false,
     reply:
-      transportQuestions[
-        transport.lang
-      ][transport.step]
+      warehouseQuestions[
+        warehouse.lang
+      ][warehouse.step]
   };
 }
 
 module.exports = {
-  startTransport,
-  isTransportRegistering,
-  handleTransport
+  startWarehouse,
+  isWarehouseRegistering,
+  handleWarehouse
 };
