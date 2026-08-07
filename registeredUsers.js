@@ -1,113 +1,47 @@
 const registeredUsers = new Map();
 
-
-// Register completed user
-
 function registerUser(
   whatsappNumber,
   mobileNumber,
   registrationType,
   referenceId
 ) {
-
-  const key =
-    whatsappNumber + "_" +
-    mobileNumber + "_" +
-    registrationType;
-
+  const key = String(whatsappNumber);
 
   registeredUsers.set(key, {
-
-  whatsappNumber: whatsappNumber,
-
-  mobileNumber: mobileNumber,
-
-  registrationType: registrationType,
-
-  referenceId: referenceId,
-
-  registeredAt: new Date().toLocaleString(),
-
-  postMessages: 0,
-
-  warnings: 0
-
-});
-
+    whatsappNumber,
+    mobileNumber,
+    registrationType,
+    referenceId,
+    registeredAt: new Date().toLocaleString(),
+    postMessages: 0,
+    warnings: 0
+  });
 }
 
-
-
-// Check already registered
-
-function isRegistered(
-  whatsappNumber,
-  mobileNumber,
-  registrationType
-) {
-
-  const key =
-    whatsappNumber + "_" +
-    mobileNumber + "_" +
-    registrationType;
-
-
-  return registeredUsers.has(key);
-
+function isRegistered(whatsappNumber) {
+  return registeredUsers.has(
+    String(whatsappNumber)
+  );
 }
 
-
-
-// Get registered details
-
-function getRegisteredUser(
-  whatsappNumber,
-  mobileNumber,
-  registrationType
-) {
-
-  const key =
-    whatsappNumber + "_" +
-    mobileNumber + "_" +
-    registrationType;
-
-
-  return registeredUsers.get(key);
-
+function getRegisteredUser(whatsappNumber) {
+  return registeredUsers.get(
+    String(whatsappNumber)
+  );
 }
 
-
-
-// Admin unlock user
-
-function unlockUser(
-  whatsappNumber,
-  mobileNumber,
-  registrationType
-) {
-
-  const key =
-    whatsappNumber + "_" +
-    mobileNumber + "_" +
-    registrationType;
-
-
-  registeredUsers.delete(key);
+function unlockUser(whatsappNumber) {
+  registeredUsers.delete(
+    String(whatsappNumber)
+  );
 
   return true;
-
 }
 
-
-
 module.exports = {
-
   registerUser,
-
   isRegistered,
-
   getRegisteredUser,
-
   unlockUser
-
 };
