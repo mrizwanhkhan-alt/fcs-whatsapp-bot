@@ -31,6 +31,73 @@ const fields = [
   "comments"
 ];
 
+const provinceMap = {
+  "1": "Punjab",
+  "2": "Sindh",
+  "3": "KPK",
+  "4": "Balochistan",
+  "5": "AJK",
+  "6": "Gilgit Baltistan",
+  "7": "Islamabad"
+};
+
+const educationMap = {
+  "1": "Primary",
+  "2": "Middle",
+  "3": "Matric",
+  "4": "Intermediate",
+  "5": "Graduate",
+  "6": "Masters"
+};
+
+const experienceMap = {
+  "1": "No Experience",
+  "2": "Less than 1 Year",
+  "3": "1-3 Years",
+  "4": "3-5 Years",
+  "5": "More than 5 Years"
+};
+
+function convertAnswer(field, answer) {
+
+  const value = String(answer || "").trim();
+
+  if (field === "province") {
+    return provinceMap[value] || value;
+  }
+
+  if (field === "education") {
+    return educationMap[value] || value;
+  }
+
+  if (field === "experience") {
+    return experienceMap[value] || value;
+  }
+
+  if (field === "shop") {
+
+    const lower = value.toLowerCase();
+
+    if (
+      lower === "yes" ||
+      value === "ہاں" ||
+      value === "1"
+    ) {
+      return "Yes";
+    }
+
+    if (
+      lower === "no" ||
+      value === "نہیں" ||
+      value === "2"
+    ) {
+      return "No";
+    }
+  }
+
+  return value;
+}
+
 function startApplication(number) {
 
   const lang = getLanguage(number) || "en";
@@ -101,7 +168,15 @@ async function handleApplication(number, answer) {
     }
   }
 
-  app.data[fields[app.step]] = answer;
+  const currentField =
+    fields[app.step];
+
+  app.data[currentField] =
+    convertAnswer(
+      currentField,
+      answer
+    );
+
   app.step++;
 
   if (app.step >= questions[lang].length) {
@@ -114,6 +189,7 @@ async function handleApplication(number, answer) {
     const now = new Date();
 
     const nextFollowUp = new Date(now);
+
     nextFollowUp.setDate(
       nextFollowUp.getDate() + 15
     );
