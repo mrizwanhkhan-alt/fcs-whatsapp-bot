@@ -15,6 +15,8 @@ const {
   registerUser
 } = require("./registeredUsers");
 
+const SESSION_TIMEOUT = 10 * 60 * 1000;
+
 const fields = [
   "fullName",
   "fatherName",
@@ -59,7 +61,6 @@ const experienceMap = {
 };
 
 function convertAnswer(field, answer) {
-
   const value = String(answer || "").trim();
 
   if (field === "province") {
@@ -75,7 +76,6 @@ function convertAnswer(field, answer) {
   }
 
   if (field === "shop") {
-
     const lower = value.toLowerCase();
 
     if (
@@ -99,13 +99,13 @@ function convertAnswer(field, answer) {
 }
 
 function startApplication(number) {
-
   const lang = getLanguage(number) || "en";
 
   applications.set(number, {
     step: 0,
     data: {},
-    duplicateChecked: false
+    duplicateChecked: false,
+    lastActivity: Date.now()
   });
 
   return lang === "ur"
@@ -122,11 +122,24 @@ ${questions[lang][0]}`;
 }
 
 function isApplying(number) {
-  return applications.has(number);
+  const app = applications.get(number);
+
+  if (!app) {
+    return false;
+  }
+
+  if (
+    Date.now() - app.lastActivity >
+    SESSION_TIMEOUT
+  ) {
+    applications.delete(number);
+    return false;
+  }
+
+  return true;
 }
 
 async function handleApplication(number, answer) {
-
   const app = applications.get(number);
   const lang = getLanguage(number) || "en";
 
@@ -140,15 +153,31 @@ async function handleApplication(number, answer) {
     };
   }
 
-  if (!app.duplicateChecked) {
+  if (
+    Date.now() - app.lastActivity >
+    SESSION_TIMEOUT
+  ) {
+    applications.delete(number);
 
+    return {
+      completed: true,
+      expired: true,
+      reply:
+        lang === "ur"
+          ? "⏰ آپ کی درخواست 10 منٹ کی غیر فعالیت کی وجہ سے ختم ہو گئی ہے۔ براہِ کرم دوبارہ شروع کریں۔"
+          : "⏰ Your application expired after 10 minutes of inactivity. Please start again."
+    };
+  }
+
+  app.lastActivity = Date.now();
+
+  if (!app.duplicateChecked) {
     const alreadyApplied =
       await numberExists(String(number));
 
     app.duplicateChecked = true;
 
     if (alreadyApplied) {
-
       applications.delete(number);
 
       return {
@@ -180,7 +209,6 @@ async function handleApplication(number, answer) {
   app.step++;
 
   if (app.step >= questions[lang].length) {
-
     const data = app.data;
 
     const applicationNumber =
@@ -266,3 +294,5 @@ module.exports = {
   isApplying,
   handleApplication
 };
+
+
