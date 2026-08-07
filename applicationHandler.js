@@ -129,3 +129,8 @@ Please try again later.`;
   }
 
 }
+module.exports = {
+  startApplication,
+  isApplying,
+  handleApplication
+};
