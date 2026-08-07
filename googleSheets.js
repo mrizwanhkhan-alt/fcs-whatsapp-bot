@@ -17,7 +17,6 @@ const sheets = google.sheets({
   auth
 });
 
-
 // ========================================
 // GENERATE APPLICATION NUMBER
 // ========================================
@@ -46,7 +45,6 @@ async function generateApplicationNumber() {
   );
 }
 
-
 // ========================================
 // SAVE FRANCHISE APPLICATION
 // ========================================
@@ -55,15 +53,13 @@ async function appendApplication(row) {
 
   await sheets.spreadsheets.values.append({
     spreadsheetId: config.GOOGLE_SHEET_ID,
-    range: "Franchise_Applications!A1:T",
+    range: "Franchise_Applications!A:T",
     valueInputOption: "USER_ENTERED",
     requestBody: {
       values: [row]
     }
   });
-
 }
-
 
 // ========================================
 // SAVE GENERAL SUPPLIER
@@ -79,9 +75,7 @@ async function appendSupplier(row) {
       values: [row]
     }
   });
-
 }
-
 
 // ========================================
 // SAVE WAREHOUSE & TRUCK ADDA
@@ -97,9 +91,7 @@ async function appendWarehouse(row) {
       values: [row]
     }
   });
-
 }
-
 
 // ========================================
 // SAVE TRANSPORT PARTNER
@@ -115,9 +107,7 @@ async function appendTransport(row) {
       values: [row]
     }
   });
-
 }
-
 
 // ========================================
 // READ FRANCHISE APPLICATIONS
@@ -132,9 +122,7 @@ async function getApplications() {
     });
 
   return response.data.values || [];
-
 }
-
 
 // ========================================
 // CHECK EXISTING WHATSAPP NUMBER
@@ -153,18 +141,21 @@ async function numberExists(whatsapp) {
 
   for (let i = 1; i < rows.length; i++) {
 
-    const savedNumber = String(rows[i][4] || "")
-      .replace(/\D/g, "");
+    // Column F = WhatsApp
+    const savedNumber =
+      String(rows[i][5] || "")
+        .replace(/\D/g, "");
 
-    if (savedNumber && savedNumber === target) {
+    if (
+      savedNumber &&
+      savedNumber === target
+    ) {
       return true;
     }
-
   }
 
   return false;
 }
-
 
 // ========================================
 // UPDATE FOLLOW UP / ENGAGEMENT
@@ -194,9 +185,7 @@ async function updateEngagement(
       ]
     }
   });
-
 }
-
 
 // ========================================
 // EXPORTS
