@@ -10,7 +10,6 @@ const {
   handleApplication
 } = require("./applicationHandler");
 
-
 const {
   startSupplier,
   isSupplierRegistering,
@@ -23,18 +22,18 @@ const {
   handleTransport
 } = require("./transportHandler");
 
-
 const {
   startWarehouse,
   isWarehouseRegistering,
   handleWarehouse
 } = require("./warehouseHandler");
 
+const {
+  numberExists
+} = require("./googleSheets");
 
 const faq = require("./faq");
-
 const faqMode = new Map();
-
 
 const {
   setLanguage,
@@ -44,19 +43,14 @@ const {
   mainMenu
 } = require("./language");
 
-
 const {
-  isBlocked,
-  recordAbuse
+  isBlocked
 } = require("./blockedUsers");
 
-
 const {
-  registerUser,
   isRegistered,
   getRegisteredUser
 } = require("./registeredUsers");
-
 
 const PORT = config.PORT;
 const VERIFY_TOKEN = config.VERIFY_TOKEN;
@@ -64,57 +58,39 @@ const PHONE_NUMBER_ID = config.PHONE_NUMBER_ID;
 const WHATSAPP_TOKEN = config.WHATSAPP_TOKEN;
 
 
-
-// ==============================
+// ========================================
 // SEND WHATSAPP MESSAGE
-// ==============================
+// ========================================
 
 function sendWhatsAppMessage(to, message) {
 
+  if (!PHONE_NUMBER_ID || !WHATSAPP_TOKEN) {
+    console.error("WhatsApp credentials missing.");
+    return;
+  }
 
   const data = JSON.stringify({
-
     messaging_product: "whatsapp",
-
     recipient_type: "individual",
-
     to: String(to),
-
     type: "text",
-
     text: {
-
       preview_url: false,
-
       body: message
-
     }
-
   });
 
-
-
   const options = {
-
     hostname: "graph.facebook.com",
-
-    path:
-      `/v21.0/${PHONE_NUMBER_ID}/messages`,
-
+    port: 443,
+    path: `/v21.0/${PHONE_NUMBER_ID}/messages`,
     method: "POST",
-
     headers: {
-
+      Authorization: `Bearer ${WHATSAPP_TOKEN}`,
       "Content-Type": "application/json",
-
-      "Authorization":
-        `Bearer ${WHATSAPP_TOKEN}`
-
+      "Content-Length": Buffer.byteLength(data)
     }
-
   };
-
-
 
   const request = https.request(
     options,
@@ -122,65 +98,78 @@ function sendWhatsAppMessage(to, message) {
 
       let result = "";
 
-      response.on(
-        "data",
-        (chunk) => {
+      response.on("data", (chunk) => {
+        result += chunk.toString();
+      });
 
-          result += chunk;
-
-        }
-      );
-
-
-      response.on(
-        "end",
-        () => {
-
-          console.log(
-            "WhatsApp Response:",
-            result
-          );
-
-        }
-      );
-
+      response.on("end", () => {
+        console.log(
+          "WhatsApp Response:",
+          response.statusCode,
+          result
+        );
+      });
     }
   );
 
-
-
-  request.on(
-    "error",
-    (error) => {
-
-      console.error(
-        "WhatsApp Error:",
-        error.message
-      );
-
-    }
-  );
-
+  request.on("error", (error) => {
+    console.error(
+      "WhatsApp Error:",
+      error.message
+    );
+  });
 
   request.write(data);
-
   request.end();
-
 }
-id="part2"
-const server = http.createServer((req, res) => {
 
+
+// ========================================
+// FAQ CATEGORY MENU
+// ========================================
+
+function faqCategoryMenu(lang) {
+
+  return lang === "ur"
+
+    ? `❓ اکثر پوچھے جانے والے سوالات
+
+کیٹیگری منتخب کریں:
+
+1️⃣ فرنچائز پارٹنر
+2️⃣ ٹرانسپورٹ پارٹنر
+3️⃣ ویئر ہاؤس اور ٹرک اڈہ
+4️⃣ سپلائر / وینڈر
+
+🏠 مین مینو کے لیے 0 بھیجیں`
+
+    : `❓ Frequently Asked Questions
+
+Select Category:
+
+1️⃣ Franchise Partner
+2️⃣ Transport Partner
+3️⃣ Warehouse & Truck Adda
+4️⃣ Supplier / Vendor
+
+🏠 Reply 0 for Main Menu`;
+}
+
+
+// ========================================
+// SERVER
+// ========================================
+
+const server = http.createServer((req, res) => {
 
   const host =
     req.headers.host || "localhost";
-
 
   const url =
     new URL(
       req.url,
       `http://${host}`
     );
-
 
 
   // HOME
@@ -190,473 +179,422 @@ const server = http.createServer((req, res) => {
     url.pathname === "/"
   ) {
 
-
     res.writeHead(200, {
       "Content-Type": "text/plain"
     });
 
-
     return res.end(
       "FCS Express WhatsApp Bot Running"
     );
-
   }
 
 
-
-
+  // ========================================
   // VERIFY WEBHOOK
+  // ========================================
 
   if (
     req.method === "GET" &&
     url.pathname === "/webhook"
   ) {
 
-
     const mode =
-      url.searchParams.get(
-        "hub.mode"
-      );
-
+      url.searchParams.get("hub.mode");
 
     const token =
       url.searchParams.get(
         "hub.verify_token"
       );
 
-
     const challenge =
       url.searchParams.get(
         "hub.challenge"
       );
-
-
 
     if (
       mode === "subscribe" &&
       token === VERIFY_TOKEN
     ) {
 
-
       res.writeHead(200, {
         "Content-Type": "text/plain"
       });
 
-
       return res.end(
-        challenge
+        challenge || ""
       );
-
     }
-
 
     res.writeHead(403);
 
     return res.end(
       "Verification failed"
     );
-
-
   }
 
 
-
-  // RECEIVE MESSAGE
+  // ========================================
+  // RECEIVE WHATSAPP MESSAGE
+  // ========================================
 
   if (
     req.method === "POST" &&
     url.pathname === "/webhook"
   ) {
 
-
     let body = "";
 
+    req.on("data", (chunk) => {
+      body += chunk.toString();
+    });
 
-    req.on(
-      "data",
-      (chunk) => {
+    req.on("end", async () => {
 
-        body += chunk.toString();
+      res.writeHead(200, {
+        "Content-Type": "text/plain"
+      });
 
-      }
-    );
+      res.end("EVENT_RECEIVED");
 
+      try {
 
+        const data = JSON.parse(body);
 
-    req.on(
-      "end",
-      async () => {
-
-
-        res.writeHead(200);
-
-        res.end(
-          "EVENT_RECEIVED"
-        );
-
-
-
-        try {
-
-
-          const data =
-            JSON.parse(body);
-
-
-
-          const message =
-            data.entry?.[0]
+        const message =
+          data.entry?.[0]
             ?.changes?.[0]
             ?.value
             ?.messages?.[0];
 
+        if (!message) {
+          return;
+        }
+
+        const customerNumber =
+          String(message.from);
+
+        const customerText =
+          message.text?.body || "";
+
+        const text =
+          customerText.trim();
+
+        console.log(
+          "Customer:",
+          customerNumber
+        );
+
+        console.log(
+          "Message:",
+          text
+        );
 
 
-          if (!message) {
+        // ========================================
+        // BLOCKED USERS
+        // ========================================
 
-            return;
-
-          }
-
-
-
-          const customerNumber =
-            message.from;
-
-
-
-          if (isRegistered(customerNumber)) {
-
-
-            const user =
-              getRegisteredUser(customerNumber);
-
-
-
-            user.postMessages++;
-
-if (user.postMessages <= 2) {
-  return;
-}
-
-user.warnings++;
-
-if (user.warnings === 1) {
-
-  sendWhatsAppMessage(
-    customerNumber,
-    "Warning 1/3\n\nApplication received. Avoid unnecessary messages. Otherwise, your application may be rejected, and you may be permanently blocked."
-  );
-
-  return;
-
-}
-
-if (user.warnings === 2) {
-
-  sendWhatsAppMessage(
-    customerNumber,
-    "Warning 2/3\n\nApplication received. Avoid unnecessary messages. Otherwise, your application may be rejected, and you may be permanently blocked."
-  );
-
-  return;
-
-}
-
-if (user.warnings === 3) {
-
-  sendWhatsAppMessage(
-    customerNumber,
-    "Warning 3/3\n\nApplication received. Avoid unnecessary messages. Otherwise, your application may be rejected, and you may be permanently blocked."
-  );
-
-  return;
-
-}
-
-return;
-
-          }
-
-
-
-          if (
-            isBlocked(customerNumber)
-          ) {
-
-            console.log(
-              "Blocked:",
-              customerNumber
-            );
-
-            return;
-
-          }
-
-
-
-          const customerText =
-            message.text?.body || "";
-
-
-
-          const text =
-            customerText.trim();
-
-
+        if (isBlocked(customerNumber)) {
 
           console.log(
-            "Customer:",
+            "Blocked:",
             customerNumber
           );
 
+          return;
+        }
 
-          console.log(
-            "Message:",
-            text
+
+        // ========================================
+        // COMPLETED / REGISTERED USERS
+        // ========================================
+
+        if (isRegistered(customerNumber)) {
+
+          const user =
+            getRegisteredUser(
+              customerNumber
+            );
+
+          if (user) {
+
+            user.postMessages =
+              (user.postMessages || 0) + 1;
+
+            if (user.postMessages <= 2) {
+              return;
+            }
+
+            user.warnings =
+              (user.warnings || 0) + 1;
+
+            if (user.warnings <= 3) {
+
+              sendWhatsAppMessage(
+                customerNumber,
+                `Warning ${user.warnings}/3
+
+Application received.
+
+Please avoid unnecessary messages. Our team will contact you after reviewing your application.`
+              );
+            }
+
+            return;
+          }
+        }
+
+
+        // ========================================
+        // LANGUAGE SELECTION
+        // ========================================
+
+        if (!hasLanguage(customerNumber)) {
+
+          if (text === "1") {
+
+            setLanguage(
+              customerNumber,
+              "en"
+            );
+
+            sendWhatsAppMessage(
+              customerNumber,
+              mainMenu("en")
+            );
+
+            return;
+          }
+
+          if (text === "2") {
+
+            setLanguage(
+              customerNumber,
+              "ur"
+            );
+
+            sendWhatsAppMessage(
+              customerNumber,
+              mainMenu("ur")
+            );
+
+            return;
+          }
+
+          sendWhatsAppMessage(
+            customerNumber,
+            languageMenu()
           );
 
+          return;
+        }
 
 
-          // LANGUAGE SELECTION
-
-console.log(
-  "LANG CHECK:",
-  customerNumber,
-  hasLanguage(customerNumber),
-  getLanguage(customerNumber)
-);
-          if (
-            !hasLanguage(customerNumber)
-          ) {
+        const lang =
+          getLanguage(customerNumber) ||
+          "en";
 
 
+        // ========================================
+        // CONTINUE FRANCHISE APPLICATION
+        // ========================================
 
-            if (text === "1") {
+        if (isApplying(customerNumber)) {
 
+          const result =
+            await handleApplication(
+              customerNumber,
+              customerText
+            );
 
-              setLanguage(
-                customerNumber,
-                "en"
-              );
+          sendWhatsAppMessage(
+            customerNumber,
+            result.reply
+          );
 
-
-              sendWhatsAppMessage(
-                customerNumber,
-                mainMenu(
-                  getLanguage(customerNumber)
-                )
-              );
-
-
-              return;
-
-            }
+          return;
+        }
 
 
+        // ========================================
+        // CONTINUE SUPPLIER REGISTRATION
+        // ========================================
+
+        if (
+          isSupplierRegistering(
+            customerNumber
+          )
+        ) {
+
+          const result =
+            await handleSupplier(
+              customerNumber,
+              customerText
+            );
+
+          sendWhatsAppMessage(
+            customerNumber,
+            result.reply
+          );
+
+          return;
+        }
 
 
-            if (text === "2") {
+        // ========================================
+        // CONTINUE TRANSPORT REGISTRATION
+        // ========================================
+
+        if (
+          isTransportRegistering(
+            customerNumber
+          )
+        ) {
+
+          const result =
+            await handleTransport(
+              customerNumber,
+              customerText
+            );
+
+          sendWhatsAppMessage(
+            customerNumber,
+            result.reply
+          );
+
+          return;
+        }
 
 
-              setLanguage(
-                customerNumber,
-                "ur"
-              );
+        // ========================================
+        // CONTINUE WAREHOUSE REGISTRATION
+        // ========================================
+
+        if (
+          isWarehouseRegistering(
+            customerNumber
+          )
+        ) {
+
+          const result =
+            await handleWarehouse(
+              customerNumber,
+              customerText
+            );
+
+          sendWhatsAppMessage(
+            customerNumber,
+            result.reply
+          );
+
+          return;
+        }
 
 
-              sendWhatsAppMessage(
-                customerNumber,
-                mainMenu(
-                  getLanguage(customerNumber)
-                )
-              );
+        // ========================================
+        // FAQ MODE
+        // ========================================
 
+        if (faqMode.has(customerNumber)) {
 
-              return;
+          if (text === "0") {
 
-            }
-
-
+            faqMode.delete(
+              customerNumber
+            );
 
             sendWhatsAppMessage(
               customerNumber,
-              languageMenu()
+              mainMenu(lang)
             );
 
-
             return;
-
           }
 
-
-
-
-          const lang =
-            getLanguage(customerNumber);
-
-
-
-          // CONTINUE FRANCHISE APPLICATION
-
-
-          if (
-            isApplying(customerNumber)
-          ) {
-
-
-            const result =
-              await handleApplication(
-                customerNumber,
-                customerText
-              );
-
+          if (text === "8") {
 
             sendWhatsAppMessage(
               customerNumber,
-              result.reply
+              faqCategoryMenu(lang)
             );
 
-
             return;
-
           }
 
+          let category = null;
 
+          if (text === "1") {
+            category = "franchise";
+          }
 
-          // CONTINUE FAQ
+          else if (text === "2") {
+            category = "transport";
+          }
 
+          else if (text === "3") {
+            category = "warehouse";
+          }
 
-          if (
-            faqMode.has(customerNumber)
-          ) {if (text === "0") {
+          else if (text === "4") {
+            category = "supplier";
+          }
 
-  faqMode.delete(customerNumber);
+          if (category) {
 
-  sendWhatsAppMessage(
-    customerNumber,
-    mainMenu(lang)
-  );
+            const faqList =
+              faq[lang][category];
 
-  return;
-
-}
-
-
-            let category;
-
-
-
-            if (text === "1") {
-
-              category = "franchise";
-
-            }
-
-            else if (text === "2") {
-
-              category = "transport";
-
-            }
-
-            else if (text === "3") {
-
-              category = "warehouse";
-
-            }
-
-            else if (text === "4") {
-
-              category = "supplier";
-
-            }
-
-
-
-            if (category) {
-
-
-              const faqList =
-                faq[lang][category];
-
-
-
-              let reply =
-                lang === "ur"
+            let reply =
+              lang === "ur"
 
                 ? "❓ اکثر پوچھے جانے والے سوالات\n\n"
 
                 : "❓ Frequently Asked Questions\n\n";
 
-
-
-              faqList.forEach((item, index) => {
-
+            faqList.forEach(
+              (item, index) => {
 
                 reply +=
-                `${index + 1}. ${item.question}\n\n${item.answer}\n\n`;
+                  `${index + 1}. ${item.question}\n\n${item.answer}\n\n`;
+              }
+            );
 
+            reply +=
+              lang === "ur"
 
-              });
-reply +=
-"\n↩️ Reply 8 to view FAQ categories again.\n🏠 Reply 0 for Main Menu.";
+                ? "\n↩️ FAQ کیٹیگریز کے لیے 8 بھیجیں۔\n🏠 مین مینو کے لیے 0 بھیجیں۔"
 
-
-              sendWhatsAppMessage(
-                customerNumber,
-                reply
-              );
-
-
-
-
-              return;
-
-            }
-
-          }
-                    // CONTINUE SUPPLIER REGISTRATION
-
-
-          if (
-            isSupplierRegistering(customerNumber)
-          ) {
-
-
-            const result =
-              await handleSupplier(
-                customerNumber,
-                customerText
-              );
-
+                : "\n↩️ Reply 8 to view FAQ categories again.\n🏠 Reply 0 for Main Menu.";
 
             sendWhatsAppMessage(
               customerNumber,
-              result.reply
+              reply
             );
 
-
             return;
-
           }
 
+          sendWhatsAppMessage(
+            customerNumber,
+            faqCategoryMenu(lang)
+          );
+
+          return;
+        }
 
 
+        // ========================================
+        // MAIN MENU - 1 ABOUT FCS
+        // ========================================
 
+        if (text === "1") {
 
-          // MAIN MENU OPTIONS
+          sendWhatsAppMessage(
+            customerNumber,
 
+            lang === "ur"
 
-if (text === "1") {
-
-  const lang = getLanguage(customerNumber);
-
-  sendWhatsAppMessage(
-    customerNumber,
-
-    lang === "ur"
-
-      ? `🏢 ایف سی ایس ایکسپریس پاکستان
+              ? `🏢 ایف سی ایس ایکسپریس پاکستان
 
 ایف سی ایس ایکسپریس پاکستان ایک جدید لاجسٹکس اور کورئیر کمپنی ہے جو ملک بھر میں محفوظ، قابلِ اعتماد اور جدید ٹیکنالوجی پر مبنی ترسیلی خدمات فراہم کرنے کے لیے پرعزم ہے۔
 
@@ -664,483 +602,402 @@ if (text === "1") {
 
 ہم ایکسپریس پارسل ڈیلیوری، ای کامرس لاجسٹکس، کارپوریٹ شپنگ، ویئرہاؤسنگ، فل فلمنٹ اور لاسٹ مائل ڈیلیوری سمیت مکمل لاجسٹکس سلوشنز فراہم کرتے ہیں۔
 
-جدید ٹیکنالوجی، بہترین آپریشنز اور اعلیٰ کسٹمر سروس کے ذریعے ایف سی ایس ایکسپریس پاکستان کے تیزی سے ترقی کرتے ہوئے لاجسٹکس نیٹ ورک کی تعمیر کر رہا ہے۔
-
 🌐 ویب سائٹ:
-www.fcsexpress.com.pk
+www.fcsexpress.com.pk`
 
-ایف سی ایس ایکسپریس پاکستان کا انتخاب کرنے کا شکریہ۔
-ہم آپ کی خدمت کے منتظر ہیں۔`
-
-      : `🏢 About FCS Express Pakistan
+              : `🏢 About FCS Express Pakistan
 
 FCS Express Pakistan is a modern logistics and courier company committed to delivering reliable, secure, and technology-driven shipping solutions across the country.
 
 Our mission is to connect businesses and individuals through a nationwide logistics network built on speed, trust, innovation, and exceptional customer service.
 
-We provide comprehensive logistics solutions, including express parcel delivery, e-commerce logistics, corporate shipping, warehousing, fulfilment, and last-mile delivery.
-
-With a strong focus on technology, operational excellence, and customer satisfaction, FCS Express is building one of Pakistan's fastest-growing logistics networks.
+We provide express parcel delivery, e-commerce logistics, corporate shipping, warehousing, fulfilment, and last-mile delivery.
 
 🌐 Website:
-www.fcsexpress.com.pk
+www.fcsexpress.com.pk`
+          );
 
-Thank you for choosing FCS Express Pakistan.
-We look forward to serving you.`
-  );
-
-  return;
-}
+          return;
+        }
 
 
+        // ========================================
+        // MAIN MENU - 2 NETWORK
+        // ========================================
 
-         if (text === "2") {
+        if (text === "2") {
 
-  const lang = getLanguage(customerNumber);
+          sendWhatsAppMessage(
+            customerNumber,
 
-  sendWhatsAppMessage(
-    customerNumber,
+            lang === "ur"
 
-    lang === "ur"
+              ? `🌍 ہمارا ملک گیر نیٹ ورک
 
-      ? `🌍 ہمارا ملک گیر نیٹ ورک
+ایف سی ایس ایکسپریس پاکستان بھر میں ایک جدید اور تیزی سے ترقی کرتا ہوا لاجسٹکس نیٹ ورک قائم کر رہا ہے۔
 
-ایف سی ایس ایکسپریس پاکستان بھر میں ایک جدید، مضبوط اور تیزی سے ترقی کرتا ہوا لاجسٹکس اور کورئیر نیٹ ورک قائم کر رہا ہے، جس کا مقصد ملک کے ہر شہر اور علاقے تک محفوظ، بروقت اور قابلِ اعتماد ترسیلی خدمات فراہم کرنا ہے۔
-
-ہمارا بڑھتا ہوا نیٹ ورک شامل ہے:
-
-🏢 7 نیشنل ڈسٹری بیوشن سینٹرز (NDCs)
-🏢 14 ریجنل ڈسٹری بیوشن سینٹرز (RDCs)
+🏢 7 نیشنل ڈسٹری بیوشن سینٹرز
+🏢 14 ریجنل ڈسٹری بیوشن سینٹرز
 🏙️ 170 سٹی ہبز
-📦 2,530 سے زائد سروس پوائنٹ فرنچائزز
-
-بڑے شہروں سے لے کر تحصیل اور دور دراز علاقوں تک ہمارا نیٹ ورک وسیع تر کوریج، تیز تر ترسیل اور معیاری لاجسٹکس خدمات فراہم کرنے کے لیے مسلسل وسعت اختیار کر رہا ہے۔
-
-آئیے، مل کر پاکستان کے مستقبل کا جدید لاجسٹکس نیٹ ورک تعمیر کریں۔
+📦 2,530+ سروس پوائنٹ فرنچائزز
 
 🌐 ویب سائٹ:
-www.fcsexpress.com.pk
+www.fcsexpress.com.pk`
 
-ایف سی ایس ایکسپریس پاکستان کا انتخاب کرنے کا شکریہ۔
-ہم آپ کی خدمت کے منتظر ہیں۔`
+              : `🌍 Our Nationwide Network
 
-      : `🌍 Our Nationwide Network
+FCS Express is developing one of Pakistan's most comprehensive logistics and courier networks.
 
-FCS Express is developing one of Pakistan's most comprehensive logistics and courier networks, designed to provide fast, reliable, and seamless delivery services across the country.
-
-Our growing network includes:
-
-🏢 7 National Distribution Centers (NDCs)
-🏢 14 Regional Distribution Centers (RDCs)
+🏢 7 National Distribution Centers
+🏢 14 Regional Distribution Centers
 🏙️ 170 City Hubs
 📦 2,530+ Service Point Franchises
 
-From major metropolitan cities to tehsils and remote areas, our expanding infrastructure ensures wider coverage, faster transit times, and dependable logistics solutions for businesses and individuals alike.
-
-Together, we are building the future of logistics in Pakistan.
-
 🌐 Website:
-www.fcsexpress.com.pk
+www.fcsexpress.com.pk`
+          );
 
-Thank you for choosing FCS Express Pakistan.
-We look forward to serving you.`
-  );
-
-  return;
-}
+          return;
+        }
 
 
+        // ========================================
+        // MAIN MENU - 3 SERVICES
+        // ========================================
 
+        if (text === "3") {
 
-         if (text === "3") {
+          sendWhatsAppMessage(
+            customerNumber,
 
-  const lang = getLanguage(customerNumber);
+            lang === "ur"
 
-  sendWhatsAppMessage(
-    customerNumber,
-
-    lang === "ur"
-
-      ? `🚚 ہماری سروسز
-
-ایف سی ایس ایکسپریس پاکستان افراد، کاروباری اداروں اور کارپوریٹ صارفین کی ضروریات کو مدِنظر رکھتے ہوئے جدید، محفوظ اور قابلِ اعتماد لاجسٹکس اور کورئیر خدمات فراہم کرتا ہے۔
-
-ہماری خدمات میں شامل ہیں:
+              ? `🚚 ہماری سروسز
 
 📦 ایکسپریس پارسل ڈیلیوری
 🚀 سیم ڈے اور نیکسٹ ڈے ڈیلیوری
 🏢 کارپوریٹ لاجسٹکس سلوشنز
 🛒 ای کامرس ڈیلیوری
-💰 کیش آن ڈیلیوری (COD)
+💰 کیش آن ڈیلیوری
 🏬 ویئرہاؤسنگ اور فل فلمنٹ
 🚛 لاسٹ مائل ڈیلیوری
 🌍 ملک گیر ڈسٹری بیوشن
-📄 دستاویزات اور پارسل کی ترسیل
-🤝 بزنس اور سپلائی چین سلوشنز
-
-جدید ٹیکنالوجی، مضبوط آپریشنز اور اعلیٰ معیار کی کسٹمر سروس کے ذریعے ایف سی ایس ایکسپریس ہر ترسیل کو محفوظ، بروقت اور مؤثر بنانے کے لیے پرعزم ہے۔
 
 🌐 ویب سائٹ:
-www.fcsexpress.com.pk
+www.fcsexpress.com.pk`
 
-ایف سی ایس ایکسپریس پاکستان کا انتخاب کرنے کا شکریہ۔
-ہم آپ کی خدمت کے منتظر ہیں۔`
-
-      : `🚚 Our Services
-
-FCS Express Pakistan offers a comprehensive range of logistics and courier solutions designed to meet the needs of individuals, businesses, and corporate clients across the country.
-
-Our services include:
+              : `🚚 Our Services
 
 📦 Express Parcel Delivery
 🚀 Same-Day & Next-Day Delivery
 🏢 Corporate Logistics Solutions
 🛒 E-commerce Delivery
-💰 Cash on Delivery (COD)
+💰 Cash on Delivery
 🏬 Warehousing & Fulfilment
 🚛 Last-Mile Delivery
 🌍 Nationwide Distribution
-📄 Document & Parcel Delivery
-🤝 Business & Supply Chain Solutions
-
-Driven by innovation, advanced technology, and a commitment to excellence, FCS Express delivers reliable, secure, and efficient logistics solutions that help businesses grow and customers stay connected.
 
 🌐 Website:
-www.fcsexpress.com.pk
+www.fcsexpress.com.pk`
+          );
 
-Thank you for choosing FCS Express Pakistan.
-We look forward to serving you.`
-  );
-
-  return;
-}
+          return;
+        }
 
 
+        // ========================================
+        // MAIN MENU - 4 FRANCHISE
+        // ========================================
 
+        if (text === "4") {
 
-          if (text === "4") {
+          faqMode.delete(
+            customerNumber
+          );
 
-
-            const reply =
-              startApplication(
-                customerNumber
-              );
-
-
-            sendWhatsAppMessage(
-              customerNumber,
-              reply
+          const alreadyApplied =
+            await numberExists(
+              customerNumber
             );
 
-
-            return;
-
-          }
-
-
-
-
-
-          if (text === "5") {
-
-
-            const reply =
-              startSupplier(
-                customerNumber,
-                lang
-              );
-
+          if (alreadyApplied) {
 
             sendWhatsAppMessage(
               customerNumber,
-              reply
-            );
-
-
-            return;
-
-          }
-
-
-
-
-
-          if (text === "6") {
-
-
-            const reply =
-              startTransport(
-                customerNumber,
-                lang
-              );
-
-
-            sendWhatsAppMessage(
-              customerNumber,
-              reply
-            );
-
-
-            return;
-
-          }
-
-
-
-
-
-          if (text === "7") {
-
-
-            const reply =
-              startWarehouse(
-                customerNumber,
-                lang
-              );
-
-
-            sendWhatsAppMessage(
-              customerNumber,
-              reply
-            );
-
-
-            return;
-
-          }
-
-
-
-
-
-          // 8 - FAQ
-
-
-          if (text === "8") {
-
-
-            sendWhatsAppMessage(
-
-              customerNumber,
-
 
               lang === "ur"
 
-              ?
+                ? `⚠️ ہمارے ریکارڈ کے مطابق اس واٹس ایپ نمبر سے پہلے ہی فرنچائز درخواست جمع کرائی جا چکی ہے۔
 
-`❓ اکثر پوچھے جانے والے سوالات
+📱 WhatsApp: +92 316 0034207
+📧 Email: franchise@fcsexpress.com.pk`
 
-کیٹیگری منتخب کریں:
+                : `⚠️ Our records show that a franchise application has already been submitted using this WhatsApp number.
 
-1️⃣ فرنچائز پارٹنر
-2️⃣ ٹرانسپورٹ پارٹنر
-3️⃣ ویئر ہاؤس اور ٹرک اڈہ
-4️⃣ سپلائر / وینڈر`
-
-              :
-
-`❓ Frequently Asked Questions
-
-Select Category:
-
-1️⃣ Franchise Partner
-2️⃣ Transport Partner
-3️⃣ Warehouse & Truck Adda
-4️⃣ Supplier / Vendor`
-
+📱 WhatsApp: +92 316 0034207
+📧 Email: franchise@fcsexpress.com.pk`
             );
-
-
-            faqMode.set(
-              customerNumber,
-              true
-            );
-
 
             return;
-
           }
-
-
-
-
-
-          // 9 - WHY CHOOSE FCS
-
-
-         if (text === "9") {
-
-  const lang = getLanguage(customerNumber);
-
-  sendWhatsAppMessage(
-    customerNumber,
-
-    lang === "ur"
-
-? `⭐ ایف سی ایس ایکسپریس کیوں منتخب کریں؟
-
-ایف سی ایس ایکسپریس پاکستان جدید ٹیکنالوجی، مضبوط لاجسٹکس نیٹ ورک اور بہترین کسٹمر سروس کے ذریعے محفوظ، قابلِ اعتماد اور بروقت ترسیلی خدمات فراہم کرنے کے لیے پرعزم ہے۔
-
-ہمیں منتخب کرنے کی وجوہات:
-
-✅ ملک گیر لاجسٹکس نیٹ ورک
-✅ تیز رفتار اور قابلِ اعتماد ترسیل
-✅ ہر شپمنٹ کی محفوظ ہینڈلنگ
-✅ ریئل ٹائم شپمنٹ ٹریکنگ
-✅ پیشہ ور کسٹمر سپورٹ
-✅ کاروباری، کارپوریٹ اور ای کامرس سلوشنز
-✅ مضبوط فرنچائز اور ڈسٹری بیوشن نیٹ ورک
-✅ جدید ٹیکنالوجی پر مبنی آپریشنز
-✅ اعلیٰ معیار کی خدمات کا عزم
-
-چاہے آپ ایک پارسل بھیج رہے ہوں یا اپنے کاروبار کے لیے مکمل لاجسٹکس سروس چاہتے ہوں، ایف سی ایس ایکسپریس مؤثر، محفوظ اور پیشہ ورانہ خدمات فراہم کرنے کے لیے تیار ہے۔
-
-🌐 ویب سائٹ:
-www.fcsexpress.com.pk
-
-ایف سی ایس ایکسپریس پاکستان کا انتخاب کرنے کا شکریہ۔
-ہم آپ کی خدمت کے منتظر ہیں۔`
-
-: `⭐ Why Choose FCS Express?
-
-FCS Express Pakistan delivers reliable, secure, and technology-driven logistics solutions for individuals and businesses across the country.
-
-Why choose us?
-
-✅ Nationwide Logistics Network
-✅ Fast & Reliable Deliveries
-✅ Safe & Secure Shipment Handling
-✅ Real-Time Shipment Tracking
-✅ Professional Customer Support
-✅ Business, Corporate & E-commerce Solutions
-✅ Strong Franchise & Distribution Network
-✅ Modern Technology-Driven Operations
-✅ Commitment to Service Excellence
-
-Whether you are sending a single parcel or managing large-scale business logistics, FCS Express provides dependable, efficient and professional logistics solutions designed around your needs.
-
-🌐 Website:
-www.fcsexpress.com.pk
-
-Thank you for choosing FCS Express Pakistan.
-We look forward to serving you.`
-  );
-
-  return;
-}
-
-
-
-          // 10 - CONTACT US
-
-
-          if (text === "10") {
-
-
-            sendWhatsAppMessage(
-
-              customerNumber,
-
-
-`FCS Express Offices
-
-📍 Karachi
-📍 Lahore
-📍 Islamabad
-📍 Peshawar
-📍 Quetta
-📍 Muzaffarabad
-
-📧 info@fcsexpress.com.pk
-📱 WhatsApp: 03160034207
-🌐 www.fcsexpress.com.pk`
-
-            );
-
-
-            return;
-
-          }
-
-
-
-
-
 
           const reply =
-            await getReply(
-              customerNumber,
-              customerText
+            startApplication(
+              customerNumber
             );
-
 
           sendWhatsAppMessage(
             customerNumber,
             reply
           );
 
-
-
-        } catch (error) {
-
-
-          console.error(
-            "Webhook Error:",
-            error.message
-          );
-
-
+          return;
         }
 
 
-      });
+        // ========================================
+        // MAIN MENU - 5 SUPPLIER
+        // ========================================
+
+        if (text === "5") {
+
+          faqMode.delete(
+            customerNumber
+          );
+
+          const reply =
+            startSupplier(
+              customerNumber,
+              lang
+            );
+
+          sendWhatsAppMessage(
+            customerNumber,
+            reply
+          );
+
+          return;
+        }
 
 
-      return;
+        // ========================================
+        // MAIN MENU - 6 TRANSPORT
+        // ========================================
+
+        if (text === "6") {
+
+          faqMode.delete(
+            customerNumber
+          );
+
+          const reply =
+            startTransport(
+              customerNumber,
+              lang
+            );
+
+          sendWhatsAppMessage(
+            customerNumber,
+            reply
+          );
+
+          return;
+        }
 
 
+        // ========================================
+        // MAIN MENU - 7 WAREHOUSE
+        // ========================================
+
+        if (text === "7") {
+
+          faqMode.delete(
+            customerNumber
+          );
+
+          const reply =
+            startWarehouse(
+              customerNumber,
+              lang
+            );
+
+          sendWhatsAppMessage(
+            customerNumber,
+            reply
+          );
+
+          return;
+        }
+
+
+        // ========================================
+        // MAIN MENU - 8 FAQ
+        // ========================================
+
+        if (text === "8") {
+
+          faqMode.set(
+            customerNumber,
+            true
+          );
+
+          sendWhatsAppMessage(
+            customerNumber,
+            faqCategoryMenu(lang)
+          );
+
+          return;
+        }
+
+
+        // ========================================
+        // MAIN MENU - 9 WHY FCS
+        // ========================================
+
+        if (text === "9") {
+
+          sendWhatsAppMessage(
+            customerNumber,
+
+            lang === "ur"
+
+              ? `⭐ ایف سی ایس ایکسپریس کیوں منتخب کریں؟
+
+✅ ملک گیر لاجسٹکس نیٹ ورک
+✅ تیز رفتار اور قابلِ اعتماد ترسیل
+✅ محفوظ شپمنٹ ہینڈلنگ
+✅ جدید ٹیکنالوجی
+✅ پیشہ ور کسٹمر سپورٹ
+✅ بزنس اور ای کامرس سلوشنز
+
+🌐 ویب سائٹ:
+www.fcsexpress.com.pk`
+
+              : `⭐ Why Choose FCS Express?
+
+✅ Nationwide Logistics Network
+✅ Fast & Reliable Deliveries
+✅ Safe Shipment Handling
+✅ Modern Technology
+✅ Professional Customer Support
+✅ Business & E-commerce Solutions
+
+🌐 Website:
+www.fcsexpress.com.pk`
+          );
+
+          return;
+        }
+
+
+        // ========================================
+        // MAIN MENU - 10 CONTACT
+        // ========================================
+
+        if (text === "10") {
+
+          sendWhatsAppMessage(
+            customerNumber,
+
+            lang === "ur"
+
+              ? `📞 ایف سی ایس ایکسپریس رابطہ
+
+📍 فرنچائز ڈویلپمنٹ دفاتر:
+• کراچی
+• لاہور
+• اسلام آباد
+• پشاور
+• کوئٹہ
+• مظفرآباد
+
+📧 Email:
+info@fcsexpress.com.pk
+
+📱 WhatsApp:
++92 316 0034207
+
+🌐 Website:
+www.fcsexpress.com.pk`
+
+              : `📞 FCS Express Contact
+
+📍 Franchise Development Offices:
+• Karachi
+• Lahore
+• Islamabad
+• Peshawar
+• Quetta
+• Muzaffarabad
+
+📧 Email:
+info@fcsexpress.com.pk
+
+📱 WhatsApp:
++92 316 0034207
+
+🌐 Website:
+www.fcsexpress.com.pk`
+          );
+
+          return;
+        }
+
+
+        // ========================================
+        // NORMAL AI CHAT
+        // ========================================
+
+        const reply =
+          await getReply(
+            customerNumber,
+            customerText
+          );
+
+        sendWhatsAppMessage(
+          customerNumber,
+          reply
+        );
+
+      } catch (error) {
+
+        console.error(
+          "Webhook Error:",
+          error
+        );
+      }
+    });
+
+    return;
   }
 
 
+  // 404
 
   res.writeHead(404, {
-
     "Content-Type": "text/plain"
-
   });
 
-
-  res.end(
-    "Not Found"
-  );
-
-
+  res.end("Not Found");
 });
 
 
-
-
+// ========================================
+// START SERVER
+// ========================================
 
 server.listen(
-
   PORT,
-
   "0.0.0.0",
-
   () => {
-
 
     console.log(
       "FCS Express WhatsApp Bot Started"
     );
 
-
     console.log(
       "Port:",
       PORT
     );
-
-
   }
-
 );
