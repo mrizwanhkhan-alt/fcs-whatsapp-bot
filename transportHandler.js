@@ -13,6 +13,8 @@ const {
   registerUser
 } = require("./registeredUsers");
 
+const SESSION_TIMEOUT = 10 * 60 * 1000;
+
 const transportFields = [
   "companyName",
   "contactPerson",
@@ -30,33 +32,59 @@ const transportFields = [
 ];
 
 function startTransport(number, lang = "en") {
-
   transports.set(number, {
     step: 0,
     data: {},
-    lang
+    lang,
+    lastActivity: Date.now()
   });
 
   return transportQuestions[lang][0];
 }
 
 function isTransportRegistering(number) {
-  return transports.has(number);
+  const transport = transports.get(number);
+
+  if (!transport) return false;
+
+  if (
+    Date.now() - transport.lastActivity >
+    SESSION_TIMEOUT
+  ) {
+    transports.delete(number);
+    return false;
+  }
+
+  return true;
 }
 
 async function handleTransport(number, answer) {
-
   const transport = transports.get(number);
 
   if (!transport) {
     return {
       completed: false,
-      reply:
-        transport?.lang === "ur"
-          ? "ٹرانسپورٹ رجسٹریشن نہیں ملی۔"
-          : "Transport registration not found."
+      reply: "Transport registration not found."
     };
   }
+
+  if (
+    Date.now() - transport.lastActivity >
+    SESSION_TIMEOUT
+  ) {
+    transports.delete(number);
+
+    return {
+      completed: true,
+      expired: true,
+      reply:
+        transport.lang === "ur"
+          ? "⏰ آپ کی ٹرانسپورٹ رجسٹریشن 10 منٹ کی غیر فعالیت کی وجہ سے ختم ہو گئی ہے۔ براہِ کرم دوبارہ شروع کریں۔"
+          : "⏰ Your Transport Registration expired after 10 minutes of inactivity. Please start again."
+    };
+  }
+
+  transport.lastActivity = Date.now();
 
   const field =
     transportFields[transport.step];
@@ -64,12 +92,10 @@ async function handleTransport(number, answer) {
   transport.data[field] = answer;
 
   if (field === "mobile") {
-
     const alreadyExists =
       await transportExists(answer);
 
     if (alreadyExists) {
-
       transports.delete(number);
 
       return {
@@ -89,14 +115,20 @@ async function handleTransport(number, answer) {
     transport.step >=
     transportQuestions[transport.lang].length
   ) {
-
     const data = transport.data;
 
     const partnerId =
       await generateApplicationNumber();
 
+    const now = new Date();
+
+    const nextFollowUp = new Date(now);
+    nextFollowUp.setDate(
+      nextFollowUp.getDate() + 7
+    );
+
     await appendTransport([
-      new Date().toLocaleString(),
+      now.toLocaleString(),
       partnerId,
       data.companyName || "",
       data.contactPerson || "",
@@ -111,7 +143,11 @@ async function handleTransport(number, answer) {
       data.routes || "",
       data.pastProjects || "",
       data.additionalDetails || "",
-      "Received"
+      "Received",
+      "Registration Submitted",
+      now.toLocaleString(),
+      nextFollowUp.toLocaleDateString(),
+      ""
     ]);
 
     registerUser(
