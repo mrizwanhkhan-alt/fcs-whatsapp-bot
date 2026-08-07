@@ -19,17 +19,43 @@ const sheets = google.sheets({
 
 async function generateApplicationNumber() {
   const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
   const letter =
     letters[Math.floor(Math.random() * letters.length)];
-  const digit = Math.floor(Math.random() * 10);
+
+  const digit =
+    Math.floor(Math.random() * 10);
+
   const numbers =
-    Math.floor(10000000 + Math.random() * 90000000);
+    Math.floor(
+      10000000 +
+      Math.random() * 90000000
+    );
 
   return letter + digit + "FCS" + numbers;
 }
 
+async function getRows(sheetName, range) {
+  const response =
+    await sheets.spreadsheets.values.get({
+      spreadsheetId: config.GOOGLE_SHEET_ID,
+      range: `${sheetName}!${range}`
+    });
+
+  return response.data.values || [];
+}
+
+// ========================================
+// SAVE FRANCHISE
+// ========================================
+
 async function appendApplication(row) {
-  const rows = await getApplications();
+  const rows =
+    await getRows(
+      "Franchise_Applications",
+      "A:T"
+    );
+
   const nextRow = rows.length + 1;
 
   await sheets.spreadsheets.values.update({
@@ -43,45 +69,85 @@ async function appendApplication(row) {
   });
 }
 
+// ========================================
+// SAVE SUPPLIER
+// ========================================
+
 async function appendSupplier(row) {
-  await sheets.spreadsheets.values.append({
+  const rows =
+    await getRows(
+      "General_Suppliers",
+      "A:Q"
+    );
+
+  const nextRow = rows.length + 1;
+
+  await sheets.spreadsheets.values.update({
     spreadsheetId: config.GOOGLE_SHEET_ID,
-    range: "General_Suppliers!A:Q",
+    range:
+      `General_Suppliers!A${nextRow}:Q${nextRow}`,
     valueInputOption: "USER_ENTERED",
-    requestBody: { values: [row] }
+    requestBody: {
+      values: [row]
+    }
   });
 }
+
+// ========================================
+// SAVE TRANSPORT
+// ========================================
 
 async function appendTransport(row) {
-  await sheets.spreadsheets.values.append({
+  const rows =
+    await getRows(
+      "Transport_Partners",
+      "A:T"
+    );
+
+  const nextRow = rows.length + 1;
+
+  await sheets.spreadsheets.values.update({
     spreadsheetId: config.GOOGLE_SHEET_ID,
-    range: "Transport_Partners!A:T",
+    range:
+      `Transport_Partners!A${nextRow}:T${nextRow}`,
     valueInputOption: "USER_ENTERED",
-    requestBody: { values: [row] }
+    requestBody: {
+      values: [row]
+    }
   });
 }
+
+// ========================================
+// SAVE WAREHOUSE
+// ========================================
 
 async function appendWarehouse(row) {
-  await sheets.spreadsheets.values.append({
+  const rows =
+    await getRows(
+      "Warehouse_Truck_Adda",
+      "A:V"
+    );
+
+  const nextRow = rows.length + 1;
+
+  await sheets.spreadsheets.values.update({
     spreadsheetId: config.GOOGLE_SHEET_ID,
-    range: "Warehouse_Truck_Adda!A:V",
+    range:
+      `Warehouse_Truck_Adda!A${nextRow}:V${nextRow}`,
     valueInputOption: "USER_ENTERED",
-    requestBody: { values: [row] }
+    requestBody: {
+      values: [row]
+    }
   });
 }
 
-async function getRows(sheetName, range) {
-  const response =
-    await sheets.spreadsheets.values.get({
-      spreadsheetId: config.GOOGLE_SHEET_ID,
-      range: `${sheetName}!${range}`
-    });
-
-  return response.data.values || [];
-}
+// ========================================
+// DUPLICATE CHECK
+// ========================================
 
 function normalizeNumber(number) {
-  return String(number || "").replace(/\D/g, "");
+  return String(number || "")
+    .replace(/\D/g, "");
 }
 
 async function checkNumber(
@@ -90,16 +156,24 @@ async function checkNumber(
   columnIndex,
   number
 ) {
-  const rows = await getRows(sheetName, range);
-  const target = normalizeNumber(number);
+  const rows =
+    await getRows(sheetName, range);
+
+  const target =
+    normalizeNumber(number);
 
   if (!target) return false;
 
   for (let i = 1; i < rows.length; i++) {
     const saved =
-      normalizeNumber(rows[i][columnIndex]);
+      normalizeNumber(
+        rows[i][columnIndex]
+      );
 
-    if (saved && saved === target) {
+    if (
+      saved &&
+      saved === target
+    ) {
       return true;
     }
   }
@@ -143,12 +217,41 @@ async function warehouseExists(number) {
   );
 }
 
+// ========================================
+// READ ALL APPLICATION TYPES
+// ========================================
+
 async function getApplications() {
   return getRows(
     "Franchise_Applications",
     "A:T"
   );
 }
+
+async function getSuppliers() {
+  return getRows(
+    "General_Suppliers",
+    "A:Q"
+  );
+}
+
+async function getTransports() {
+  return getRows(
+    "Transport_Partners",
+    "A:T"
+  );
+}
+
+async function getWarehouses() {
+  return getRows(
+    "Warehouse_Truck_Adda",
+    "A:V"
+  );
+}
+
+// ========================================
+// UPDATE ENGAGEMENT
+// ========================================
 
 async function updateEngagement(
   rowNumber,
@@ -161,13 +264,71 @@ async function updateEngagement(
       `Franchise_Applications!R${rowNumber}:T${rowNumber}`,
     valueInputOption: "USER_ENTERED",
     requestBody: {
-      values: [
-        [
-          stage,
-          new Date().toLocaleString(),
-          nextDate
-        ]
-      ]
+      values: [[
+        stage,
+        new Date().toLocaleString(),
+        nextDate
+      ]]
+    }
+  });
+}
+
+async function updateSupplierEngagement(
+  rowNumber,
+  stage,
+  nextDate
+) {
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: config.GOOGLE_SHEET_ID,
+    range:
+      `General_Suppliers!N${rowNumber}:P${rowNumber}`,
+    valueInputOption: "USER_ENTERED",
+    requestBody: {
+      values: [[
+        stage,
+        new Date().toLocaleString(),
+        nextDate
+      ]]
+    }
+  });
+}
+
+async function updateTransportEngagement(
+  rowNumber,
+  stage,
+  nextDate
+) {
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: config.GOOGLE_SHEET_ID,
+    range:
+      `Transport_Partners!Q${rowNumber}:S${rowNumber}`,
+    valueInputOption: "USER_ENTERED",
+    requestBody: {
+      values: [[
+        stage,
+        new Date().toLocaleString(),
+        nextDate
+      ]]
+    }
+  });
+}
+
+async function updateWarehouseEngagement(
+  rowNumber,
+  stage,
+  nextDate
+) {
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: config.GOOGLE_SHEET_ID,
+    range:
+      `Warehouse_Truck_Adda!S${rowNumber}:U${rowNumber}`,
+    valueInputOption: "USER_ENTERED",
+    requestBody: {
+      values: [[
+        stage,
+        new Date().toLocaleString(),
+        nextDate
+      ]]
     }
   });
 }
@@ -180,9 +341,15 @@ module.exports = {
   appendTransport,
   appendWarehouse,
   getApplications,
+  getSuppliers,
+  getTransports,
+  getWarehouses,
   numberExists,
   supplierExists,
   transportExists,
   warehouseExists,
-  updateEngagement
+  updateEngagement,
+  updateSupplierEngagement,
+  updateTransportEngagement,
+  updateWarehouseEngagement
 };
