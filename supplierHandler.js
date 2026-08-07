@@ -19,14 +19,52 @@ const supplierFields = [
   "companyName",
   "contactPerson",
   "mobile",
-  "city",
   "province",
+  "city",
   "cnic",
   "governmentLicence",
   "category",
   "pastProjects",
   "additionalDetails"
 ];
+
+const provinceMap = {
+  "1": "Punjab",
+  "2": "Sindh",
+  "3": "Khyber Pakhtunkhwa (KPK)",
+  "4": "Balochistan",
+  "5": "Azad Jammu & Kashmir (AJK)",
+  "6": "Gilgit-Baltistan",
+  "7": "Islamabad Capital Territory"
+};
+
+const categoryMap = {
+  "1": "Printing Material",
+  "2": "Packaging Material",
+  "3": "Courier Supplies",
+  "4": "Uniforms / Clothing",
+  "5": "Stationery",
+  "6": "IT Equipment",
+  "7": "Furniture",
+  "8": "Vehicle / Transport Supplies",
+  "9": "Other"
+};
+
+function convertAnswer(field, answer) {
+
+  const value =
+    String(answer || "").trim();
+
+  if (field === "province") {
+    return provinceMap[value] || value;
+  }
+
+  if (field === "category") {
+    return categoryMap[value] || value;
+  }
+
+  return value;
+}
 
 function startSupplier(number, lang = "en") {
 
@@ -42,7 +80,8 @@ function startSupplier(number, lang = "en") {
 
 function isSupplierRegistering(number) {
 
-  const supplier = suppliers.get(number);
+  const supplier =
+    suppliers.get(number);
 
   if (!supplier) {
     return false;
@@ -61,12 +100,14 @@ function isSupplierRegistering(number) {
 
 async function handleSupplier(number, answer) {
 
-  const supplier = suppliers.get(number);
+  const supplier =
+    suppliers.get(number);
 
   if (!supplier) {
     return {
       completed: false,
-      reply: "Supplier registration not found."
+      reply:
+        "Supplier registration not found."
     };
   }
 
@@ -92,7 +133,8 @@ async function handleSupplier(number, answer) {
   const field =
     supplierFields[supplier.step];
 
-  supplier.data[field] = answer;
+  supplier.data[field] =
+    convertAnswer(field, answer);
 
   if (field === "mobile") {
 
@@ -132,8 +174,8 @@ async function handleSupplier(number, answer) {
       data.companyName || "",
       data.contactPerson || "",
       data.mobile || "",
-      data.city || "",
       data.province || "",
+      data.city || "",
       data.cnic || "",
       data.governmentLicence || "",
       data.category || "",
