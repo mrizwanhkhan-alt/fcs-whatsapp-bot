@@ -1,6 +1,5 @@
 const suppliers = new Map();
 
-
 const supplierQuestions = {
 
   en: [
@@ -11,9 +10,17 @@ const supplierQuestions = {
 
     "What is your Mobile / WhatsApp Number?",
 
-    "Which City are you operating from?",
+    `Select your Province / Region:
 
-    "Which Province are you operating from?",
+1️⃣ Punjab
+2️⃣ Sindh
+3️⃣ Khyber Pakhtunkhwa (KPK)
+4️⃣ Balochistan
+5️⃣ Azad Jammu & Kashmir (AJK)
+6️⃣ Gilgit-Baltistan
+7️⃣ Islamabad Capital Territory`,
+
+    "Which City are you operating from?",
 
     "What is your CNIC Number?",
 
@@ -31,13 +38,10 @@ const supplierQuestions = {
 8️⃣ Vehicle / Transport Supplies
 9️⃣ Other`,
 
-    "Please provide details of your past projects / previous work?",
+    "Please provide details of your past projects / previous work.",
 
     "Any further additional details?"
-
   ],
-
-
 
   ur: [
 
@@ -47,9 +51,17 @@ const supplierQuestions = {
 
     "آپ کا موبائل / واٹس ایپ نمبر کیا ہے؟",
 
-    "آپ کس شہر میں کام کر رہے ہیں؟",
+    `اپنا صوبہ / علاقہ منتخب کریں:
 
-    "آپ کس صوبے میں کام کر رہے ہیں؟",
+1️⃣ پنجاب
+2️⃣ سندھ
+3️⃣ خیبر پختونخوا
+4️⃣ بلوچستان
+5️⃣ آزاد جموں و کشمیر
+6️⃣ گلگت بلتستان
+7️⃣ اسلام آباد`,
+
+    "آپ کس شہر میں کام کر رہے ہیں؟",
 
     "آپ کا شناختی کارڈ نمبر کیا ہے؟",
 
@@ -67,20 +79,13 @@ const supplierQuestions = {
 8️⃣ گاڑیوں / ٹرانسپورٹ سپلائز
 9️⃣ دیگر`,
 
-    "اپنے سابقہ پروجیکٹس / کام کی تفصیلات فراہم کریں؟",
+    "اپنے سابقہ پروجیکٹس / کام کی تفصیلات فراہم کریں۔",
 
     "مزید اضافی معلومات؟"
-
   ]
-
 };
 
-
-
 module.exports = {
-
   suppliers,
-
   supplierQuestions
-
 };
