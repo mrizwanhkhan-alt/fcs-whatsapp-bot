@@ -106,8 +106,7 @@ async function handleSupplier(number, answer) {
   if (!supplier) {
     return {
       completed: false,
-      reply:
-        "Supplier registration not found."
+      reply: "Supplier registration not found."
     };
   }
 
@@ -168,8 +167,15 @@ async function handleSupplier(number, answer) {
     const supplierNumber =
       await generateApplicationNumber();
 
+    const now = new Date();
+
+    const nextFollowUp = new Date(now);
+    nextFollowUp.setDate(
+      nextFollowUp.getDate() + 7
+    );
+
     await appendSupplier([
-      new Date().toLocaleString(),
+      now.toLocaleString(),
       supplierNumber,
       data.companyName || "",
       data.contactPerson || "",
@@ -181,7 +187,11 @@ async function handleSupplier(number, answer) {
       data.category || "",
       data.pastProjects || "",
       data.additionalDetails || "",
-      "Received"
+      "Received",
+      "Registration Submitted",
+      now.toLocaleString(),
+      nextFollowUp.toLocaleDateString(),
+      ""
     ]);
 
     registerUser(
