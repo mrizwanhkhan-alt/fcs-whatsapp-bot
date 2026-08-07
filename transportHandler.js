@@ -1,12 +1,12 @@
 const {
-  warehouses,
-  warehouseQuestions
-} = require("./warehouse");
+  transports,
+  transportQuestions
+} = require("./transport");
 
 const {
-  appendWarehouse,
+  appendTransport,
   generateApplicationNumber,
-  warehouseExists
+  transportExists
 } = require("./googleSheets");
 
 const {
@@ -15,7 +15,7 @@ const {
 
 const SESSION_TIMEOUT = 10 * 60 * 1000;
 
-const warehouseFields = [
+const transportFields = [
   "companyName",
   "contactPerson",
   "mobile",
@@ -23,12 +23,10 @@ const warehouseFields = [
   "province",
   "cnic",
   "governmentRegistration",
-  "facilityType",
-  "facilityCategory",
-  "capacity",
-  "truckCapacity",
-  "loadingFacility",
-  "address",
+  "partnerType",
+  "vehicleTypes",
+  "vehicleCount",
+  "routes",
   "pastProjects",
   "additionalDetails"
 ];
@@ -43,19 +41,24 @@ const provinceMap = {
   "7": "Islamabad Capital Territory"
 };
 
-const facilityTypeMap = {
-  "1": "Warehouse",
-  "2": "Truck Adda",
-  "3": "Both Warehouse & Truck Adda"
+const partnerTypeMap = {
+  "1": "Transport Company",
+  "2": "Fleet Owner",
+  "3": "Truck / Cargo Provider",
+  "4": "Car / Van Provider",
+  "5": "Other"
 };
 
-const facilityCategoryMap = {
-  "1": "General Storage Warehouse",
-  "2": "E-commerce Fulfillment Warehouse",
-  "3": "Cold Storage",
-  "4": "Industrial / Commercial Warehouse",
-  "5": "Open Yard / Truck Parking",
-  "6": "Other"
+const vehicleTypeMap = {
+  "1": "Car",
+  "2": "Van",
+  "3": "Bike",
+  "4": "Loader Rickshaw",
+  "5": "Suzuki / Pickup",
+  "6": "Shehzore / Mazda",
+  "7": "Truck",
+  "8": "Container",
+  "9": "Other"
 };
 
 function convertAnswer(field, answer) {
@@ -65,125 +68,108 @@ function convertAnswer(field, answer) {
     return provinceMap[value] || value;
   }
 
-  if (field === "facilityType") {
-    return facilityTypeMap[value] || value;
+  if (field === "partnerType") {
+    return partnerTypeMap[value] || value;
   }
 
-  if (field === "facilityCategory") {
-    return facilityCategoryMap[value] || value;
-  }
-
-  if (field === "loadingFacility") {
-    const lower = value.toLowerCase();
-
-    if (
-      lower === "yes" ||
-      value === "ہاں" ||
-      value === "1"
-    ) {
-      return "Yes";
-    }
-
-    if (
-      lower === "no" ||
-      value === "نہیں" ||
-      value === "2"
-    ) {
-      return "No";
-    }
+  if (field === "vehicleTypes") {
+    return value
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .map((item) => vehicleTypeMap[item] || item)
+      .join(", ");
   }
 
   return value;
 }
 
-function startWarehouse(number, lang = "en") {
-  warehouses.set(number, {
+function startTransport(number, lang = "en") {
+  transports.set(number, {
     step: 0,
     data: {},
     lang,
     lastActivity: Date.now()
   });
 
-  return warehouseQuestions[lang][0];
+  return transportQuestions[lang][0];
 }
 
-function isWarehouseRegistering(number) {
-  const warehouse = warehouses.get(number);
+function isTransportRegistering(number) {
+  const transport = transports.get(number);
 
-  if (!warehouse) {
-    return false;
-  }
+  if (!transport) return false;
 
   if (
-    Date.now() - warehouse.lastActivity >
+    Date.now() - transport.lastActivity >
     SESSION_TIMEOUT
   ) {
-    warehouses.delete(number);
+    transports.delete(number);
     return false;
   }
 
   return true;
 }
 
-async function handleWarehouse(number, answer) {
-  const warehouse = warehouses.get(number);
+async function handleTransport(number, answer) {
+  const transport = transports.get(number);
 
-  if (!warehouse) {
+  if (!transport) {
     return {
       completed: false,
-      reply: "Warehouse registration not found."
+      reply: "Transport registration not found."
     };
   }
 
   if (
-    Date.now() - warehouse.lastActivity >
+    Date.now() - transport.lastActivity >
     SESSION_TIMEOUT
   ) {
-    warehouses.delete(number);
+    transports.delete(number);
 
     return {
       completed: true,
       expired: true,
       reply:
-        warehouse.lang === "ur"
-          ? "⏰ آپ کی ویئر ہاؤس / ٹرک اڈہ رجسٹریشن 10 منٹ کی غیر فعالیت کی وجہ سے ختم ہو گئی ہے۔ براہِ کرم دوبارہ شروع کریں۔"
-          : "⏰ Your Warehouse / Truck Adda Registration expired after 10 minutes of inactivity. Please start again."
+        transport.lang === "ur"
+          ? "⏰ آپ کی ٹرانسپورٹ رجسٹریشن 10 منٹ کی غیر فعالیت کی وجہ سے ختم ہو گئی ہے۔ براہِ کرم دوبارہ شروع کریں۔"
+          : "⏰ Your Transport Registration expired after 10 minutes of inactivity. Please start again."
     };
   }
 
-  warehouse.lastActivity = Date.now();
+  transport.lastActivity = Date.now();
 
   const field =
-    warehouseFields[warehouse.step];
+    transportFields[transport.step];
 
-  warehouse.data[field] =
+  transport.data[field] =
     convertAnswer(field, answer);
 
   if (field === "mobile") {
     const alreadyExists =
-      await warehouseExists(answer);
+      await transportExists(answer);
 
     if (alreadyExists) {
-      warehouses.delete(number);
+      transports.delete(number);
 
       return {
         completed: true,
         duplicate: true,
         reply:
-          warehouse.lang === "ur"
-            ? "⚠️ اس موبائل نمبر سے ویئر ہاؤس / ٹرک اڈہ رجسٹریشن پہلے ہی جمع ہو چکی ہے۔"
-            : "⚠️ A Warehouse / Truck Adda Registration has already been submitted using this mobile number."
+          transport.lang === "ur"
+            ? "⚠️ اس موبائل نمبر سے ٹرانسپورٹ پارٹنر رجسٹریشن پہلے ہی جمع ہو چکی ہے۔"
+            : "⚠️ A Transport Partner Registration has already been submitted using this mobile number."
       };
     }
   }
 
-  warehouse.step++;
+  transport.step++;
 
   if (
-    warehouse.step >=
-    warehouseQuestions[warehouse.lang].length
+    transport.step >=
+    transportQuestions[transport.lang].length
   ) {
-    const data = warehouse.data;
+    const data = transport.data;
 
     const partnerId =
       await generateApplicationNumber();
@@ -195,7 +181,7 @@ async function handleWarehouse(number, answer) {
       nextFollowUp.getDate() + 7
     );
 
-    await appendWarehouse([
+    await appendTransport([
       now.toLocaleString(),
       partnerId,
       data.companyName || "",
@@ -205,12 +191,10 @@ async function handleWarehouse(number, answer) {
       data.province || "",
       data.cnic || "",
       data.governmentRegistration || "",
-      data.facilityType || "",
-      data.facilityCategory || "",
-      data.capacity || "",
-      data.truckCapacity || "",
-      data.loadingFacility || "",
-      data.address || "",
+      data.partnerType || "",
+      data.vehicleTypes || "",
+      data.vehicleCount || "",
+      data.routes || "",
       data.pastProjects || "",
       data.additionalDetails || "",
       "Received",
@@ -223,21 +207,21 @@ async function handleWarehouse(number, answer) {
     registerUser(
       number,
       data.mobile,
-      "Warehouse",
+      "Transport",
       partnerId
     );
 
-    warehouses.delete(number);
+    transports.delete(number);
 
     return {
       completed: true,
       data,
       referenceId: partnerId,
       reply:
-        warehouse.lang === "ur"
+        transport.lang === "ur"
           ? `✅ شکریہ!
 
-آپ کی ویئر ہاؤس / ٹرک اڈہ رجسٹریشن موصول ہو گئی ہے۔
+آپ کی ٹرانسپورٹ پارٹنر رجسٹریشن موصول ہو گئی ہے۔
 
 پارٹنر آئی ڈی:
 ${partnerId}
@@ -245,7 +229,7 @@ ${partnerId}
 ہماری ٹیم آپ کی معلومات کا جائزہ لے گی اور آپ سے رابطہ کرے گی۔`
           : `✅ Thank you!
 
-Your Warehouse & Truck Adda Registration has been received.
+Your Transport & Vehicle Partner Registration has been received.
 
 Partner ID:
 ${partnerId}
@@ -254,19 +238,19 @@ Our team will review your details and contact you.`
     };
   }
 
-  warehouses.set(number, warehouse);
+  transports.set(number, transport);
 
   return {
     completed: false,
     reply:
-      warehouseQuestions[
-        warehouse.lang
-      ][warehouse.step]
+      transportQuestions[
+        transport.lang
+      ][transport.step]
   };
 }
 
 module.exports = {
-  startWarehouse,
-  isWarehouseRegistering,
-  handleWarehouse
+  startTransport,
+  isTransportRegistering,
+  handleTransport
 };
