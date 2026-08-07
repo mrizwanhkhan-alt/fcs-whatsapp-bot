@@ -44,9 +44,9 @@ const {
 } = require("./language");
 
 const {
-  isBlocked
+  isBlocked,
+  blockUser
 } = require("./blockedUsers");
-
 const {
   isRegistered,
   getRegisteredUser
