@@ -1,100 +1,74 @@
-// ==============================
-// FCS EXPRESS BLOCKED USERS SYSTEM
-// ==============================
-
-
 const blockedUsers = new Map();
-
 const abuseCounter = new Map();
-
-
-// Maximum warnings before blocking
 
 const MAX_ABUSE = 3;
 
-
-
-// Check if number is blocked
-
 function isBlocked(number) {
-
-  return blockedUsers.has(number);
-
+  return blockedUsers.has(String(number));
 }
 
-
-
-// Record abusive behaviour
-
 function recordAbuse(number) {
-
+  const key = String(number);
 
   let count =
-    abuseCounter.get(number) || 0;
-
+    abuseCounter.get(key) || 0;
 
   count++;
 
-
   abuseCounter.set(
-    number,
+    key,
     count
   );
 
-
-
   if (count >= MAX_ABUSE) {
-
-
     blockedUsers.set(
-      number,
+      key,
       {
-        reason: "Repeated abusive messages",
+        reason: "Repeated warnings",
         date: new Date().toLocaleString()
       }
     );
 
-
     return {
       blocked: true,
       message:
-        "This number has been restricted due to repeated inappropriate messages."
+        "This number has been restricted after repeated warnings."
     };
-
   }
-
-
 
   return {
     blocked: false,
     message:
-      "Please use respectful language. Our team is here to assist you."
+      `Warning ${count}/${MAX_ABUSE}`
   };
-
-
 }
 
+function blockUser(number, reason = "Manual block") {
+  const key = String(number);
 
+  blockedUsers.set(
+    key,
+    {
+      reason,
+      date: new Date().toLocaleString()
+    }
+  );
 
-// Manually unblock if required
+  return true;
+}
 
 function unblockUser(number) {
+  const key = String(number);
 
-  blockedUsers.delete(number);
+  blockedUsers.delete(key);
+  abuseCounter.delete(key);
 
-  abuseCounter.delete(number);
-
+  return true;
 }
 
-
-
-
 module.exports = {
-
   isBlocked,
-
   recordAbuse,
-
+  blockUser,
   unblockUser
-
 };
