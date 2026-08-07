@@ -11,6 +11,10 @@ const {
   generateApplicationNumber
 } = require("./googleSheets");
 
+const {
+  registerUser
+} = require("./registeredUsers");
+
 const fields = [
   "fullName",
   "fatherName",
@@ -28,6 +32,7 @@ const fields = [
 ];
 
 function startApplication(number) {
+
   const lang = getLanguage(number) || "en";
 
   applications.set(number, {
@@ -54,6 +59,7 @@ function isApplying(number) {
 }
 
 async function handleApplication(number, answer) {
+
   const app = applications.get(number);
   const lang = getLanguage(number) || "en";
 
@@ -68,12 +74,14 @@ async function handleApplication(number, answer) {
   }
 
   if (!app.duplicateChecked) {
+
     const alreadyApplied =
       await numberExists(String(number));
 
     app.duplicateChecked = true;
 
     if (alreadyApplied) {
+
       applications.delete(number);
 
       return {
@@ -81,15 +89,11 @@ async function handleApplication(number, answer) {
         duplicate: true,
         reply:
           lang === "ur"
-            ? `⚠️ ہمارے ریکارڈ کے مطابق اس واٹس ایپ نمبر سے پہلے ہی فرنچائز درخواست جمع کرائی جا چکی ہے۔
-
-اگر آپ کو اپنی درخواست کے بارے میں مدد درکار ہو تو ہماری فرنچائز ڈویلپمنٹ ٹیم سے رابطہ کریں۔
+            ? `⚠️ اس واٹس ایپ نمبر سے فرنچائز درخواست پہلے ہی جمع ہو چکی ہے۔
 
 📱 WhatsApp: +92 316 0034207
 📧 Email: franchise@fcsexpress.com.pk`
-            : `⚠️ Our records show that a franchise application has already been submitted using this WhatsApp number.
-
-If you need assistance with your application, please contact our Franchise Development Team.
+            : `⚠️ A Franchise Application has already been submitted using this WhatsApp number.
 
 📱 WhatsApp: +92 316 0034207
 📧 Email: franchise@fcsexpress.com.pk`
@@ -101,6 +105,7 @@ If you need assistance with your application, please contact our Franchise Devel
   app.step++;
 
   if (app.step >= questions[lang].length) {
+
     const data = app.data;
 
     const applicationNumber =
@@ -110,31 +115,38 @@ If you need assistance with your application, please contact our Franchise Devel
 
     const nextFollowUp = new Date(now);
     nextFollowUp.setDate(
-      nextFollowUp.getDate() + 3
+      nextFollowUp.getDate() + 15
     );
 
     await appendApplication([
-      now.toLocaleString(),             // A Date
-      applicationNumber,                // B Application No
-      data.fullName || "",              // C Full Name
-      data.fatherName || "",            // D Father Name
-      data.mobile || "",                // E Mobile
-      String(number),                   // F WhatsApp
-      data.cnic || "",                  // G CNIC
-      data.email || "",                 // H Email
-      data.province || "",              // I Province
-      data.city || "",                  // J City
-      data.area || "",                  // K Area / Tehsil
-      data.address || "",               // L Office / Shop Address
-      data.education || "",             // M Education
-      data.experience || "",            // N Business Experience
-      data.shop || "",                  // O Shop / Office Available
-      data.comments || "",              // P Comments
-      "Received",                       // Q Status
-      "Application Submitted",          // R Engagement Stage
-      now.toLocaleString(),             // S Last Message Sent
-      nextFollowUp.toLocaleDateString() // T Next Follow Up Date
+      now.toLocaleString(),
+      applicationNumber,
+      data.fullName || "",
+      data.fatherName || "",
+      data.mobile || "",
+      String(number),
+      data.cnic || "",
+      data.email || "",
+      data.province || "",
+      data.city || "",
+      data.area || "",
+      data.address || "",
+      data.education || "",
+      data.experience || "",
+      data.shop || "",
+      data.comments || "",
+      "Received",
+      "Application Submitted",
+      now.toLocaleString(),
+      nextFollowUp.toLocaleDateString()
     ]);
+
+    registerUser(
+      number,
+      data.mobile,
+      "Franchise",
+      applicationNumber
+    );
 
     applications.delete(number);
 
@@ -150,7 +162,7 @@ If you need assistance with your application, please contact our Franchise Devel
 
 درخواست نمبر: ${applicationNumber}
 
-ہماری فرنچائز ڈویلپمنٹ ٹیم آپ کی درخواست کا جائزہ لے گی اور جلد آپ سے رابطہ کرے گی۔
+ہماری ٹیم آپ کی درخواست کا جائزہ لے گی اور آپ سے رابطہ کرے گی۔
 
 👋 اللہ حافظ۔`
           : `🎉 Thank you!
@@ -159,7 +171,7 @@ Your FCS Express Franchise Application has been submitted successfully.
 
 Application No: ${applicationNumber}
 
-Our Franchise Development Team will review your application and contact you shortly.
+Our team will review your application and contact you.
 
 👋 Goodbye.`
     };
