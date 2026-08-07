@@ -19,19 +19,27 @@ const sheets = google.sheets({
 
 async function generateApplicationNumber() {
   const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  const letter = letters[Math.floor(Math.random() * letters.length)];
+  const letter =
+    letters[Math.floor(Math.random() * letters.length)];
   const digit = Math.floor(Math.random() * 10);
-  const numbers = Math.floor(10000000 + Math.random() * 90000000);
+  const numbers =
+    Math.floor(10000000 + Math.random() * 90000000);
 
   return letter + digit + "FCS" + numbers;
 }
 
 async function appendApplication(row) {
-  await sheets.spreadsheets.values.append({
+  const rows = await getApplications();
+  const nextRow = rows.length + 1;
+
+  await sheets.spreadsheets.values.update({
     spreadsheetId: config.GOOGLE_SHEET_ID,
-    range: "Franchise_Applications!A:T",
+    range:
+      `Franchise_Applications!A${nextRow}:T${nextRow}`,
     valueInputOption: "USER_ENTERED",
-    requestBody: { values: [row] }
+    requestBody: {
+      values: [row]
+    }
   });
 }
 
@@ -63,10 +71,11 @@ async function appendWarehouse(row) {
 }
 
 async function getRows(sheetName, range) {
-  const response = await sheets.spreadsheets.values.get({
-    spreadsheetId: config.GOOGLE_SHEET_ID,
-    range: `${sheetName}!${range}`
-  });
+  const response =
+    await sheets.spreadsheets.values.get({
+      spreadsheetId: config.GOOGLE_SHEET_ID,
+      range: `${sheetName}!${range}`
+    });
 
   return response.data.values || [];
 }
@@ -75,14 +84,20 @@ function normalizeNumber(number) {
   return String(number || "").replace(/\D/g, "");
 }
 
-async function checkNumber(sheetName, range, columnIndex, number) {
+async function checkNumber(
+  sheetName,
+  range,
+  columnIndex,
+  number
+) {
   const rows = await getRows(sheetName, range);
   const target = normalizeNumber(number);
 
   if (!target) return false;
 
   for (let i = 1; i < rows.length; i++) {
-    const saved = normalizeNumber(rows[i][columnIndex]);
+    const saved =
+      normalizeNumber(rows[i][columnIndex]);
 
     if (saved && saved === target) {
       return true;
@@ -142,7 +157,8 @@ async function updateEngagement(
 ) {
   await sheets.spreadsheets.values.update({
     spreadsheetId: config.GOOGLE_SHEET_ID,
-    range: `Franchise_Applications!R${rowNumber}:T${rowNumber}`,
+    range:
+      `Franchise_Applications!R${rowNumber}:T${rowNumber}`,
     valueInputOption: "USER_ENTERED",
     requestBody: {
       values: [
