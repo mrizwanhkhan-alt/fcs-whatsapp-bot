@@ -1,33 +1,19 @@
+
 const languages = new Map();
 
-
-// Set customer language
 function setLanguage(number, language) {
-
   languages.set(number, language);
-
 }
 
-
-// Get customer language
 function getLanguage(number) {
-
   return languages.get(number);
-
 }
 
-
-// Check language selected
 function hasLanguage(number) {
-
   return languages.has(number);
-
 }
 
-
-// First language selection menu
 function languageMenu() {
-
   return `🌍 Welcome to FCS Express Pakistan
 
 Assalam-o-Alaikum!
@@ -38,71 +24,59 @@ Please select your preferred language.
 
 1️⃣ English
 2️⃣ اردو`;
-
 }
 
-
-
-// Main menu
 function mainMenu(language) {
 
-
   if (language === "ur") {
-
-
-    return `🇵🇰 ایف سی ایس ایکسپریس پاکستان میں خوش آمدید
+    return `🇵🇰 FCS EXPRESS PAKISTAN
 
 السلام علیکم!
 
-میں غلام قادر، آپ کا ایف سی ایس اسسٹنٹ ہوں۔
+میں غلام قادر، آپ کا FCS Express ورچوئل اسسٹنٹ ہوں۔
 
-براہِ کرم نمبر منتخب کریں:
+براہِ کرم مطلوبہ سروس کا نمبر منتخب کریں:
 
-1️⃣ ایف سی ایس ایکسپریس کے بارے میں
+1️⃣ کمپنی کا تعارف
 2️⃣ ہمارا ملک گیر نیٹ ورک
-3️⃣ ہماری سروسز
-4️⃣ فرنچائز کے لیے درخواست دیں
-5️⃣ جنرل سپلائر / وینڈر رجسٹریشن
-6️⃣ ٹرانسپورٹ پارٹنر رجسٹریشن
-7️⃣ ویئر ہاؤس اور ٹرک اڈہ رجسٹریشن
+3️⃣ ہماری خدمات
+4️⃣ فری فرنچائز
+5️⃣ سٹی بزنس سینٹر
+6️⃣ ٹینڈرز اور وینڈر مواقع
+7️⃣ کیریئر اور ملازمتیں
 8️⃣ اکثر پوچھے جانے والے سوالات
-9️⃣ ایف سی ایس ایکسپریس کیوں؟
-🔟 رابطہ کریں`;
+9️⃣ رابطہ اور معاونت
+🔟 ایف سی ایس ایکسپریس کیوں منتخب کریں؟
 
+🌐 www.fcsexpress.com.pk`;
   }
 
-
-
-  return `🇵🇰 Welcome to FCS Express Pakistan
+  return `🇵🇰 FCS EXPRESS PAKISTAN
 
 Assalam-o-Alaikum!
 
-I am Ghulam Qadir, your FCS Express Assistant.
+I am Ghulam Qadir, your FCS Express Virtual Assistant.
 
-Please reply with a number:
+Please select the required service:
 
 1️⃣ About FCS Express
 2️⃣ Our Nationwide Network
 3️⃣ Our Services
-4️⃣ Apply for Franchise
-5️⃣ General Supplier / Vendor Registration
-6️⃣ Transport Partner Registration
-7️⃣ Warehouse & Truck Adda Registration
+4️⃣ Free Franchise
+5️⃣ City Business Center
+6️⃣ Tenders & Vendor Opportunities
+7️⃣ Career & Jobs
 8️⃣ Frequently Asked Questions
-9️⃣ Why Choose FCS Express
-🔟 Contact Us`;
+9️⃣ Contact & Support
+🔟 Why Choose FCS Express?
 
+🌐 www.fcsexpress.com.pk`;
 }
 
-
-
-
 module.exports = {
-
   setLanguage,
   getLanguage,
   hasLanguage,
   languageMenu,
   mainMenu
-
 };
