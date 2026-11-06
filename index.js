@@ -1,6 +1,7 @@
 
 const http = require("http");
 const https = require("https");
+
 const config = require("./config");
 const { getReply } = require("./openai");
 
@@ -26,9 +27,10 @@ const {
 } = require("./warehouseHandler");
 
 const { numberExists } = require("./googleSheets");
+
+const businessTender = require("./businessTenderHandler");
+
 const faq = require("./faq");
-const faqMode = new Map();
-const tenderMode = new Set();
 
 const {
   setLanguage,
@@ -39,15 +41,18 @@ const {
 } = require("./language");
 
 const { isBlocked } = require("./blockedUsers");
-const {
-  isRegistered,
-  getRegisteredUser
-} = require("./registeredUsers");
+
+const faqMode = new Set();
+const tenderMode = new Set();
 
 const PORT = config.PORT;
 const VERIFY_TOKEN = config.VERIFY_TOKEN;
 const PHONE_NUMBER_ID = config.PHONE_NUMBER_ID;
 const WHATSAPP_TOKEN = config.WHATSAPP_TOKEN;
+
+// =====================================
+// SEND WHATSAPP MESSAGE
+// =====================================
 
 function sendWhatsAppMessage(to, message) {
   if (!PHONE_NUMBER_ID || !WHATSAPP_TOKEN) {
@@ -62,11 +67,11 @@ function sendWhatsAppMessage(to, message) {
     type: "text",
     text: {
       preview_url: false,
-      body: message
+      body: String(message)
     }
   });
 
-  const req = https.request({
+  const request = https.request({
     hostname: "graph.facebook.com",
     port: 443,
     path: `/v21.0/${PHONE_NUMBER_ID}/messages`,
@@ -76,188 +81,100 @@ function sendWhatsAppMessage(to, message) {
       "Content-Type": "application/json",
       "Content-Length": Buffer.byteLength(data)
     }
-  }, res => {
-    let body = "";
-    res.on("data", chunk => body += chunk);
-    res.on("end", () => {
-      console.log("WhatsApp Response:", res.statusCode, body);
+  }, response => {
+    let result = "";
+
+    response.on("data", chunk => {
+      result += chunk.toString();
+    });
+
+    response.on("end", () => {
+      console.log(
+        "WhatsApp Response:",
+        response.statusCode,
+        result
+      );
     });
   });
 
-  req.on("error", err => console.error(err.message));
-  req.write(data);
-  req.end();
+  request.on("error", error => {
+    console.error("WhatsApp Error:", error.message);
+  });
+
+  request.write(data);
+  request.end();
 }
+
+// =====================================
+// FAQ MENU
+// =====================================
 
 function faqCategoryMenu(lang) {
-  return lang === "ur"
-    ? `❓ اکثر پوچھے جانے والے سوالات
+  if (lang === "ur") {
+    return `❓ اکثر پوچھے جانے والے سوالات
 
-1️⃣ فری فرنچائز
-2️⃣ ٹرانسپورٹ
-3️⃣ ویئر ہاؤس / ٹرک اڈہ
-4️⃣ سپلائر / وینڈر
+1. فرنچائز
+2. ٹرانسپورٹ
+3. ویئر ہاؤس / ٹرک اڈہ
+4. سپلائر / وینڈر
 
-مین مینو کے لیے 0 بھیجیں۔`
-    : `❓ Frequently Asked Questions
+مین مینو کے لیے 0 بھیجیں۔`;
+  }
 
-1️⃣ Free Franchise
-2️⃣ Transport
-3️⃣ Warehouse / Truck Adda
-4️⃣ Supplier / Vendor
+  return `❓ Frequently Asked Questions
 
-Reply 0 for Main Menu.`;
-}
-
-function businessCenterMessage(lang) {
-  return lang === "ur"
-    ? `🏢 FCS CITY BUSINESS CENTER
-
-سٹی بزنس سینٹر ایف سی ایس کا وسیع کاروباری ماڈل ہے۔
-
-• پارسل کلیکشن اور ڈیلیوری
-• فریٹ بکنگ اور ہینڈلنگ
-• متعلقہ فرنچائزز کے ساتھ کام
-• ایونٹس اور منظور شدہ خدمات
-• مستقبل کی FCS خدمات
-
-سیکیورٹی ڈپازٹ کمپنی پالیسی کے مطابق لازمی ہے۔
-
-اہلیت، درخواست اور تفصیلات:
-info@fcsexpress.com.pk
-
-مین مینو کے لیے 0 بھیجیں۔`
-    : `🏢 FCS CITY BUSINESS CENTER
-
-Business activities include:
-
-• Parcel collection and delivery
-• Freight booking and handling
-• Coordination with assigned franchises
-• Events and approved services
-• Future FCS services
-
-A security deposit is required according to company policy.
-
-Applications and details:
-info@fcsexpress.com.pk
+1. Franchise
+2. Transport
+3. Warehouse / Truck Adda
+4. Supplier / Vendor
 
 Reply 0 for Main Menu.`;
 }
 
-function tenderMenu(lang) {
-  return lang === "ur"
-    ? `📋 FCS EXPRESS TENDERS
-
-متعلقہ ٹینڈر منتخب کریں:
-
-1️⃣ جنرل آرڈر سپلائر
-2️⃣ ٹرانسپورٹ سروسز
-3️⃣ ویئر ہاؤس / ٹرک اڈہ
-
-شرکت کے لیے متعلقہ ٹینڈر کی خریداری ضروری ہے۔
-
-ٹینڈر کی شرائط اور خریداری:
-info@fcsexpress.com.pk
-
-مین مینو کے لیے 0 بھیجیں۔`
-    : `📋 FCS EXPRESS TENDERS
-
-Select the relevant tender:
-
-1️⃣ General Order Supplier
-2️⃣ Transport Services
-3️⃣ Warehouse / Truck Adda
-
-Purchase of the relevant tender is required.
-
-Tender terms and purchase information:
-info@fcsexpress.com.pk
-
-Reply 0 for Main Menu.`;
-}
-
-function tenderReply(lang, choice) {
-  const categories = {
-    "1": ["جنرل آرڈر سپلائر", "General Order Supplier"],
-    "2": ["ٹرانسپورٹ سروسز", "Transport Services"],
-    "3": ["ویئر ہاؤس / ٹرک اڈہ", "Warehouse / Truck Adda"]
-  };
-
-  if (!categories[choice]) return tenderMenu(lang);
-
-  const name = categories[choice][lang === "ur" ? 0 : 1];
-
-  return lang === "ur"
-    ? `📋 ${name}
-
-اس کیٹیگری میں شرکت کے لیے متعلقہ ٹینڈر خریدنا ہوگا۔
-
-دستیابی، شرائط اور خریداری:
-info@fcsexpress.com.pk
-
-واپس جانے کے لیے 0 بھیجیں۔`
-    : `📋 ${name}
-
-Purchase of the relevant tender is required to participate.
-
-For availability, terms and purchase:
-info@fcsexpress.com.pk
-
-Reply 0 to return to Main Menu.`;
-}
-
-function careerMessage(lang) {
-  return lang === "ur"
-    ? `💼 FCS EXPRESS CAREERS
-
-ملازمت کے مواقع کے لیے اپنی CV، نام، شہر اور مطلوبہ پوزیشن بھیجیں۔
-
-Email: info@fcsexpress.com.pk
-Subject: Career Application
-
-درخواست جمع کروانا ملازمت کی ضمانت نہیں۔
-
-مین مینو کے لیے 0 بھیجیں۔`
-    : `💼 FCS EXPRESS CAREERS
-
-For career opportunities, submit your CV, name, city and preferred position.
-
-Email: info@fcsexpress.com.pk
-Subject: Career Application
-
-Submitting an application does not guarantee employment.
-
-Reply 0 for Main Menu.`;
-}
+// =====================================
+// INFORMATION RESPONSES
+// =====================================
 
 function informationMessage(option, lang) {
   const ur = {
     "1": `🏢 ایف سی ایس ایکسپریس پاکستان
 
-ایف سی ایس ایکسپریس لاجسٹکس، کورئیر، ای کامرس، فریٹ اور ڈسٹری بیوشن کی خدمات فراہم کرنے کے لیے کام کر رہی ہے۔
+FCS Express Logistics & Transport
+ایک لاجسٹکس اور ٹرانسپورٹ کمپنی ہے۔
+
+ہم پارسل ڈیلیوری، ای کامرس، فریٹ، کارپوریٹ لاجسٹکس اور ڈسٹری بیوشن کے شعبوں میں کام کر رہے ہیں۔
 
 www.fcsexpress.com.pk`,
-    "2": `🌍 ہمارا ملک گیر نیٹ ورک
 
-7 نیشنل ڈسٹری بیوشن سینٹرز
-14 ریجنل ڈسٹری بیوشن سینٹرز
-170 سٹی ہبز
-2,530+ سروس پوائنٹ فرنچائزز
+    "2": `🌍 ایف سی ایس ملک گیر نیٹ ورک
+
+7 National Distribution Centers
+14 Regional Distribution Centers
+170 City Hubs
+2,530+ Service Point Franchises
 
 www.fcsexpress.com.pk`,
-    "3": `🚚 ہماری خدمات
 
-• پارسل ڈیلیوری
+    "3": `🚚 ایف سی ایس خدمات
+
+• پارسل کلیکشن اور ڈیلیوری
 • ای کامرس لاجسٹکس
-• کیش آن ڈیلیوری
-• فریٹ بکنگ
+• کیش آن ڈیلیوری (COD)
+• فریٹ بکنگ اور ہینڈلنگ
 • ویئر ہاؤسنگ
 • کارپوریٹ لاجسٹکس
 • ملک گیر ڈسٹری بیوشن
 
 www.fcsexpress.com.pk`,
-    "9": `📞 رابطہ اور معاونت
+
+    "7": `💼 کیریئر اور ملازمتیں
+
+اپنی CV، نام، شہر اور مطلوبہ پوزیشن ای میل کریں۔
+
+Email: info@fcsexpress.com.pk
+Subject: Career Application`,
+
+    "9": `📞 ایف سی ایس رابطہ
 
 FCS Express Pakistan
 Lahore, Pakistan
@@ -265,12 +182,13 @@ Lahore, Pakistan
 Office: 042 3246 2221
 Email: info@fcsexpress.com.pk
 Website: www.fcsexpress.com.pk`,
+
     "10": `⭐ ایف سی ایس ایکسپریس کیوں؟
 
 • ملک گیر لاجسٹکس نیٹ ورک
 • جدید ٹیکنالوجی
-• کاروباری مواقع
 • بین الاقوامی پلیٹ فارم
+• کاروباری مواقع
 • فرنچائز اور بزنس سپورٹ
 
 www.fcsexpress.com.pk`
@@ -279,10 +197,13 @@ www.fcsexpress.com.pk`
   const en = {
     "1": `🏢 ABOUT FCS EXPRESS
 
-FCS Express Pakistan works in logistics, courier services, e-commerce, freight and distribution.
+FCS Express Logistics & Transport is a logistics and transport company.
+
+Our business areas include parcel delivery, e-commerce, freight, corporate logistics and distribution.
 
 www.fcsexpress.com.pk`,
-    "2": `🌍 OUR NATIONWIDE NETWORK
+
+    "2": `🌍 FCS NATIONWIDE NETWORK
 
 7 National Distribution Centers
 14 Regional Distribution Centers
@@ -290,18 +211,27 @@ www.fcsexpress.com.pk`,
 2,530+ Service Point Franchises
 
 www.fcsexpress.com.pk`,
-    "3": `🚚 OUR SERVICES
 
-• Parcel Delivery
+    "3": `🚚 FCS SERVICES
+
+• Parcel Collection and Delivery
 • E-commerce Logistics
-• Cash on Delivery
-• Freight Booking
+• Cash on Delivery (COD)
+• Freight Booking and Handling
 • Warehousing
 • Corporate Logistics
 • Nationwide Distribution
 
 www.fcsexpress.com.pk`,
-    "9": `📞 CONTACT & SUPPORT
+
+    "7": `💼 CAREERS & JOBS
+
+Email your CV, name, city and desired position.
+
+Email: info@fcsexpress.com.pk
+Subject: Career Application`,
+
+    "9": `📞 CONTACT FCS EXPRESS
 
 FCS Express Pakistan
 Lahore, Pakistan
@@ -309,24 +239,314 @@ Lahore, Pakistan
 Office: 042 3246 2221
 Email: info@fcsexpress.com.pk
 Website: www.fcsexpress.com.pk`,
+
     "10": `⭐ WHY CHOOSE FCS EXPRESS?
 
 • Nationwide Logistics Network
 • Modern Technology
-• Business Opportunities
 • International Platform
+• Business Opportunities
 • Franchise and Business Support
 
 www.fcsexpress.com.pk`
   };
 
-  const message = (lang === "ur" ? ur : en)[option];
-  if (!message) return null;
+  const reply = (lang === "ur" ? ur : en)[option];
 
-  return message + (lang === "ur"
-    ? "\n\nمین مینو کے لیے 0 بھیجیں۔"
-    : "\n\nReply 0 for Main Menu.");
+  if (!reply) return null;
+
+  return reply + (
+    lang === "ur"
+      ? "\n\nمین مینو کے لیے 0 بھیجیں۔"
+      : "\n\nReply 0 for Main Menu."
+  );
 }
+
+// =====================================
+// HANDLE ONE INCOMING MESSAGE
+// =====================================
+
+async function processMessage(message) {
+  if (message.type !== "text") return;
+
+  const number = String(message.from || "");
+  const customerText = message.text?.body || "";
+  const text = customerText.trim();
+
+  if (!number || isBlocked(number)) return;
+
+  console.log("Customer:", number);
+  console.log("Message:", text);
+
+  // EXISTING FRANCHISE APPLICATION
+
+  if (isApplying(number)) {
+    const result = await handleApplication(
+      number,
+      customerText
+    );
+
+    sendWhatsAppMessage(number, result.reply);
+    return;
+  }
+
+  // EXISTING SUPPLIER REGISTRATION
+
+  if (isSupplierRegistering(number)) {
+    const result = await handleSupplier(
+      number,
+      customerText
+    );
+
+    sendWhatsAppMessage(number, result.reply);
+    return;
+  }
+
+  // EXISTING TRANSPORT REGISTRATION
+
+  if (isTransportRegistering(number)) {
+    const result = await handleTransport(
+      number,
+      customerText
+    );
+
+    sendWhatsAppMessage(number, result.reply);
+    return;
+  }
+
+  // EXISTING WAREHOUSE REGISTRATION
+
+  if (isWarehouseRegistering(number)) {
+    const result = await handleWarehouse(
+      number,
+      customerText
+    );
+
+    sendWhatsAppMessage(number, result.reply);
+    return;
+  }
+
+  // NEW BUSINESS CENTER / TENDER APPLICATION
+
+  if (businessTender.isActive(number)) {
+    const result = await businessTender.handle(
+      number,
+      customerText
+    );
+
+    if (result && result.reply) {
+      sendWhatsAppMessage(number, result.reply);
+    }
+
+    return;
+  }
+
+  // LANGUAGE SELECTION
+
+  if (!hasLanguage(number)) {
+    if (text === "1" || text === "2") {
+      const selected = text === "1" ? "en" : "ur";
+
+      setLanguage(number, selected);
+
+      sendWhatsAppMessage(
+        number,
+        mainMenu(selected)
+      );
+    } else {
+      sendWhatsAppMessage(
+        number,
+        languageMenu()
+      );
+    }
+
+    return;
+  }
+
+  const lang = getLanguage(number) || "en";
+
+  // MAIN MENU / RESET SUBMENUS
+
+  if (
+    text === "0" ||
+    text.toLowerCase() === "menu" ||
+    text.toLowerCase() === "main menu"
+  ) {
+    faqMode.delete(number);
+    tenderMode.delete(number);
+
+    sendWhatsAppMessage(
+      number,
+      mainMenu(lang)
+    );
+
+    return;
+  }
+
+  // FAQ SESSION
+
+  if (faqMode.has(number)) {
+    if (text === "8") {
+      sendWhatsAppMessage(
+        number,
+        faqCategoryMenu(lang)
+      );
+
+      return;
+    }
+
+    const categories = {
+      "1": "franchise",
+      "2": "transport",
+      "3": "warehouse",
+      "4": "supplier"
+    };
+
+    const category = categories[text];
+
+    const items = category
+      ? faq[lang]?.[category]
+      : null;
+
+    if (Array.isArray(items)) {
+      let reply = lang === "ur"
+        ? "❓ اکثر پوچھے جانے والے سوالات\n\n"
+        : "❓ Frequently Asked Questions\n\n";
+
+      items.forEach((item, index) => {
+        reply += `${index + 1}. ${item.question}\n\n${item.answer}\n\n`;
+      });
+
+      reply += lang === "ur"
+        ? "\nمین مینو کے لیے 0 بھیجیں۔"
+        : "\nReply 0 for Main Menu.";
+
+      sendWhatsAppMessage(number, reply);
+    } else {
+      sendWhatsAppMessage(
+        number,
+        faqCategoryMenu(lang)
+      );
+    }
+
+    return;
+  }
+
+  // TENDER SELECTION - 10 CATEGORIES
+
+  if (tenderMode.has(number)) {
+    if (/^(10|[1-9])$/.test(text)) {
+      tenderMode.delete(number);
+
+      const reply = businessTender.startTender(
+        number,
+        lang,
+        text
+      );
+
+      sendWhatsAppMessage(number, reply);
+    } else {
+      sendWhatsAppMessage(
+        number,
+        businessTender.tenderMenu(lang)
+      );
+    }
+
+    return;
+  }
+
+  // OPTION 4 - FREE FRANCHISE
+
+  if (text === "4") {
+    const alreadyApplied = await numberExists(number);
+
+    if (alreadyApplied) {
+      sendWhatsAppMessage(
+        number,
+        lang === "ur"
+          ? `آپ کی فرنچائز درخواست پہلے سے ریکارڈ میں موجود ہے۔
+
+مزید معلومات:
+info@fcsexpress.com.pk
+
+مین مینو کے لیے 0 بھیجیں۔`
+          : `Your franchise application is already recorded.
+
+For information:
+info@fcsexpress.com.pk
+
+Reply 0 for Main Menu.`
+      );
+
+      return;
+    }
+
+    const reply = startApplication(number);
+
+    sendWhatsAppMessage(number, reply);
+    return;
+  }
+
+  // OPTION 5 - CITY BUSINESS CENTER
+
+  if (text === "5") {
+    const reply = businessTender.startBusiness(
+      number,
+      lang
+    );
+
+    sendWhatsAppMessage(number, reply);
+    return;
+  }
+
+  // OPTION 6 - ALL 10 TENDERS
+
+  if (text === "6") {
+    tenderMode.add(number);
+
+    sendWhatsAppMessage(
+      number,
+      businessTender.tenderMenu(lang)
+    );
+
+    return;
+  }
+
+  // OPTION 8 - FAQ
+
+  if (text === "8") {
+    faqMode.add(number);
+
+    sendWhatsAppMessage(
+      number,
+      faqCategoryMenu(lang)
+    );
+
+    return;
+  }
+
+  // OTHER MAIN MENU OPTIONS
+
+  const info = informationMessage(text, lang);
+
+  if (info) {
+    sendWhatsAppMessage(number, info);
+    return;
+  }
+
+  // EXISTING AI ASSISTANT
+
+  const reply = await getReply(
+    number,
+    customerText
+  );
+
+  sendWhatsAppMessage(number, reply);
+}
+
+// =====================================
+// HTTP SERVER
+// =====================================
 
 const server = http.createServer((req, res) => {
   const url = new URL(
@@ -334,18 +554,39 @@ const server = http.createServer((req, res) => {
     `http://${req.headers.host || "localhost"}`
   );
 
-  if (req.method === "GET" && url.pathname === "/") {
-    res.writeHead(200, { "Content-Type": "text/plain" });
-    return res.end("FCS Express WhatsApp Bot Running");
+  // HOME / HEALTH CHECK
+
+  if (
+    req.method === "GET" &&
+    url.pathname === "/"
+  ) {
+    res.writeHead(200, {
+      "Content-Type": "text/plain"
+    });
+
+    return res.end(
+      "FCS Express WhatsApp Bot Running"
+    );
   }
 
-  if (req.method === "GET" && url.pathname === "/webhook") {
+  // META WEBHOOK VERIFICATION
+
+  if (
+    req.method === "GET" &&
+    url.pathname === "/webhook"
+  ) {
     const mode = url.searchParams.get("hub.mode");
     const token = url.searchParams.get("hub.verify_token");
     const challenge = url.searchParams.get("hub.challenge");
 
-    if (mode === "subscribe" && token === VERIFY_TOKEN) {
-      res.writeHead(200, { "Content-Type": "text/plain" });
+    if (
+      mode === "subscribe" &&
+      token === VERIFY_TOKEN
+    ) {
+      res.writeHead(200, {
+        "Content-Type": "text/plain"
+      });
+
       return res.end(challenge || "");
     }
 
@@ -353,216 +594,72 @@ const server = http.createServer((req, res) => {
     return res.end("Verification failed");
   }
 
-  if (req.method === "POST" && url.pathname === "/webhook") {
+  // META WHATSAPP WEBHOOK
+
+  if (
+    req.method === "POST" &&
+    url.pathname === "/webhook"
+  ) {
     let body = "";
 
-    req.on("data", chunk => body += chunk.toString());
+    req.on("data", chunk => {
+      body += chunk.toString();
+    });
 
     req.on("end", async () => {
-      res.writeHead(200, { "Content-Type": "text/plain" });
+      res.writeHead(200, {
+        "Content-Type": "text/plain"
+      });
+
       res.end("EVENT_RECEIVED");
 
       try {
         const data = JSON.parse(body);
-        const message =
-          data.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
 
-        if (!message || message.type !== "text") return;
+        const messages = (data.entry || []).flatMap(
+          entry => (entry.changes || []).flatMap(
+            change => change.value?.messages || []
+          )
+        );
 
-        const number = String(message.from);
-        const customerText = message.text?.body || "";
-        const text = customerText.trim();
-        const lower = text.toLowerCase();
-
-        if (isBlocked(number)) return;
-
-        const lang = getLanguage(number) || "en";
-
-        // Continue applications already in progress.
-        if (isApplying(number)) {
-          const result = await handleApplication(number, customerText);
-          sendWhatsAppMessage(number, result.reply);
-          return;
-        }
-
-        // Preserve previously started vendor applications.
-        if (isSupplierRegistering(number)) {
-          const result = await handleSupplier(number, customerText);
-          sendWhatsAppMessage(number, result.reply);
-          return;
-        }
-
-        if (isTransportRegistering(number)) {
-          const result = await handleTransport(number, customerText);
-          sendWhatsAppMessage(number, result.reply);
-          return;
-        }
-
-        if (isWarehouseRegistering(number)) {
-          const result = await handleWarehouse(number, customerText);
-          sendWhatsAppMessage(number, result.reply);
-          return;
-        }
-
-        // Allow registered applicants to view information,
-        // but do not create another franchise application.
-        if (isRegistered(number)) {
-          const user = getRegisteredUser(number);
-          if (user) {
-            console.log("Registered applicant:", number);
-          }
-        }
-
-        // Language selection.
-        if (!hasLanguage(number)) {
-          if (text === "1" || text === "2") {
-            const selected = text === "1" ? "en" : "ur";
-            setLanguage(number, selected);
-            sendWhatsAppMessage(number, mainMenu(selected));
-          } else {
-            sendWhatsAppMessage(number, languageMenu());
-          }
-          return;
-        }
-
-        // Global return to main menu.
-        if (
-          text === "0" ||
-          lower === "menu" ||
-          lower === "main menu"
-        ) {
-          faqMode.delete(number);
-          tenderMode.delete(number);
-          sendWhatsAppMessage(number, mainMenu(lang));
-          return;
-        }
-
-        // FAQ session.
-        if (faqMode.has(number)) {
-          if (text === "8") {
-            sendWhatsAppMessage(number, faqCategoryMenu(lang));
-            return;
-          }
-
-          const categories = {
-            "1": "franchise",
-            "2": "transport",
-            "3": "warehouse",
-            "4": "supplier"
-          };
-
-          const category = categories[text];
-
-          if (category && Array.isArray(faq[lang]?.[category])) {
-            let reply = lang === "ur"
-              ? "❓ اکثر پوچھے جانے والے سوالات\n\n"
-              : "❓ Frequently Asked Questions\n\n";
-
-            faq[lang][category].forEach((item, i) => {
-              reply += `${i + 1}. ${item.question}\n\n${item.answer}\n\n`;
-            });
-
-            reply += lang === "ur"
-              ? "مین مینو کے لیے 0 بھیجیں۔"
-              : "Reply 0 for Main Menu.";
-
-            sendWhatsAppMessage(number, reply);
-            return;
-          }
-
-          sendWhatsAppMessage(number, faqCategoryMenu(lang));
-          return;
-        }
-
-        // Tender category session.
-        if (tenderMode.has(number)) {
-          if (text === "6") {
-            sendWhatsAppMessage(number, tenderMenu(lang));
-          } else {
-            sendWhatsAppMessage(number, tenderReply(lang, text));
-          }
-          return;
-        }
-
-        // Free Franchise with existing Google Sheets check.
-        if (text === "4") {
-          const alreadyApplied = await numberExists(number);
-
-          if (alreadyApplied || isRegistered(number)) {
-            sendWhatsAppMessage(
-              number,
-              lang === "ur"
-                ? `آپ کی درخواست پہلے ہی ریکارڈ میں موجود ہے۔
-
-مزید معلومات:
-info@fcsexpress.com.pk
-
-مین مینو کے لیے 0 بھیجیں۔`
-                : `Your application is already recorded.
-
-For information:
-info@fcsexpress.com.pk
-
-Reply 0 for Main Menu.`
+        for (const message of messages) {
+          try {
+            await processMessage(message);
+          } catch (error) {
+            console.error(
+              "Message Processing Error:",
+              error
             );
-            return;
           }
-
-          const reply = startApplication(number);
-          sendWhatsAppMessage(number, reply);
-          return;
         }
-
-        // City Business Center.
-        if (text === "5") {
-          sendWhatsAppMessage(number, businessCenterMessage(lang));
-          return;
-        }
-
-        // Tenders.
-        if (text === "6") {
-          tenderMode.add(number);
-          sendWhatsAppMessage(number, tenderMenu(lang));
-          return;
-        }
-
-        // Career.
-        if (text === "7") {
-          sendWhatsAppMessage(number, careerMessage(lang));
-          return;
-        }
-
-        // FAQs.
-        if (text === "8") {
-          faqMode.set(number, true);
-          sendWhatsAppMessage(number, faqCategoryMenu(lang));
-          return;
-        }
-
-        // Other information options.
-        const info = informationMessage(text, lang);
-        if (info) {
-          sendWhatsAppMessage(number, info);
-          return;
-        }
-
-        // Existing AI assistant.
-        const reply = await getReply(number, customerText);
-        sendWhatsAppMessage(number, reply);
-
       } catch (error) {
-        console.error("Webhook Error:", error);
+        console.error(
+          "Webhook Error:",
+          error
+        );
       }
     });
 
     return;
   }
 
-  res.writeHead(404, { "Content-Type": "text/plain" });
+  // NOT FOUND
+
+  res.writeHead(404, {
+    "Content-Type": "text/plain"
+  });
+
   res.end("Not Found");
 });
 
+// =====================================
+// START SERVER
+// =====================================
+
 server.listen(PORT, "0.0.0.0", () => {
-  console.log("FCS Express WhatsApp Bot Started");
+  console.log(
+    "FCS Express WhatsApp Bot Started"
+  );
+
   console.log("Port:", PORT);
 });
