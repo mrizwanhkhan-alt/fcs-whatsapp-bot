@@ -356,3 +356,4 @@ module.exports = {
   handle,
   isActive: number => sessions.has(number)
 };
+
