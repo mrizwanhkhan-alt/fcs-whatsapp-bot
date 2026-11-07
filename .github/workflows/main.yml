@@ -1,0 +1,23 @@
+
+name: FCS WhatsApp Calling Setup
+
+on:
+  workflow_dispatch:
+
+jobs:
+  calling-setup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Run Calling Setup
+        env:
+          PHONE_NUMBER_ID: ${{ secrets.PHONE_NUMBER_ID }}
+          WHATSAPP_TOKEN: ${{ secrets.WHATSAPP_TOKEN }}
+        run: node -e "require('./callingSetup').enableCalling()"
