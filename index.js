@@ -56,7 +56,9 @@ const VERIFY_TOKEN = config.VERIFY_TOKEN;
 const PHONE_NUMBER_ID = config.PHONE_NUMBER_ID;
 const WHATSAPP_TOKEN = config.WHATSAPP_TOKEN;
 
-// SEND WHATSAPP MESSAGE
+// =====================================
+// WHATSAPP MESSAGE SENDING
+// =====================================
 
 function sendWhatsAppMessage(to, message) {
   if (!PHONE_NUMBER_ID || !WHATSAPP_TOKEN) {
@@ -109,7 +111,44 @@ function sendWhatsAppMessage(to, message) {
   request.end();
 }
 
+// =====================================
+// CALLING WEBHOOK EVENT HANDLER
+// =====================================
+
+// This handler records call signaling events.
+// It does not answer, initiate or transmit audio calls.
+// A separate SIP/WebRTC calling integration is required.
+
+function handleCallingEvent(call) {
+  if (!call || typeof call !== "object") return;
+
+  const event = {
+    callId: call.id || null,
+    from: call.from || null,
+    to: call.to || null,
+    event: call.event || null,
+    status: call.status || null,
+    direction: call.direction || null,
+    timestamp: new Date().toISOString()
+  };
+
+  console.log(
+    "FCS Calling Event:",
+    JSON.stringify(event)
+  );
+
+  if (call.event === "connect") {
+    console.log("Incoming call connection requested");
+  }
+
+  if (call.event === "terminate") {
+    console.log("Call termination event received");
+  }
+}
+
+// =====================================
 // FAQ MENU
+// =====================================
 
 function faqCategoryMenu(lang) {
   if (lang === "ur") {
@@ -133,7 +172,9 @@ function faqCategoryMenu(lang) {
 Reply 0 for Main Menu.`;
 }
 
+// =====================================
 // INFORMATION RESPONSES
+// =====================================
 
 function informationMessage(option, lang) {
   const ur = {
@@ -248,7 +289,9 @@ www.fcsexpress.com.pk`
   );
 }
 
-// HANDLE INCOMING MESSAGE
+// =====================================
+// HANDLE INCOMING MESSAGES
+// =====================================
 
 async function processMessage(message) {
   const number = String(message.from || "");
@@ -400,7 +443,7 @@ async function processMessage(message) {
 
   const lang = getLanguage(number) || "en";
 
-  // MAIN MENU / RESET SUBMENUS
+  // MAIN MENU
 
   if (
     text === "0" ||
@@ -588,11 +631,18 @@ Reply 0 for Main Menu.`
   sendWhatsAppMessage(number, reply);
 }
 
+// =====================================
 // HTTP SERVER
+// =====================================
 
 const server = http.createServer((req, res) => {
+
   // ADMIN DASHBOARD
-  if (req.method === "GET" && adminDashboard(req, res)) {
+
+  if (
+    req.method === "GET" &&
+    adminDashboard(req, res)
+  ) {
     return;
   }
 
@@ -641,50 +691,87 @@ const server = http.createServer((req, res) => {
     return res.end("Verification failed");
   }
 
-  // META WHATSAPP WEBHOOK
+  // META WEBHOOK: MESSAGES + CALLS
 
   if (
     req.method === "POST" &&
     url.pathname === "/webhook"
   ) {
     let body = "";
+    let tooLarge = false;
 
     req.on("data", chunk => {
+      if (tooLarge) return;
+
       body += chunk.toString();
+
+      if (Buffer.byteLength(body) > 1024 * 1024) {
+        tooLarge = true;
+        res.writeHead(413);
+        res.end("Payload Too Large");
+      }
     });
 
     req.on("end", async () => {
+      if (tooLarge) return;
+
+      let data;
+
+      try {
+        data = JSON.parse(body);
+      } catch (error) {
+        res.writeHead(400);
+        res.end("Invalid JSON");
+        return;
+      }
+
       res.writeHead(200, {
         "Content-Type": "text/plain"
       });
-
       res.end("EVENT_RECEIVED");
 
       try {
-        const data = JSON.parse(body);
+        for (const entry of data.entry || []) {
+          for (const change of entry.changes || []) {
+            const value = change.value || {};
 
-        const messages = (data.entry || []).flatMap(
-          entry => (entry.changes || []).flatMap(
-            change => change.value?.messages || []
-          )
-        );
+            // CALLING EVENTS
 
-        for (const message of messages) {
-          try {
-            await processMessage(message);
-          } catch (error) {
-            console.error(
-              "Message Processing Error:",
-              error
-            );
+            for (const call of value.calls || []) {
+              try {
+                handleCallingEvent(call);
+              } catch (error) {
+                console.error(
+                  "Calling Event Error:",
+                  error.message
+                );
+              }
+            }
+
+            // EXISTING WHATSAPP MESSAGES
+
+            for (const message of value.messages || []) {
+              try {
+                await processMessage(message);
+              } catch (error) {
+                console.error(
+                  "Message Processing Error:",
+                  error
+                );
+              }
+            }
           }
         }
       } catch (error) {
         console.error(
-          "Webhook Error:",
+          "Webhook Processing Error:",
           error
         );
       }
+    });
+
+    req.on("error", error => {
+      console.error("Webhook Request Error:", error);
     });
 
     return;
@@ -699,7 +786,9 @@ const server = http.createServer((req, res) => {
   res.end("Not Found");
 });
 
+// =====================================
 // START SERVER
+// =====================================
 
 server.listen(PORT, "0.0.0.0", () => {
   console.log("FCS Express WhatsApp Bot Started");
