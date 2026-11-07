@@ -9,8 +9,7 @@
 body {
   font-family: Arial, sans-serif;
   background: #f5f5f5;
-  margin: 0;
-  padding: 24px;
+  padding: 20px;
 }
 .panel {
   max-width: 420px;
@@ -34,13 +33,8 @@ button {
   color: white;
   border: none;
 }
-button:disabled {
-  background: #aaa;
-}
-#status {
-  font-size: 14px;
-  color: #555;
-}
+button:disabled { background: #aaa; }
+#status { color: #555; }
 </style>
 </head>
 <body>
@@ -49,18 +43,35 @@ button:disabled {
   <h3>Staff Calling Panel</h3>
 
   <label>Customer WhatsApp Number</label>
-  <input
-    id="customer"
-    type="tel"
-    placeholder="923001234567"
-  >
+  <input id="customer" type="tel"
+    placeholder="923001234567">
 
   <button id="call" disabled>Call Customer</button>
   <button id="end" disabled>End Call</button>
 
-  <p id="status">
-    Calling integration pending.
-  </p>
+  <p id="status">Checking microphone...</p>
 </div>
+
+<script>
+(async function () {
+  const status = document.getElementById("status");
+
+  try {
+    const stream =
+      await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: false
+      });
+
+    status.textContent =
+      "Microphone ready. Calling connection pending.";
+
+    stream.getTracks().forEach(track => track.stop());
+  } catch (error) {
+    status.textContent =
+      "Microphone permission required: " + error.message;
+  }
+})();
+</script>
 </body>
 </html>
