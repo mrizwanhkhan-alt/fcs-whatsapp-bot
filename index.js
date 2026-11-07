@@ -26,10 +26,16 @@ const {
   handleWarehouse
 } = require("./warehouseHandler");
 
+const {
+  startJob,
+  isJobActive,
+  handleJob,
+  handleJobDocument
+} = require("./jobHandler");
+
 const { numberExists } = require("./googleSheets");
 
 const businessTender = require("./businessTenderHandler");
-
 const faq = require("./faq");
 
 const {
@@ -167,13 +173,6 @@ www.fcsexpress.com.pk`,
 
 www.fcsexpress.com.pk`,
 
-    "7": `💼 کیریئر اور ملازمتیں
-
-اپنی CV، نام، شہر اور مطلوبہ پوزیشن ای میل کریں۔
-
-Email: info@fcsexpress.com.pk
-Subject: Career Application`,
-
     "9": `📞 ایف سی ایس رابطہ
 
 FCS Express Pakistan
@@ -224,13 +223,6 @@ www.fcsexpress.com.pk`,
 
 www.fcsexpress.com.pk`,
 
-    "7": `💼 CAREERS & JOBS
-
-Email your CV, name, city and desired position.
-
-Email: info@fcsexpress.com.pk
-Subject: Career Application`,
-
     "9": `📞 CONTACT FCS EXPRESS
 
 FCS Express Pakistan
@@ -267,13 +259,40 @@ www.fcsexpress.com.pk`
 // =====================================
 
 async function processMessage(message) {
-  if (message.type !== "text") return;
-
   const number = String(message.from || "");
-  const customerText = message.text?.body || "";
-  const text = customerText.trim();
 
   if (!number || isBlocked(number)) return;
+
+  const type = message.type;
+
+  const customerText =
+    type === "text"
+      ? (message.text?.body || "")
+      : "";
+
+  const text = customerText.trim();
+
+  // JOB CV DOCUMENT HANDLING
+  // This must run before the text-only filter.
+
+  if (type === "document") {
+    if (isJobActive(number)) {
+      const result = await handleJobDocument(
+        number,
+        message.document
+      );
+
+      if (result && result.reply) {
+        sendWhatsAppMessage(number, result.reply);
+      }
+    }
+
+    return;
+  }
+
+  // Other media is not processed by existing handlers.
+
+  if (type !== "text") return;
 
   console.log("Customer:", number);
   console.log("Message:", text);
@@ -286,7 +305,10 @@ async function processMessage(message) {
       customerText
     );
 
-    sendWhatsAppMessage(number, result.reply);
+    if (result && result.reply) {
+      sendWhatsAppMessage(number, result.reply);
+    }
+
     return;
   }
 
@@ -298,7 +320,10 @@ async function processMessage(message) {
       customerText
     );
 
-    sendWhatsAppMessage(number, result.reply);
+    if (result && result.reply) {
+      sendWhatsAppMessage(number, result.reply);
+    }
+
     return;
   }
 
@@ -310,7 +335,10 @@ async function processMessage(message) {
       customerText
     );
 
-    sendWhatsAppMessage(number, result.reply);
+    if (result && result.reply) {
+      sendWhatsAppMessage(number, result.reply);
+    }
+
     return;
   }
 
@@ -322,11 +350,29 @@ async function processMessage(message) {
       customerText
     );
 
-    sendWhatsAppMessage(number, result.reply);
+    if (result && result.reply) {
+      sendWhatsAppMessage(number, result.reply);
+    }
+
     return;
   }
 
-  // NEW BUSINESS CENTER / TENDER APPLICATION
+  // JOB APPLICATION SESSION
+
+  if (isJobActive(number)) {
+    const result = await handleJob(
+      number,
+      customerText
+    );
+
+    if (result && result.reply) {
+      sendWhatsAppMessage(number, result.reply);
+    }
+
+    return;
+  }
+
+  // BUSINESS CENTER / TENDER SESSION
 
   if (businessTender.isActive(number)) {
     const result = await businessTender.handle(
@@ -509,6 +555,15 @@ Reply 0 for Main Menu.`
       businessTender.tenderMenu(lang)
     );
 
+    return;
+  }
+
+  // OPTION 7 - JOB APPLICATION
+
+  if (text === "7") {
+    const reply = startJob(number, lang);
+
+    sendWhatsAppMessage(number, reply);
     return;
   }
 
