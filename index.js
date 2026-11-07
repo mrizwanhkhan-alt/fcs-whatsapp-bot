@@ -1,6 +1,8 @@
 
 const http = require("http");
 const https = require("https");
+const fs = require("fs");
+const path = require("path");
 
 const config = require("./config");
 const { adminDashboard } = require("./adminDashboard");
@@ -114,10 +116,6 @@ function sendWhatsAppMessage(to, message) {
 // =====================================
 // CALLING WEBHOOK EVENT HANDLER
 // =====================================
-
-// This handler records call signaling events.
-// It does not answer, initiate or transmit audio calls.
-// A separate SIP/WebRTC calling integration is required.
 
 function handleCallingEvent(call) {
   if (!call || typeof call !== "object") return;
@@ -664,6 +662,38 @@ const server = http.createServer((req, res) => {
     return res.end(
       "FCS Express WhatsApp Bot Running"
     );
+  }
+
+  // STAFF CALLING PANEL
+
+  if (
+    req.method === "GET" &&
+    url.pathname === "/staff-calling"
+  ) {
+    const filePath = path.join(
+      __dirname,
+      "staffCalling.html"
+    );
+
+    fs.readFile(filePath, (error, content) => {
+      if (error) {
+        res.writeHead(404, {
+          "Content-Type": "text/plain"
+        });
+
+        return res.end("Calling panel file not found");
+      }
+
+      res.writeHead(200, {
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "no-store",
+        "X-Content-Type-Options": "nosniff"
+      });
+
+      res.end(content);
+    });
+
+    return;
   }
 
   // META WEBHOOK VERIFICATION
