@@ -1,0 +1,66 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FCS Express Staff Calling</title>
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #f5f5f5;
+  margin: 0;
+  padding: 24px;
+}
+.panel {
+  max-width: 420px;
+  margin: 35px auto;
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+}
+h2 { color: #c8102e; }
+input, button {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 14px;
+  margin: 10px 0;
+  font-size: 16px;
+  border-radius: 7px;
+}
+input { border: 1px solid #ccc; }
+button {
+  background: #c8102e;
+  color: white;
+  border: none;
+}
+button:disabled {
+  background: #aaa;
+}
+#status {
+  font-size: 14px;
+  color: #555;
+}
+</style>
+</head>
+<body>
+<div class="panel">
+  <h2>FCS EXPRESS</h2>
+  <h3>Staff Calling Panel</h3>
+
+  <label>Customer WhatsApp Number</label>
+  <input
+    id="customer"
+    type="tel"
+    placeholder="923001234567"
+  >
+
+  <button id="call" disabled>Call Customer</button>
+  <button id="end" disabled>End Call</button>
+
+  <p id="status">
+    Calling integration pending.
+  </p>
+</div>
+</body>
+</html>
