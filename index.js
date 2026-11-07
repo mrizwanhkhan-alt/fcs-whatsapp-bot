@@ -3,6 +3,7 @@ const http = require("http");
 const https = require("https");
 
 const config = require("./config");
+const { adminDashboard } = require("./adminDashboard");
 const { getReply } = require("./openai");
 
 const {
@@ -34,7 +35,6 @@ const {
 } = require("./jobHandler");
 
 const { numberExists } = require("./googleSheets");
-
 const businessTender = require("./businessTenderHandler");
 const faq = require("./faq");
 
@@ -56,9 +56,7 @@ const VERIFY_TOKEN = config.VERIFY_TOKEN;
 const PHONE_NUMBER_ID = config.PHONE_NUMBER_ID;
 const WHATSAPP_TOKEN = config.WHATSAPP_TOKEN;
 
-// =====================================
 // SEND WHATSAPP MESSAGE
-// =====================================
 
 function sendWhatsAppMessage(to, message) {
   if (!PHONE_NUMBER_ID || !WHATSAPP_TOKEN) {
@@ -111,9 +109,7 @@ function sendWhatsAppMessage(to, message) {
   request.end();
 }
 
-// =====================================
 // FAQ MENU
-// =====================================
 
 function faqCategoryMenu(lang) {
   if (lang === "ur") {
@@ -137,9 +133,7 @@ function faqCategoryMenu(lang) {
 Reply 0 for Main Menu.`;
 }
 
-// =====================================
 // INFORMATION RESPONSES
-// =====================================
 
 function informationMessage(option, lang) {
   const ur = {
@@ -254,9 +248,7 @@ www.fcsexpress.com.pk`
   );
 }
 
-// =====================================
-// HANDLE ONE INCOMING MESSAGE
-// =====================================
+// HANDLE INCOMING MESSAGE
 
 async function processMessage(message) {
   const number = String(message.from || "");
@@ -273,7 +265,6 @@ async function processMessage(message) {
   const text = customerText.trim();
 
   // JOB CV DOCUMENT HANDLING
-  // This must run before the text-only filter.
 
   if (type === "document") {
     if (isJobActive(number)) {
@@ -290,14 +281,12 @@ async function processMessage(message) {
     return;
   }
 
-  // Other media is not processed by existing handlers.
-
   if (type !== "text") return;
 
   console.log("Customer:", number);
   console.log("Message:", text);
 
-  // EXISTING FRANCHISE APPLICATION
+  // FRANCHISE APPLICATION
 
   if (isApplying(number)) {
     const result = await handleApplication(
@@ -312,7 +301,7 @@ async function processMessage(message) {
     return;
   }
 
-  // EXISTING SUPPLIER REGISTRATION
+  // SUPPLIER REGISTRATION
 
   if (isSupplierRegistering(number)) {
     const result = await handleSupplier(
@@ -327,7 +316,7 @@ async function processMessage(message) {
     return;
   }
 
-  // EXISTING TRANSPORT REGISTRATION
+  // TRANSPORT REGISTRATION
 
   if (isTransportRegistering(number)) {
     const result = await handleTransport(
@@ -342,7 +331,7 @@ async function processMessage(message) {
     return;
   }
 
-  // EXISTING WAREHOUSE REGISTRATION
+  // WAREHOUSE REGISTRATION
 
   if (isWarehouseRegistering(number)) {
     const result = await handleWarehouse(
@@ -357,7 +346,7 @@ async function processMessage(message) {
     return;
   }
 
-  // JOB APPLICATION SESSION
+  // JOB APPLICATION
 
   if (isJobActive(number)) {
     const result = await handleJob(
@@ -372,7 +361,7 @@ async function processMessage(message) {
     return;
   }
 
-  // BUSINESS CENTER / TENDER SESSION
+  // BUSINESS CENTER / TENDER
 
   if (businessTender.isActive(number)) {
     const result = await businessTender.handle(
@@ -478,7 +467,7 @@ async function processMessage(message) {
     return;
   }
 
-  // TENDER SELECTION - 10 CATEGORIES
+  // TENDER SELECTION
 
   if (tenderMode.has(number)) {
     if (/^(10|[1-9])$/.test(text)) {
@@ -545,7 +534,7 @@ Reply 0 for Main Menu.`
     return;
   }
 
-  // OPTION 6 - ALL 10 TENDERS
+  // OPTION 6 - TENDERS
 
   if (text === "6") {
     tenderMode.add(number);
@@ -580,7 +569,7 @@ Reply 0 for Main Menu.`
     return;
   }
 
-  // OTHER MAIN MENU OPTIONS
+  // OTHER MENU OPTIONS
 
   const info = informationMessage(text, lang);
 
@@ -589,7 +578,7 @@ Reply 0 for Main Menu.`
     return;
   }
 
-  // EXISTING AI ASSISTANT
+  // AI ASSISTANT
 
   const reply = await getReply(
     number,
@@ -599,11 +588,14 @@ Reply 0 for Main Menu.`
   sendWhatsAppMessage(number, reply);
 }
 
-// =====================================
 // HTTP SERVER
-// =====================================
 
 const server = http.createServer((req, res) => {
+  // ADMIN DASHBOARD
+  if (req.method === "GET" && adminDashboard(req, res)) {
+    return;
+  }
+
   const url = new URL(
     req.url,
     `http://${req.headers.host || "localhost"}`
@@ -707,14 +699,9 @@ const server = http.createServer((req, res) => {
   res.end("Not Found");
 });
 
-// =====================================
 // START SERVER
-// =====================================
 
 server.listen(PORT, "0.0.0.0", () => {
-  console.log(
-    "FCS Express WhatsApp Bot Started"
-  );
-
+  console.log("FCS Express WhatsApp Bot Started");
   console.log("Port:", PORT);
 });
