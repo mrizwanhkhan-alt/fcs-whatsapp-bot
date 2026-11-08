@@ -4,13 +4,14 @@
   "description": "FCS Express WhatsApp AI Bot",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "test": "node --test"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
-    "openai": "^5.12.2",
-    "googleapis": "^144.0.0"
+    "googleapis": "^144.0.0",
+    "openai": "^5.12.2"
   }
 }
