@@ -5,7 +5,7 @@ const fs = require("fs");
 const path = require("path");
 
 const config = require("./config");
-const { callingRoutes } = require("./callingRoutes");
+const { callingRoutes, handleCallingWebhook } = require("./callingRoutes");
 const { adminDashboard } = require("./adminDashboard");
 const { getReply } = require("./openai");
 
@@ -115,37 +115,6 @@ function sendWhatsAppMessage(to, message) {
 }
 
 // =====================================
-// CALLING WEBHOOK EVENT HANDLER
-// =====================================
-
-function handleCallingEvent(call) {
-  if (!call || typeof call !== "object") return;
-
-  const event = {
-    callId: call.id || null,
-    from: call.from || null,
-    to: call.to || null,
-    event: call.event || null,
-    status: call.status || null,
-    direction: call.direction || null,
-    timestamp: new Date().toISOString()
-  };
-
-  console.log(
-    "FCS Calling Event:",
-    JSON.stringify(event)
-  );
-
-  if (call.event === "connect") {
-    console.log("Incoming call connection requested");
-  }
-
-  if (call.event === "terminate") {
-    console.log("Call termination event received");
-  }
-}
-
-// =====================================
 // FAQ MENU
 // =====================================
 
@@ -154,9 +123,6 @@ function faqCategoryMenu(lang) {
     return `❓ اکثر پوچھے جانے والے سوالات
 
 1. فرنچائز
-2. ٹرانسپورٹ
-3. ویئر ہاؤس / ٹرک اڈہ
-4. سپلائر / وینڈر
 
 مین مینو کے لیے 0 بھیجیں۔`;
   }
@@ -164,9 +130,6 @@ function faqCategoryMenu(lang) {
   return `❓ Frequently Asked Questions
 
 1. Franchise
-2. Transport
-3. Warehouse / Truck Adda
-4. Supplier / Vendor
 
 Reply 0 for Main Menu.`;
 }
@@ -212,7 +175,7 @@ www.fcsexpress.com.pk`,
 FCS Express Pakistan
 Lahore, Pakistan
 
-Office: 042 3246 2221
+واٹس ایپ بوٹ (درخواستوں کے لیے): *+92 316 0034207*
 Email: info@fcsexpress.com.pk
 Website: www.fcsexpress.com.pk`,
 
@@ -262,7 +225,7 @@ www.fcsexpress.com.pk`,
 FCS Express Pakistan
 Lahore, Pakistan
 
-Office: 042 3246 2221
+WhatsApp Bot (applications): *+92 316 0034207*
 Email: info@fcsexpress.com.pk
 Website: www.fcsexpress.com.pk`,
 
@@ -472,18 +435,7 @@ async function processMessage(message) {
       return;
     }
 
-    const categories = {
-      "1": "franchise",
-      "2": "transport",
-      "3": "warehouse",
-      "4": "supplier"
-    };
-
-    const category = categories[text];
-
-    const items = category
-      ? faq[lang]?.[category]
-      : null;
+    const items = text === "1" ? faq[lang]?.franchise : null;
 
     if (Array.isArray(items)) {
       let reply = lang === "ur"
@@ -748,15 +700,17 @@ const server = http.createServer((req, res) => {
     req.method === "POST" &&
     url.pathname === "/webhook"
   ) {
-    let body = "";
+    const chunks = [];
+    let size = 0;
     let tooLarge = false;
 
     req.on("data", chunk => {
       if (tooLarge) return;
 
-      body += chunk.toString();
+      chunks.push(chunk);
+      size += chunk.length;
 
-      if (Buffer.byteLength(body) > 1024 * 1024) {
+      if (size > 1024 * 1024) {
         tooLarge = true;
         res.writeHead(413);
         res.end("Payload Too Large");
@@ -766,10 +720,11 @@ const server = http.createServer((req, res) => {
     req.on("end", async () => {
       if (tooLarge) return;
 
+      const rawBody = Buffer.concat(chunks);
       let data;
 
       try {
-        data = JSON.parse(body);
+        data = JSON.parse(rawBody.toString("utf8"));
       } catch (error) {
         res.writeHead(400);
         res.end("Invalid JSON");
@@ -782,22 +737,15 @@ const server = http.createServer((req, res) => {
       res.end("EVENT_RECEIVED");
 
       try {
+        handleCallingWebhook(data, rawBody, req.headers["x-hub-signature-256"]);
+      } catch (error) {
+        console.error("Calling Event Error:", error.message);
+      }
+
+      try {
         for (const entry of data.entry || []) {
           for (const change of entry.changes || []) {
             const value = change.value || {};
-
-            // CALLING EVENTS
-
-            for (const call of value.calls || []) {
-              try {
-                handleCallingEvent(call);
-              } catch (error) {
-                console.error(
-                  "Calling Event Error:",
-                  error.message
-                );
-              }
-            }
 
             // EXISTING WHATSAPP MESSAGES
 

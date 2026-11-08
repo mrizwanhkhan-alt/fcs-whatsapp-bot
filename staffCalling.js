@@ -1,150 +1,122 @@
-
 "use strict";
 
 const https = require("https");
-const config = require("./config");
+const { PHONE_NUMBER_ID, WHATSAPP_TOKEN } = require("./config");
 
-const PHONE_NUMBER_ID = config.PHONE_NUMBER_ID;
-const WHATSAPP_TOKEN = config.WHATSAPP_TOKEN;
+const GRAPH_VERSION = process.env.META_GRAPH_VERSION || "v25.0";
 
-const GRAPH_VERSION =
-  process.env.META_GRAPH_VERSION || "v25.0";
-
-function graphPost(endpoint, data) {
+function graphRequest(endpoint, data) {
   return new Promise((resolve, reject) => {
     if (!PHONE_NUMBER_ID || !WHATSAPP_TOKEN) {
-      return reject(
-        new Error("Missing WhatsApp API credentials")
-      );
+      reject(Object.assign(new Error("Missing WhatsApp API credentials"), { status: 503 }));
+      return;
     }
 
-    const payload = JSON.stringify(data);
+    const payload = data === undefined ? null : JSON.stringify(data);
+    const headers = { Authorization: `Bearer ${WHATSAPP_TOKEN}` };
+    if (payload) {
+      headers["Content-Type"] = "application/json";
+      headers["Content-Length"] = Buffer.byteLength(payload);
+    }
 
     const req = https.request({
       hostname: "graph.facebook.com",
-      port: 443,
       path: `/${GRAPH_VERSION}/${PHONE_NUMBER_ID}/${endpoint}`,
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${WHATSAPP_TOKEN}`,
-        "Content-Type": "application/json",
-        "Content-Length": Buffer.byteLength(payload)
-      },
-      timeout: 15000
+      method: payload ? "POST" : "GET",
+      headers
     }, res => {
-      let body = "";
-
-      res.on("data", chunk => {
-        body += chunk.toString();
-      });
-
+      const chunks = [];
+      res.on("data", chunk => chunks.push(Buffer.from(chunk)));
+      res.on("error", reject);
       res.on("end", () => {
         let result;
-
         try {
-          result = JSON.parse(body);
+          result = JSON.parse(Buffer.concat(chunks).toString("utf8"));
         } catch {
-          return reject(
-            new Error(
-              `Invalid Meta response: HTTP ${res.statusCode}`
-            )
-          );
+          reject(new Error(`Invalid Meta response: HTTP ${res.statusCode}`));
+          return;
         }
 
-        if (res.statusCode >= 200 &&
-            res.statusCode < 300) {
-          return resolve(result);
+        if (res.statusCode >= 200 && res.statusCode < 300 && result && !result.error) {
+          resolve(result);
+          return;
         }
 
-        reject(
-          new Error(
-            `Meta API HTTP ${res.statusCode}: ` +
-            (result.error?.message || "Unknown error")
-          )
-        );
+        const { message, code } = result?.error || {};
+        reject(Object.assign(
+          new Error(`Meta API HTTP ${res.statusCode}${code ? ` (${code})` : ""}: ${message || "Unknown error"}`),
+          { status: res.statusCode >= 400 ? res.statusCode : 502, code }
+        ));
       });
     });
 
-    req.on("timeout", () => {
-      req.destroy(
-        new Error("Meta API request timed out")
-      );
-    });
-
+    const timeout = setTimeout(() => {
+      req.destroy(Object.assign(new Error("Meta API request timed out"), { status: 504 }));
+    }, 15000);
+    req.on("close", () => clearTimeout(timeout));
     req.on("error", reject);
-    req.end(payload);
+    req.end(payload || undefined);
   });
 }
 
 function normalizeNumber(number) {
-  const value = String(number || "")
-    .trim()
-    .replace(/^\+/, "");
-
-  if (!/^\d{8,15}$/.test(value)) {
-    throw new Error(
-      "Invalid international WhatsApp number"
-    );
+  const value = typeof number === "string" ? number.trim().replace(/^\+/, "") : "";
+  if (!/^[1-9]\d{7,14}$/.test(value)) {
+    throw Object.assign(new Error("Enter a valid international WhatsApp number."), { status: 400 });
   }
-
   return value;
 }
 
-function requestCallPermission(customerNumber) {
-  return graphPost("messages", {
-    messaging_product: "whatsapp",
-    to: normalizeNumber(customerNumber),
+async function getCallPermission(number) {
+  const result = await graphRequest(`call_permissions?user_wa_id=${normalizeNumber(number)}`);
+  const permission = result.permission?.status;
+  const actions = result.actions || [];
+  const action = name => actions.find(item => item.action_name === name)?.can_perform_action;
+  const granted = ["temporary", "permanent", "granted"].includes(permission);
+  return {
+    permission,
+    canCall: action("start_call") ?? granted,
+    canRequest: action("send_call_permission_request") ?? !granted,
+    expiresAt: result.permission?.expiration_time || null
+  };
+}
+
+function requestCallPermission(number, template) {
+  const message = template ? {
+    type: "template",
+    template: { name: template, language: { code: process.env.CALL_PERMISSION_TEMPLATE_LANGUAGE || "en" } }
+  } : {
     type: "interactive",
     interactive: {
       type: "call_permission_request",
-      action: {
-        name: "call_permission_request"
-      }
+      action: { name: "call_permission_request" }
     }
-  });
-}
-
-function connectWhatsAppCall(customerNumber, sdpOffer) {
-  if (
-    typeof sdpOffer !== "string" ||
-    !sdpOffer.startsWith("v=0")
-  ) {
-    return Promise.reject(
-      new Error("Valid WebRTC SDP offer required")
-    );
-  }
-
-  return graphPost("calls", {
+  };
+  return graphRequest("messages", {
     messaging_product: "whatsapp",
-    to: normalizeNumber(customerNumber),
-    action: "connect",
-    session: {
-      sdp_type: "offer",
-      sdp: sdpOffer
-    }
+    recipient_type: "individual",
+    to: normalizeNumber(number),
+    ...message
   });
 }
 
-function terminateWhatsAppCall(callId) {
-  if (
-    typeof callId !== "string" ||
-    !/^[A-Za-z0-9_.:-]{1,256}$/.test(callId)
-  ) {
-    return Promise.reject(
-      new Error("Valid WhatsApp call ID required")
-    );
-  }
+function connectWhatsAppCall(number, sdp, reference) {
+  return graphRequest("calls", {
+    messaging_product: "whatsapp",
+    to: normalizeNumber(number),
+    action: "connect",
+    session: { sdp_type: "offer", sdp },
+    biz_opaque_callback_data: reference
+  });
+}
 
-  return graphPost("calls", {
+function updateWhatsAppCall(callId, action, sdp) {
+  return graphRequest("calls", {
     messaging_product: "whatsapp",
     call_id: callId,
-    action: "terminate"
+    action,
+    ...(sdp && { session: { sdp_type: "answer", sdp } })
   });
 }
 
-module.exports = {
-  requestCallPermission,
-  connectWhatsAppCall,
-  terminateWhatsAppCall,
-  normalizeNumber
-};
+module.exports = { normalizeNumber, getCallPermission, requestCallPermission, connectWhatsAppCall, updateWhatsAppCall };
