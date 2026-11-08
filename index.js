@@ -5,6 +5,7 @@ const fs = require("fs");
 const path = require("path");
 
 const config = require("./config");
+const { callingRoutes } = require("./callingRoutes");
 const { adminDashboard } = require("./adminDashboard");
 const { getReply } = require("./openai");
 
@@ -648,6 +649,26 @@ const server = http.createServer((req, res) => {
     req.url,
     `http://${req.headers.host || "localhost"}`
   );
+
+  // STAFF CALLING API
+
+  if (url.pathname.startsWith("/api/staff-calling/")) {
+    Promise.resolve(callingRoutes(req, res, url)).catch(error => {
+      console.error("Calling API Error:", error);
+
+      if (!res.headersSent) {
+        res.writeHead(500, {
+          "Content-Type": "application/json"
+        });
+
+        res.end(JSON.stringify({
+          error: "Internal server error"
+        }));
+      }
+    });
+
+    return;
+  }
 
   // HOME / HEALTH CHECK
 
