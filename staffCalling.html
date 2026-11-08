@@ -7,8 +7,8 @@
 <title>FCS Express | Staff Calling</title>
 <style>
 *{box-sizing:border-box}
-body{margin:0;padding:20px;background:#f4f5f7;font-family:Arial,sans-serif}
-.panel{max-width:460px;margin:25px auto;padding:24px;background:white;border-radius:12px;box-shadow:0 3px 18px #00000012}
+body{margin:0;padding:16px;background:#f4f5f7;font-family:Arial,sans-serif}
+.panel{max-width:460px;margin:15px auto;padding:22px;background:white;border-radius:12px;box-shadow:0 3px 18px #00000012}
 h2{color:#c8102e;margin-bottom:4px}
 h3{margin-top:0;color:#333}
 label{display:block;margin-top:16px;font-weight:bold}
@@ -31,25 +31,34 @@ small{color:#666}
 <h3>WhatsApp Staff Calling</h3>
 
 <label for="customer">Customer WhatsApp Number</label>
-<input id="customer" type="tel" placeholder="923001234567">
+<input id="customer" type="tel" inputmode="tel" placeholder="923001234567">
 
+<div id="accessSection">
 <label for="secret">Staff Access Secret</label>
-<input id="secret" type="password" autocomplete="off" placeholder="Staff Calling Secret">
+<input id="secret" type="password" autocomplete="off" placeholder="Enter once only">
+</div>
 
 <button id="listen">Connect Calling Panel</button>
+
 <div id="incoming" hidden>
 <p id="caller"></p>
 <button id="answer">Answer</button>
 <button id="reject">Decline</button>
 </div>
+
 <button id="check" disabled>Check Calling Permission</button>
 <button id="permission" disabled>Request Calling Permission</button>
-<label id="templateOption" hidden><input id="template" type="checkbox"> Use approved template outside the messaging window</label>
+
+<label id="templateOption" hidden>
+<input id="template" type="checkbox">
+Use approved template outside the messaging window
+</label>
+
 <button id="call" disabled>Call Customer</button>
 <button id="end" disabled>End Call</button>
 <button id="playAudio" hidden>Play Call Audio</button>
 
-<p id="status" role="status">Connect the calling panel to receive and place calls.</p>
+<p id="status" role="status">Connecting FCS Calling Panel...</p>
 <audio id="remoteAudio" autoplay playsinline></audio>
 </div>
 
@@ -60,6 +69,8 @@ const $ = id => document.getElementById(id);
 const customer = $("customer");
 const secret = $("secret");
 const remoteAudio = $("remoteAudio");
+
+const STORAGE_KEY = "fcs_staff_calling_access_v1";
 
 let session = null;
 let peer = null;
@@ -77,11 +88,37 @@ function status(message) {
 
 function number() {
   const value = customer.value.trim().replace(/^\+/, "");
-  if (!/^[1-9]\d{7,14}$/.test(value)) throw new Error("Enter a valid international WhatsApp number.");
+  if (!/^[1-9]\d{7,14}$/.test(value)) {
+    throw new Error("Enter a valid international WhatsApp number.");
+  }
   return value;
 }
 
+function savedAccess() {
+  try {
+    return localStorage.getItem(STORAGE_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+function rememberAccess(token) {
+  try {
+    localStorage.setItem(STORAGE_KEY, token);
+  } catch {
+    status("Connected. Browser storage is unavailable, so access may need to be entered again.");
+  }
+}
+
+function forgetAccess() {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch {}
+}
+
 async function api(endpoint, payload = {}, keepalive = false) {
+  if (!session) throw new Error("Calling panel is not connected.");
+
   const response = await fetch("/api/staff-calling/" + endpoint, {
     method: "POST",
     headers: {
@@ -93,10 +130,16 @@ async function api(endpoint, payload = {}, keepalive = false) {
     keepalive,
     signal: keepalive ? undefined : AbortSignal.timeout(35000)
   });
+
   const data = await response.json();
+
   if (!response.ok) {
-    throw Object.assign(new Error(data.error || "Calling API request failed."), { status: response.status });
+    throw Object.assign(
+      new Error(data.error || "Calling API request failed."),
+      { status: response.status }
+    );
   }
+
   return data;
 }
 
@@ -104,21 +147,37 @@ function controls() {
   for (const id of ["check", "permission", "call", "answer", "reject"]) {
     $(id).disabled = !session || busy || Boolean(active);
   }
+
   $("end").disabled = busy || !active;
+
   secret.disabled = Boolean(session) || busy;
+
+  $("accessSection").hidden = Boolean(session);
+
   $("listen").disabled = busy || Boolean(active);
-  $("listen").textContent = session ? "Disconnect Calling Panel" : "Connect Calling Panel";
+
+  $("listen").textContent = session
+    ? "Disconnect Calling Panel"
+    : "Connect Calling Panel";
+
   $("incoming").hidden = !incoming || Boolean(active);
-  $("caller").textContent = incoming ? "Incoming call from " + (incoming.number || "WhatsApp customer") : "";
+
+  $("caller").textContent = incoming
+    ? "Incoming call from " + (incoming.number || "WhatsApp customer")
+    : "";
 }
 
 function closeMedia() {
   clearTimeout(callTimeout);
+
   const connection = peer;
   peer = null;
+
   connection?.close();
+
   localStream?.getTracks().forEach(track => track.stop());
   localStream = null;
+
   remoteAudio.srcObject = null;
   $("playAudio").hidden = true;
 }
@@ -132,8 +191,10 @@ function finish(message) {
 
 async function perform(operation) {
   if (busy) return;
+
   busy = true;
   controls();
+
   try {
     await operation();
   } catch (error) {
@@ -155,73 +216,136 @@ async function playAudio() {
 
 async function createPeer() {
   if (!navigator.mediaDevices?.getUserMedia) {
-    throw new Error("Microphone access requires HTTPS and a supported browser.");
+    throw new Error(
+      "Microphone access requires HTTPS and a supported browser."
+    );
   }
+
   status("Allow microphone access to continue.");
-  localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+
+  localStream = await navigator.mediaDevices.getUserMedia({
+    audio: true,
+    video: false
+  });
+
   const connection = new RTCPeerConnection({ iceServers });
   peer = connection;
+
   const microphone = localStream.getAudioTracks()[0];
   microphone.enabled = false;
+
   const transceiver = connection.addTransceiver(microphone, {
     direction: "sendrecv",
     streams: [localStream]
   });
-  const codecs = RTCRtpReceiver.getCapabilities("audio")?.codecs || [];
-  const opus = codecs.filter(codec => codec.mimeType.toLowerCase() === "audio/opus" && codec.clockRate === 48000);
-  const dtmf = codecs.filter(codec => codec.mimeType.toLowerCase() === "audio/telephone-event" && codec.clockRate === 8000);
-  if (!opus.length || !transceiver.setCodecPreferences) throw new Error("This browser cannot negotiate WhatsApp Opus audio.");
+
+  const codecs =
+    RTCRtpReceiver.getCapabilities("audio")?.codecs || [];
+
+  const opus = codecs.filter(codec =>
+    codec.mimeType.toLowerCase() === "audio/opus" &&
+    codec.clockRate === 48000
+  );
+
+  const dtmf = codecs.filter(codec =>
+    codec.mimeType.toLowerCase() === "audio/telephone-event" &&
+    codec.clockRate === 8000
+  );
+
+  if (!opus.length || !transceiver.setCodecPreferences) {
+    throw new Error(
+      "This browser cannot negotiate WhatsApp Opus audio."
+    );
+  }
+
   transceiver.setCodecPreferences([...opus, ...dtmf]);
 
   connection.ontrack = event => {
     if (peer !== connection) return;
-    remoteAudio.srcObject = event.streams[0] || new MediaStream([event.track]);
+
+    remoteAudio.srcObject =
+      event.streams[0] || new MediaStream([event.track]);
+
     void playAudio();
   };
+
   connection.onconnectionstatechange = () => {
     if (peer !== connection || !active) return;
+
     if (connection.connectionState === "connected") {
       if (active.state === "accepted") {
         microphone.enabled = true;
         clearTimeout(callTimeout);
       }
-      status(active.state === "accepted" ? "Call connected." : "Audio ready. Waiting for the customer.");
+
+      status(
+        active.state === "accepted"
+          ? "Call connected."
+          : "Audio ready. Waiting for the customer."
+      );
+
     } else if (connection.connectionState === "failed") {
       void endCall("Audio connection failed.");
+
     } else if (connection.connectionState === "disconnected") {
-      status("Audio connection interrupted. Reconnecting…");
+      status("Audio connection interrupted. Reconnecting...");
       watchConnection(15000);
     }
   };
+
   return connection;
 }
 
 async function localSDP(connection, description) {
   await connection.setLocalDescription(description);
+
   if (connection.iceGatheringState !== "complete") {
     await new Promise((resolve, reject) => {
       function done(error) {
         clearTimeout(timer);
-        connection.removeEventListener("icegatheringstatechange", check);
+        connection.removeEventListener(
+          "icegatheringstatechange",
+          check
+        );
+
         if (error) reject(error);
         else resolve();
       }
+
       function check() {
-        if (connection.iceGatheringState === "complete") done();
+        if (connection.iceGatheringState === "complete") {
+          done();
+        }
       }
-      const timer = setTimeout(() => done(new Error("WebRTC network candidates were not ready.")), 12000);
-      connection.addEventListener("icegatheringstatechange", check);
+
+      const timer = setTimeout(
+        () => done(new Error("WebRTC network candidates were not ready.")),
+        12000
+      );
+
+      connection.addEventListener(
+        "icegatheringstatechange",
+        check
+      );
+
       check();
     });
   }
 
   const sdp = connection.localDescription.sdp;
-  if (!/^a=candidate:/m.test(sdp)) throw new Error("No WebRTC network candidates are available.");
-  return /^a=ptime:/m.test(sdp) ? sdp : sdp.replace(/\r\n$/, "\r\na=ptime:20\r\n");
+
+  if (!/^a=candidate:/m.test(sdp)) {
+    throw new Error("No WebRTC network candidates are available.");
+  }
+
+  return /^a=ptime:/m.test(sdp)
+    ? sdp
+    : sdp.replace(/\r\n$/, "\r\na=ptime:20\r\n");
 }
 
 function watchConnection(delay) {
   clearTimeout(callTimeout);
+
   callTimeout = setTimeout(() => {
     void endCall("The call connection timed out.");
   }, delay);
@@ -229,17 +353,32 @@ function watchConnection(delay) {
 
 async function applyCall(call) {
   if (["ended", "rejected", "failed"].includes(call.state)) {
-    finish({ ended: "WhatsApp call ended.", rejected: "WhatsApp call declined.", failed: "WhatsApp reported that the call failed." }[call.state]);
+    finish({
+      ended: "WhatsApp call ended.",
+      rejected: "WhatsApp call declined.",
+      failed: "WhatsApp reported that the call failed."
+    }[call.state]);
+
     return;
   }
+
   const stateChanged = call.state !== active.state;
   active = call;
+
   if (call.sdp && peer && !peer.remoteDescription) {
-    await peer.setRemoteDescription({ type: "answer", sdp: call.sdp });
+    await peer.setRemoteDescription({
+      type: "answer",
+      sdp: call.sdp
+    });
   }
+
   if (active !== call) return;
+
   if (stateChanged) {
-    if (call.state === "ringing") status("Customer's WhatsApp is ringing.");
+    if (call.state === "ringing") {
+      status("Customer's WhatsApp is ringing.");
+    }
+
     if (call.state === "accepted") {
       if (peer?.connectionState === "connected") {
         localStream.getAudioTracks()[0].enabled = true;
@@ -247,7 +386,7 @@ async function applyCall(call) {
         status("Call connected.");
       } else {
         watchConnection(30000);
-        status("Call accepted. Connecting audio…");
+        status("Call accepted. Connecting audio...");
       }
     }
   }
@@ -255,22 +394,37 @@ async function applyCall(call) {
 
 async function poll() {
   if (!session || busy || polling) return;
+
   polling = true;
+
   const currentSession = session;
   const callId = active?.id;
+
   try {
     const data = await api("poll", { callId });
-    if (session !== currentSession || busy || active?.id !== callId) return;
+
+    if (
+      session !== currentSession ||
+      busy ||
+      active?.id !== callId
+    ) return;
+
     incoming = data.incoming[0] || null;
+
     if (active && data.call) {
       try {
         await applyCall(data.call);
       } catch (error) {
-        await endCall("WebRTC audio failed: " + error.message);
+        await endCall(
+          "WebRTC audio failed: " + error.message
+        );
       }
     }
+
   } catch (error) {
-    if (session === currentSession && !busy) status("Calling panel connection: " + error.message);
+    if (session === currentSession && !busy) {
+      status("Calling panel connection: " + error.message);
+    }
   } finally {
     polling = false;
     controls();
@@ -279,79 +433,183 @@ async function poll() {
 
 async function hangUp(message) {
   closeMedia();
+
   try {
     await api("terminate", { callId: active.id });
     finish(message);
+
   } catch (error) {
     if (error.status === 404) {
       finish("WhatsApp call is no longer available.");
     } else {
-      status("Could not confirm hang-up. Press End Call to retry. " + error.message);
+      status(
+        "Could not confirm hang-up. Press End Call to retry. " +
+        error.message
+      );
     }
   }
 }
 
 async function endCall(message = "WhatsApp call ended.") {
-  if (active) await perform(() => hangUp(message));
+  if (active) {
+    await perform(() => hangUp(message));
+  }
+}
+
+async function connectPanel(token, automatic = false) {
+  if (!token) {
+    throw new Error("Enter the Staff Access Secret.");
+  }
+
+  if (!window.isSecureContext || !window.RTCPeerConnection) {
+    throw new Error(
+      "Open this panel over HTTPS in a WebRTC-enabled browser."
+    );
+  }
+
+  session = {
+    secret: token,
+    id: crypto.randomUUID()
+  };
+
+  try {
+    const data = await api("session");
+
+    iceServers = data.iceServers;
+    incoming = data.incoming[0] || null;
+
+    $("templateOption").hidden = !data.hasTemplate;
+
+    rememberAccess(token);
+
+    secret.value = "";
+
+    status(
+      automatic
+        ? "FCS Calling is ready. Enter a customer number and press Call Customer."
+        : "Calling panel connected. Access remembered for next time."
+    );
+
+    controls();
+
+  } catch (error) {
+    session = null;
+
+    if (automatic && error.status === 401) {
+      forgetAccess();
+      secret.value = "";
+      status(
+        "Saved access is no longer valid. Enter your Staff Secret once."
+      );
+      return;
+    }
+
+    throw error;
+  }
 }
 
 $("listen").onclick = () => perform(async () => {
   if (session) {
     session = null;
     incoming = null;
+
+    forgetAccess();
+    secret.value = "";
+
     $("templateOption").hidden = true;
-    status("Calling panel disconnected.");
+
+    status(
+      "Calling panel disconnected. Saved access cleared."
+    );
+
     return;
   }
-  const token = secret.value.trim();
-  if (!token) throw new Error("Enter the Staff Access Secret.");
-  if (!window.isSecureContext || !window.RTCPeerConnection) throw new Error("Open this panel over HTTPS in a WebRTC-enabled browser.");
-  session = { secret: token, id: crypto.randomUUID() };
-  try {
-    const data = await api("session");
-    iceServers = data.iceServers;
-    incoming = data.incoming[0] || null;
-    $("templateOption").hidden = !data.hasTemplate;
-    status("Calling panel connected. Ready for incoming and outgoing calls.");
-  } catch (error) {
-    session = null;
-    throw error;
-  }
+
+  await connectPanel(secret.value.trim());
 });
 
 $("check").onclick = () => perform(async () => {
-  const data = await api("permission-status", { number: number() });
+  const data = await api("permission-status", {
+    number: number()
+  });
+
   if (data.canCall) {
-    status("Customer calling permission is approved. You can place a call.");
+    status(
+      "Customer calling permission is approved. You can place a call."
+    );
   } else {
-    status("Calling is unavailable. Meta permission status: " + (data.permission || "unknown") + ".");
+    status(
+      "Calling is unavailable. Meta permission status: " +
+      (data.permission || "unknown") + "."
+    );
   }
 });
 
 $("permission").onclick = () => perform(async () => {
-  const data = await api("permission", { number: number(), useTemplate: $("template").checked && !$("templateOption").hidden });
-  status(data.submitted ? "Permission request submitted. Ask the customer to approve it, then check permission." :
-    data.canCall ? "Customer calling permission is already approved." : "Permission is approved. Meta currently limits further calls.");
+  const data = await api("permission", {
+    number: number(),
+    useTemplate:
+      $("template").checked &&
+      !$("templateOption").hidden
+  });
+
+  status(
+    data.submitted
+      ? "Permission request submitted. Ask the customer to approve it, then check permission."
+      : data.canCall
+        ? "Customer calling permission is already approved."
+        : "Permission is approved. Meta currently limits further calls."
+  );
 });
 
 $("call").onclick = () => perform(async () => {
   const destination = number();
-  const permission = await api("permission-status", { number: destination });
-  if (!permission.canCall) throw new Error("Meta does not currently allow this call. Check customer permission.");
+
+  const permission = await api("permission-status", {
+    number: destination
+  });
+
+  if (!permission.canCall) {
+    throw new Error(
+      "Meta does not currently allow this call. Check customer permission."
+    );
+  }
+
   try {
     const connection = await createPeer();
-    const sdp = await localSDP(connection, await connection.createOffer());
-    status("Starting WhatsApp call…");
-    const data = await api("connect", { number: destination, sdp });
+
+    const sdp = await localSDP(
+      connection,
+      await connection.createOffer()
+    );
+
+    status("Starting WhatsApp call...");
+
+    const data = await api("connect", {
+      number: destination,
+      sdp
+    });
+
     active = { id: data.id };
+
     watchConnection(75000);
+
     await applyCall(data);
-    if (active && data.state === "dialing") status("Call requested. Waiting for WhatsApp.");
+
+    if (active && data.state === "dialing") {
+      status(
+        "Call requested. Waiting for WhatsApp."
+      );
+    }
+
   } catch (error) {
     if (active) {
-      await hangUp("Call setup failed: " + error.message);
+      await hangUp(
+        "Call setup failed: " + error.message
+      );
       return;
     }
+
     closeMedia();
     throw error;
   }
@@ -360,20 +618,42 @@ $("call").onclick = () => perform(async () => {
 $("answer").onclick = () => perform(async () => {
   const callId = incoming?.id;
   if (!callId) return;
+
   try {
     const connection = await createPeer();
-    const offer = await api("offer", { callId });
-    await connection.setRemoteDescription({ type: "offer", sdp: offer.sdp });
-    const sdp = await localSDP(connection, await connection.createAnswer());
-    const data = await api("accept", { callId, sdp });
+
+    const offer = await api("offer", {
+      callId
+    });
+
+    await connection.setRemoteDescription({
+      type: "offer",
+      sdp: offer.sdp
+    });
+
+    const sdp = await localSDP(
+      connection,
+      await connection.createAnswer()
+    );
+
+    const data = await api("accept", {
+      callId,
+      sdp
+    });
+
     incoming = null;
     active = { id: data.id };
+
     await applyCall(data);
+
   } catch (error) {
     if (active) {
-      await hangUp("Call setup failed: " + error.message);
+      await hangUp(
+        "Call setup failed: " + error.message
+      );
       return;
     }
+
     closeMedia();
     throw error;
   }
@@ -381,23 +661,61 @@ $("answer").onclick = () => perform(async () => {
 
 $("reject").onclick = () => perform(async () => {
   if (!incoming) return;
-  await api("reject", { callId: incoming.id });
+
+  await api("reject", {
+    callId: incoming.id
+  });
+
   incoming = null;
+
   status("Incoming call declined.");
 });
 
-$("end").onclick = () => { void endCall(); };
-$("playAudio").onclick = () => { void playAudio(); };
+$("end").onclick = () => {
+  void endCall();
+};
+
+$("playAudio").onclick = () => {
+  void playAudio();
+};
 
 window.addEventListener("pagehide", () => {
-  if (active) void api("terminate", { callId: active.id }, true).catch(() => {});
+  if (active) {
+    void api(
+      "terminate",
+      { callId: active.id },
+      true
+    ).catch(() => {});
+  }
+
   closeMedia();
   active = null;
 });
 
-setInterval(() => { void poll(); }, 1000);
-controls();
-</script>
+setInterval(() => {
+  void poll();
+}, 1000);
 
+async function startPanel() {
+  const token = savedAccess();
+
+  if (!token) {
+    status(
+      "Enter Staff Access Secret once and press Connect Calling Panel."
+    );
+    controls();
+    return;
+  }
+
+  await perform(async () => {
+    status("Connecting FCS Calling automatically...");
+    await connectPanel(token, true);
+  });
+}
+
+controls();
+void startPanel();
+
+</script>
 </body>
 </html>
