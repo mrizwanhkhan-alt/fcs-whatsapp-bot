@@ -7,6 +7,7 @@ const path = require("path");
 const config = require("./config");
 const { callingRoutes, handleCallingWebhook } = require("./callingRoutes");
 const { adminDashboard } = require("./adminDashboard");
+const { recordAdminWindows } = require("./adminMessaging");
 const { getReply } = require("./openai");
 
 const {
@@ -588,19 +589,14 @@ Reply 0 for Main Menu.`
 
 const server = http.createServer((req, res) => {
 
-  // ADMIN DASHBOARD
-
-  if (
-    req.method === "GET" &&
-    adminDashboard(req, res)
-  ) {
-    return;
-  }
-
   const url = new URL(
     req.url,
     `http://${req.headers.host || "localhost"}`
   );
+
+  if (url.pathname === "/admin" || url.pathname.startsWith("/admin/")) {
+    return void adminDashboard(req, res, url);
+  }
 
   // STAFF CALLING API
 
@@ -740,6 +736,12 @@ const server = http.createServer((req, res) => {
         handleCallingWebhook(data, rawBody, req.headers["x-hub-signature-256"]);
       } catch (error) {
         console.error("Calling Event Error:", error.message);
+      }
+
+      try {
+        recordAdminWindows(data, rawBody, req.headers["x-hub-signature-256"]);
+      } catch {
+        console.error("Could not record admin WhatsApp messaging windows.");
       }
 
       try {

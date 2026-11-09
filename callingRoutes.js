@@ -103,10 +103,14 @@ function ended(call) {
   return ["ended", "rejected", "failed"].includes(call.state);
 }
 
-function handleCallingWebhook(data, rawBody, signature) {
-  if (!APP_SECRET || data.object !== "whatsapp_business_account") return;
+function isVerifiedMetaWebhook(rawBody, signature) {
+  if (!APP_SECRET || typeof signature !== "string") return false;
   const expected = "sha256=" + crypto.createHmac("sha256", APP_SECRET).update(rawBody).digest("hex");
-  if (!safeEqual(signature, expected)) return;
+  return safeEqual(signature, expected);
+}
+
+function handleCallingWebhook(data, rawBody, signature) {
+  if (data.object !== "whatsapp_business_account" || !isVerifiedMetaWebhook(rawBody, signature)) return;
 
   prune();
   for (const entry of data.entry || []) {
@@ -296,4 +300,4 @@ async function callingRoutes(req, res, url) {
   }
 }
 
-module.exports = { callingRoutes, handleCallingWebhook };
+module.exports = { callingRoutes, handleCallingWebhook, isVerifiedMetaWebhook };

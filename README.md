@@ -31,3 +31,53 @@ deployment, verify with a staging WhatsApp number and a consenting test phone.
 Check permission request and approval, answer and decline an incoming call,
 complete an outgoing call, confirm two-way audio, and hang up from both ends.
 Verify a normal bot message on the same webhook.
+
+## WhatsApp admin dashboard
+
+Open `/admin` over HTTPS to sign in and send to one WhatsApp number at a time.
+The dashboard uses the bot's existing `PHONE_NUMBER_ID` and `WHATSAPP_TOKEN`
+on the server. It also uses the existing `META_APP_SECRET` to verify incoming
+messages for the 24-hour customer service window.
+
+Set `ADMIN_PASSWORD_HASH` in the **existing Render service's Environment**
+settings. Generate its value locally in Bash using a unique password of at
+least 24 characters and up to 256 characters. This prompts without echoing
+the password and prints only the salted hash:
+
+```bash
+read -rsp 'Admin password: ' admin_password; printf '\n' >&2
+printf '%s' "$admin_password" | node -e 'const fs = require("node:fs"); const crypto = require("node:crypto"); const password = fs.readFileSync(0, "utf8"); if (password.trim().length < 24 || password.length > 256) process.exitCode = 1; else { const salt = crypto.randomBytes(16); console.log(salt.toString("hex") + ":" + crypto.scryptSync(password, salt, 64).toString("hex")); }'
+unset admin_password
+```
+
+Optionally set `ADMIN_WHATSAPP_TEMPLATES` to a JSON list of templates already
+approved for this WhatsApp Business Account. For example:
+
+```json
+[
+  {"name":"customer_follow_up","language":"en","bodyParameters":1},
+  {"name":"shipment_document","language":"en","header":"document"},
+  {"name":"shipment_photo","language":"en","header":"image"}
+]
+```
+
+Use the exact approved template names and language codes. The dashboard
+supports static templates and templates with positional text body parameters
+and an optional image or PDF header. The operator confirms customer opt-in
+before each template send. Meta validates the selected template at send time.
+
+Free-form text and media require a verified inbound message from that number
+in the last 24 hours. The dashboard uses the message timestamp from Meta
+and rechecks the window just before sending. Session and window state are
+held in memory on the same bot instance as the webhook. A restart signs
+administrators out and requires a new inbound message to establish a
+free-form window. Approved templates can still be used after a restart.
+
+The dashboard accepts JPG and PNG up to 5 MB and supported documents up to
+20 MB. Files are uploaded directly to Meta through the server and are not
+stored on the Render filesystem. A success message means Meta accepted the
+message for delivery.
+
+Run `npm test` before deploying. After deploying, verify sign-in and window
+detection, then send a text, a file and a configured template to a consenting
+test phone.

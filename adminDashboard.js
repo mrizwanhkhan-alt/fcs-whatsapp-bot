@@ -1,31 +1,249 @@
+"use strict";
 
-const http = require("http");
+const crypto = require("node:crypto");
+const fs = require("node:fs");
+const path = require("node:path");
+const { promisify } = require("node:util");
+const {
+  attachment, checkRecipient, fail, prepareMessage, recipient,
+  sendAdminMessage, templates, windowExpiry
+} = require("./adminMessaging");
 
-function adminDashboard(req, res) {
-  if (req.url !== "/admin") return false;
+const COOKIE = "__Host-fcs_admin";
+const SESSION_MS = 8 * 60 * 60 * 1000;
+const LOGIN_INTERVAL = 5 * 60 * 1000;
+const LOGIN_LIMIT = 10;
+const MAX_REQUEST_BYTES = 32 * 1024;
+const scrypt = promisify(crypto.scrypt);
+const credential = /^([a-f0-9]{32}):([a-f0-9]{128})$/.exec(process.env.ADMIN_PASSWORD_HASH || "");
+const sessions = new Map();
+const loginAttempts = [];
+let sendsInProgress = 0;
 
-  res.writeHead(200, {
-    "Content-Type": "text/html; charset=utf-8"
+const assets = {
+  "/admin": ["admin.html", "text/html; charset=utf-8"],
+  "/admin/dashboard.js": ["adminClient.js", "application/javascript; charset=utf-8"]
+};
+const securityHeaders = {
+  "Cache-Control": "no-store",
+  "Content-Security-Policy": "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'; form-action 'self'; base-uri 'none'",
+  "Referrer-Policy": "no-referrer",
+  "X-Content-Type-Options": "nosniff"
+};
+
+function respond(res, status, data, headers = {}) {
+  res.writeHead(status, {
+    ...securityHeaders, "Content-Type": "application/json; charset=utf-8", ...headers
   });
+  res.end(JSON.stringify(data));
+}
 
-  res.end(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta name="viewport" content="width=device-width, initial-scale=1">
-      <title>FCS Express Admin Dashboard</title>
-    </head>
-    <body style="font-family:Arial;padding:20px">
-      <h2>FCS EXPRESS</h2>
-      <h3>Admin Dashboard</h3>
-      <p>Dashboard setup ready.</p>
-      <p>Applicant management and calling features will be connected separately.</p>
-    </body>
-    </html>
-  `);
+function cookie(token, maxAge) {
+  return `${COOKIE}=${token}; Max-Age=${maxAge}; Path=/; HttpOnly; Secure; SameSite=Strict`;
+}
 
-  return true;
+function tokenFrom(req) {
+  const name = `${COOKIE}=`;
+  return (req.headers.cookie || "").split(";").map(part => part.trim())
+    .find(part => part.startsWith(name))?.slice(name.length);
+}
+
+function activeSession(token) {
+  const session = sessions.get(token);
+  if (session?.expires > Date.now()) return session;
+  sessions.delete(token);
+  return null;
+}
+
+async function readBytes(req, limit) {
+  if (Number(req.headers["content-length"]) > limit) {
+    req.resume();
+    fail(413, "Request exceeds the file or message size limit.");
+  }
+  const chunks = [];
+  let length = 0;
+  for await (const chunk of req.iterator({ destroyOnReturn: false })) {
+    length += chunk.length;
+    if (length > limit) {
+      req.resume();
+      fail(413, "Request exceeds the file or message size limit.");
+    }
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks, length);
+}
+
+function jsonObject(raw) {
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    fail(400, "Invalid request.");
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) fail(400, "Invalid request.");
+  return parsed;
+}
+
+async function readJSON(req) {
+  if (req.headers["content-type"] !== "application/json") fail(415, "Expected a JSON request.");
+  return jsonObject(await readBytes(req, MAX_REQUEST_BYTES));
+}
+
+async function login(req, res, previousToken) {
+  if (!credential) fail(503, "Admin login is awaiting server configuration.");
+
+  const now = Date.now();
+  while (loginAttempts.length && loginAttempts[0].at <= now - LOGIN_INTERVAL) loginAttempts.shift();
+  if (loginAttempts.length >= LOGIN_LIMIT) {
+    return respond(res, 429, { error: "Too many sign-in attempts. Try again in five minutes." }, {
+      "Retry-After": String(Math.ceil((loginAttempts[0].at + LOGIN_INTERVAL - now) / 1000))
+    });
+  }
+  const { password } = await readJSON(req);
+  if (typeof password !== "string" || !password || password.length > 256) {
+    fail(400, "Enter your admin password.");
+  }
+  // Reserve an attempt before starting the asynchronous password check.
+  const attemptTime = { at: Date.now() };
+  if (loginAttempts.length >= LOGIN_LIMIT) fail(429, "Too many sign-in attempts. Try again in five minutes.");
+  loginAttempts.push(attemptTime);
+  const digest = await scrypt(password, Buffer.from(credential[1], "hex"), 64);
+  if (!crypto.timingSafeEqual(digest, Buffer.from(credential[2], "hex"))) {
+    fail(401, "Incorrect admin password.");
+  }
+
+  const attemptIndex = loginAttempts.indexOf(attemptTime);
+  if (attemptIndex !== -1) loginAttempts.splice(attemptIndex, 1);
+  for (const [id, session] of sessions) {
+    if (session.expires <= Date.now()) sessions.delete(id);
+  }
+  sessions.delete(previousToken);
+  if (sessions.size >= 100) sessions.delete(sessions.keys().next().value);
+  const token = crypto.randomBytes(32).toString("hex");
+  sessions.set(token, {
+    csrf: crypto.randomBytes(32).toString("hex"), expires: Date.now() + SESSION_MS
+  });
+  return respond(res, 200, { signedIn: true }, {
+    "Set-Cookie": cookie(token, SESSION_MS / 1000)
+  });
+}
+
+function prepare(input, binary) {
+  const message = prepareMessage(input);
+  const expected = message.type === "media" ? "attachment" : message.template?.header;
+  if (Boolean(expected) !== binary) {
+    fail(400, expected ? "Select a file to attach." : "This message does not take a file.");
+  }
+  const file = binary ? attachment(input.filename) : null;
+  if (expected === "image" && file.kind !== "image") fail(415, "This template requires a JPG or PNG.");
+  if (expected === "document" && file.mime !== "application/pdf") fail(415, "This template requires a PDF.");
+  return { message, file };
+}
+
+async function readAttachment(req) {
+  // The request begins with length-prefixed UTF-8 JSON, followed by the file bytes.
+  const metadataLength = Number(req.headers["x-admin-metadata-length"]);
+  if (!Number.isInteger(metadataLength) || metadataLength < 2 || metadataLength > MAX_REQUEST_BYTES) {
+    fail(400, "Invalid attachment metadata.");
+  }
+  const metadata = Buffer.alloc(metadataLength);
+  let offset = 0;
+  let upload;
+  const chunks = [];
+  let length = 0;
+  for await (let chunk of req.iterator({ destroyOnReturn: false })) {
+    if (!upload) {
+      const used = chunk.copy(metadata, offset);
+      offset += used;
+      if (offset < metadataLength) continue;
+      upload = prepare(jsonObject(metadata), true);
+      if (Number(req.headers["content-length"]) - metadataLength > upload.file.limit) {
+        fail(413, "File exceeds the size limit.");
+      }
+      chunk = chunk.subarray(used);
+    }
+    length += chunk.length;
+    if (length > upload.file.limit) fail(413, "File exceeds the size limit.");
+    if (chunk.length) chunks.push(chunk);
+  }
+  if (!upload) fail(400, "Invalid attachment request.");
+  return { ...upload, bytes: Buffer.concat(chunks, length) };
+}
+
+async function send(req, res, session, token) {
+  if (session.sending || sendsInProgress >= 2) fail(429, "A send is in progress. Try again shortly.");
+  session.sending = true;
+  sendsInProgress++;
+  try {
+    const { message, file, bytes } = req.headers["content-type"] === "application/octet-stream"
+      ? await readAttachment(req)
+      : prepare(await readJSON(req), false);
+
+    await sendAdminMessage(message, file, bytes, () => activeSession(token) === session);
+    return respond(res, 200, { accepted: true });
+  } finally {
+    session.sending = false;
+    sendsInProgress--;
+  }
+}
+
+async function adminDashboard(req, res, url) {
+  try {
+    const route = url.pathname;
+    const asset = assets[route];
+    if (req.method === "GET" && route === "/admin/") {
+      res.writeHead(308, { ...securityHeaders, Location: "/admin" });
+      return res.end();
+    }
+    if (req.method === "GET" && asset) {
+      const [name, type] = asset;
+      const body = await fs.promises.readFile(path.join(__dirname, name));
+      res.writeHead(200, { ...securityHeaders, "Content-Type": type });
+      return res.end(body);
+    }
+
+    const token = tokenFrom(req);
+    const session = activeSession(token);
+    if (req.method === "GET" && route === "/admin/session") {
+      if (!session) return respond(res, 200, { signedIn: false });
+      return respond(res, 200, { signedIn: true, csrf: session.csrf, templates });
+    }
+
+    if (req.method !== "POST" ||
+        !["/admin/login", "/admin/logout", "/admin/window", "/admin/send"].includes(route)) {
+      fail(404, "Page not found.");
+    }
+
+    const site = req.headers["sec-fetch-site"];
+    if ((site && site !== "same-origin" && site !== "none") || !req.headers["x-admin-request"]) {
+      fail(403, "Cross-origin request denied.");
+    }
+    if (route === "/admin/login") {
+      if (req.headers["x-admin-request"] !== "login") fail(403, "Invalid sign-in request.");
+      return await login(req, res, token);
+    }
+
+    if (!session) fail(401, "Your session expired. Sign in again.");
+    if (req.headers["x-admin-request"] !== session.csrf) fail(403, "Invalid session request.");
+    if (route === "/admin/logout") {
+      sessions.delete(token);
+      return respond(res, 200, { signedIn: false }, { "Set-Cookie": cookie("", 0) });
+    }
+    if (route === "/admin/window") {
+      const number = recipient((await readJSON(req)).number);
+      checkRecipient(number, "template");
+      return respond(res, 200, { expires: windowExpiry(number) });
+    }
+
+    return await send(req, res, session, token);
+  } catch (error) {
+    req.resume();
+    if (!res.destroyed && !res.headersSent) {
+      respond(res, error.status || 500, {
+        error: error.status ? error.message : "Admin request failed. Try again."
+      });
+    }
+  }
 }
 
 module.exports = { adminDashboard };
-

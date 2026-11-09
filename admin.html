@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FCS Express Admin</title>
+  <style>
+    :root { font: 16px system-ui, sans-serif; color: #202124; background: #f5f6f8; }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    body { margin: 0; }
+    header { background: #b71925; color: white; }
+    header div { max-width: 640px; margin: auto; padding: 14px 20px;
+      display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    main { max-width: 640px; margin: auto; padding: 24px 16px; }
+    section { padding: 22px; border: 1px solid #dcdfe4; border-radius: 12px; background: white; }
+    h1 { margin: 0 0 12px; font-size: 1.45rem; }
+    p { margin: 0 0 16px; line-height: 1.45; }
+    form, #templateFields { display: grid; gap: 16px; }
+    label { display: grid; gap: 6px; font-weight: 600; }
+    input, select, textarea, button { font: inherit; min-height: 44px; }
+    input, select, textarea { width: 100%; border: 1px solid #74777e; border-radius: 6px;
+      padding: 9px 10px; background: white; color: inherit; }
+    textarea { resize: vertical; }
+    button { border-radius: 6px; padding: 8px 14px; cursor: pointer; font-weight: 650;
+      background: #b71925; color: white; border: 1px solid #b71925; }
+    button.secondary { color: #2b2d30; background: white; border-color: #74777e; }
+    header button.secondary { border-color: white; }
+    button:disabled { opacity: .6; cursor: wait; }
+    small, .hint { color: #4d535a; font-weight: normal; line-height: 1.4; }
+    .check { display: flex; align-items: center; gap: 10px; }
+    .check input { width: 20px; height: 20px; min-height: 0; }
+    .status { margin: 16px 0 0; }
+    .status:empty { display: none; }
+    .status[data-error="true"] { color: #9e1621; }
+    @media (max-width: 400px) { section { padding: 16px; } }
+  </style>
+  <script src="/admin/dashboard.js" defer></script>
+</head>
+<body>
+  <header><div><strong>FCS EXPRESS</strong><button id="logout" class="secondary" type="button" hidden>Sign out</button></div></header>
+  <main>
+    <section id="loginPanel" hidden>
+      <h1>Admin sign-in</h1>
+      <form id="loginForm" method="post">
+        <label>Admin password <input id="password" type="password" autocomplete="current-password" maxlength="256" required></label>
+        <button type="submit">Sign in</button>
+      </form>
+    </section>
+
+    <section id="composePanel" hidden>
+      <h1>Send a WhatsApp message</h1>
+      <p class="hint">Send to one customer. Free-form messages and files require a reply from the customer within the last 24 hours.</p>
+      <form id="composeForm" method="post">
+        <label>Customer WhatsApp number
+          <input id="number" type="tel" autocomplete="off" maxlength="30" placeholder="+92 300 1234567" required>
+          <small>Include the country code.</small>
+        </label>
+        <button id="checkWindow" type="button" class="secondary">Check 24-hour window</button>
+        <p id="windowStatus" class="status" role="status" aria-live="polite"></p>
+
+        <label>Message type
+          <select id="type">
+            <option value="text">Text message</option>
+            <option value="media">Image or document</option>
+            <option value="template">Approved template</option>
+          </select>
+        </label>
+        <label id="textField">Message <textarea id="message" rows="5" maxlength="4096"></textarea></label>
+        <label id="templateField" hidden>Approved template <select id="template"></select></label>
+        <div id="templateFields" hidden></div>
+        <label id="fileField" hidden>Attachment
+          <input id="file" type="file">
+          <small id="fileHint"></small>
+        </label>
+        <label id="captionField" hidden>Caption (optional) <textarea id="caption" rows="2" maxlength="1024"></textarea></label>
+        <label id="consentField" class="check" hidden>
+          <input id="consent" type="checkbox"> The customer opted in to receive this type of WhatsApp message.
+        </label>
+        <button type="submit">Send message</button>
+      </form>
+    </section>
+    <p id="status" class="status" role="status" aria-live="polite">Loading dashboard…</p>
+    <noscript>Enable JavaScript to use the admin dashboard.</noscript>
+  </main>
+</body>
+</html>
