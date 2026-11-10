@@ -17,6 +17,27 @@ const windowStatus = byId("windowStatus");
 const logout = byId("logout");
 let csrf;
 let templates = [];
+let deliveryPoll = 0;
+
+async function watchDelivery(id) {
+  const poll = ++deliveryPoll;
+  for (let attempt = 0; attempt < 20; attempt++) {
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    if (poll !== deliveryPoll || !csrf) return;
+    try {
+      const result = await request(`delivery?id=${encodeURIComponent(id)}`);
+      if (poll !== deliveryPoll) return;
+      const suffix = result.errorCode ? ` (Meta error ${result.errorCode})` : "";
+      feedback(`WhatsApp status: ${result.status}${suffix}`, result.status === "failed");
+      if (["delivered", "read", "failed"].includes(result.status)) return;
+    } catch {
+      if (poll === deliveryPoll) feedback("Delivery status unavailable; check Meta logs before retrying.", true);
+      return;
+    }
+  }
+  if (poll === deliveryPoll) feedback("Delivery not confirmed yet. Check Meta logs before retrying.", true);
+}
+
 
 function feedback(text = "", error = false, element = pageStatus) {
   element.textContent = text;
@@ -49,6 +70,7 @@ async function request(path, payload, attachment) {
 }
 
 function showSession(session) {
+  deliveryPoll++;
   csrf = session.csrf;
   templates = session.templates || [];
   byId("loginPanel").hidden = session.signedIn;
@@ -171,12 +193,13 @@ compose.addEventListener("submit", event => {
     const fields = Array.from(compose.elements).filter(element => element !== event.submitter && !element.disabled);
     fields.forEach(element => { element.disabled = true; });
     try {
-      await request("send", payload, selectedFile);
+      const sent = await request("send", payload, selectedFile);
       message.value = "";
       caption.value = "";
       consent.checked = false;
       updateFields();
-      feedback("WhatsApp accepted the message for delivery.");
+      feedback("WhatsApp accepted the message; checking delivery status...");
+      if (sent.messageId) void watchDelivery(sent.messageId);
     } finally {
       fields.forEach(element => { element.disabled = false; });
     }
