@@ -1,0 +1,20 @@
+name: Test WhatsApp delivery status
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --ignore-scripts --no-audit --no-fund
+      - run: npm test
+      - run: node --check adminMessaging.js
+      - run: node --check adminDashboard.js
+      - run: node --check adminClient.js

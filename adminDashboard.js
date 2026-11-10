@@ -5,7 +5,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { promisify } = require("node:util");
 const {
-  attachment, checkRecipient, fail, prepareMessage, recipient,
+  attachment, checkRecipient, deliveryStatus, fail, prepareMessage, recipient,
   sendAdminMessage, templates, windowExpiry
 } = require("./adminMessaging");
 
@@ -179,8 +179,8 @@ async function send(req, res, session, token) {
       ? await readAttachment(req)
       : prepare(await readJSON(req), false);
 
-    await sendAdminMessage(message, file, bytes, () => activeSession(token) === session);
-    return respond(res, 200, { accepted: true });
+    const result = await sendAdminMessage(message, file, bytes, () => activeSession(token) === session);
+    return respond(res, 200, { accepted: true, messageId: result.messageId, status: "accepted" });
   } finally {
     session.sending = false;
     sendsInProgress--;
@@ -204,6 +204,14 @@ async function adminDashboard(req, res, url) {
 
     const token = tokenFrom(req);
     const session = activeSession(token);
+    if (req.method === "GET" && route === "/admin/delivery") {
+      if (!session) fail(401, "Your session expired. Sign in again.");
+      const id = url.searchParams.get("id") || "";
+      if (!/^wamid\.[A-Za-z0-9_=.%-]{8,512}$/.test(id)) fail(400, "Invalid message ID.");
+      const status = deliveryStatus(id);
+      if (!status) fail(404, "Message status unavailable or expired.");
+      return respond(res, 200, { status: status.status, updatedAt: status.updatedAt, errorCode: status.errorCode });
+    }
     if (req.method === "GET" && route === "/admin/session") {
       if (!session) return respond(res, 200, { signedIn: false });
       return respond(res, 200, { signedIn: true, csrf: session.csrf, templates });

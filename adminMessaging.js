@@ -29,6 +29,23 @@ const graphVersion = process.env.META_GRAPH_VERSION || "v25.0";
 const graphConfigured = /^\d+$/.test(PHONE_NUMBER_ID) &&
   Boolean(WHATSAPP_TOKEN) && /^v\d+\.\d+$/.test(graphVersion);
 const windows = new Map();
+const deliveryStatuses = new Map();
+const MAX_DELIVERY_STATUSES = 5000;
+
+function deliveryStatus(id) {
+  return deliveryStatuses.get(id) || null;
+}
+
+function saveDeliveryStatus(id, value) {
+  if (!id || typeof id !== "string") return;
+  const previous = deliveryStatuses.get(id) || {};
+  deliveryStatuses.delete(id);
+  deliveryStatuses.set(id, { ...previous, ...value });
+  while (deliveryStatuses.size > MAX_DELIVERY_STATUSES) {
+    deliveryStatuses.delete(deliveryStatuses.keys().next().value);
+  }
+}
+
 let nextPrune = 0;
 
 function fail(status, message) {
@@ -49,6 +66,17 @@ function recordAdminWindows(data, rawBody, signature) {
   for (const entry of data.entry || []) {
     for (const { field, value } of entry.changes || []) {
       if (field !== "messages" || value?.metadata?.phone_number_id !== PHONE_NUMBER_ID) continue;
+      for (const status of value.statuses || []) {
+        if (typeof status.id !== "string" || !deliveryStatuses.has(status.id)) continue;
+        if (!["sent", "delivered", "read", "failed"].includes(status.status)) continue;
+        const errors = Array.isArray(status.errors) ? status.errors : [];
+        const code = Number.isInteger(errors[0]?.code) ? errors[0].code : null;
+        saveDeliveryStatus(status.id, {
+          status: status.status,
+          updatedAt: new Date().toISOString(),
+          errorCode: code
+        });
+      }
       for (const message of value.messages || []) {
         if (!INBOUND_TYPES.has(message.type) || typeof message.id !== "string" ||
             typeof message.from !== "string" || !/^[1-9]\d{7,14}$/.test(message.from) ||
@@ -248,9 +276,12 @@ async function sendAdminMessage(message, file, bytes, authorized) {
   if (typeof result?.messages?.[0]?.id !== "string") {
     fail(502, "Could not confirm Meta accepted the message. Check before retrying.");
   }
+  const messageId = result.messages[0].id;
+  saveDeliveryStatus(messageId, { number, status: "accepted", updatedAt: new Date().toISOString(), errorCode: null });
+  return { messageId };
 }
 
 module.exports = {
-  attachment, checkRecipient, fail, prepareMessage, recipient, recordAdminWindows,
+  attachment, checkRecipient, deliveryStatus, fail, prepareMessage, recipient, recordAdminWindows,
   sendAdminMessage, templates, windowExpiry
 };

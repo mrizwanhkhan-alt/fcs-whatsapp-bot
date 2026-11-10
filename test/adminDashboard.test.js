@@ -158,7 +158,7 @@ test("valid inbound messages open a recipient-specific window and text uses the 
   assert.equal((await admin("window", { number: "923001234568" })).body.expires, null);
   assert.equal((await admin("send", { number: "03001234567", type: "text", text: "Hi" })).status, 400);
   const result = await admin("send", { number: "+92 300 1234567", type: "text", text: "السلام علیکم" });
-  assert.deepEqual(result.body, { accepted: true });
+  assert.deepEqual(result.body, { accepted: true, messageId: "wamid.test", status: "accepted" });
   const { url, options } = graph.at(-1);
   assert.equal(url, "https://graph.facebook.com/v25.0/" + phoneId + "/messages");
   assert.equal(options.headers.Authorization, "Bearer " + token);
