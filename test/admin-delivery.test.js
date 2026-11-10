@@ -27,13 +27,13 @@ test("admin send tracks accepted, verified webhook delivery and failures without
       return originalLoad.apply(this, arguments);
     };
     const admin = require("../adminMessaging");
-    const message = admin.prepareMessage({ number: "923001234567", type: "text", text: "Test" });
     // Simulate a customer-initiated conversation before sending freeform text.
     const incoming = { object: "whatsapp_business_account", entry: [{ changes: [{ field: "messages", value: {
       metadata: { phone_number_id: config.PHONE_NUMBER_ID },
       messages: [{ id: "wamid.incoming", from: "923001234567", timestamp: String(Math.floor(Date.now() / 1000)), type: "text" }]
     } }] }] };
     admin.recordAdminWindows(incoming, Buffer.from("{}"), signature);
+    const message = admin.prepareMessage({ number: "923001234567", type: "text", text: "Test" });
     const result = await admin.sendAdminMessage(message, null, null, () => true);
     assert.equal(result.messageId, "wamid.test123456789");
     assert.equal(admin.deliveryStatus(result.messageId).status, "accepted");
