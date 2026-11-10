@@ -38,8 +38,9 @@ function deliveryStatus(id) {
 
 function saveDeliveryStatus(id, value) {
   if (!id || typeof id !== "string") return;
+  const previous = deliveryStatuses.get(id) || {};
   deliveryStatuses.delete(id);
-  deliveryStatuses.set(id, { ...deliveryStatuses.get(id), ...value });
+  deliveryStatuses.set(id, { ...previous, ...value });
   while (deliveryStatuses.size > MAX_DELIVERY_STATUSES) {
     deliveryStatuses.delete(deliveryStatuses.keys().next().value);
   }
