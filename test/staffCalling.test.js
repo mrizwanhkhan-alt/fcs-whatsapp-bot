@@ -352,3 +352,44 @@ test("verified first greeting shows the branded image and native language choice
     else process.env.RENDER_EXTERNAL_URL = previousOrigin;
   }
 });
+
+test("the graphical menu routes the reordered services and rejects duplicate Flow replies", async () => {
+  const envName = "FCS_SERVICE_FLOW_EN_ID";
+  const previous = process.env[envName];
+  process.env[envName] = "12345";
+  const from = "923000000059";
+  const change = message => ({ field: "messages", value: {
+    metadata: { phone_number_id: phoneId }, messages: [{ from, ...message }]
+  } });
+  try {
+    await webhook([change({ type: "text", text: { body: "1" } })]);
+    const menu = sent.at(-1);
+    assert.equal(menu.interactive.type, "flow");
+    const token = menu.interactive.action.parameters.flow_token;
+    const choice = change({ type: "interactive", interactive: { type: "nfm_reply",
+      nfm_reply: { response_json: JSON.stringify({ flow_token: token, service: "2" }) }
+    } });
+    const count = sent.length;
+    await webhook([choice], false);
+    assert.equal(sent.length, count);
+    await webhook([choice]);
+    assert.match(sent.at(-1).text.body, /FCS SERVICES/);
+    await webhook([choice]);
+    assert.equal(sent.length, count + 1);
+
+    await webhook([change({ type: "text", text: { body: "0" } })]);
+    const nextToken = sent.at(-1).interactive.action.parameters.flow_token;
+    await webhook([change({
+      id: "wamid.test-flow-call",
+      timestamp: String(Math.floor(Date.now() / 1000)),
+      type: "interactive",
+      interactive: { type: "nfm_reply", nfm_reply: {
+        response_json: JSON.stringify({ flow_token: nextToken, service: "10" })
+      } }
+    })]);
+    assert.equal(sent.at(-1).interactive.type, "voice_call");
+  } finally {
+    if (previous === undefined) delete process.env[envName];
+    else process.env[envName] = previous;
+  }
+});

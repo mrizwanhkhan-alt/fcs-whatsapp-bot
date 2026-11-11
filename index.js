@@ -5,6 +5,7 @@ const fs = require("fs");
 const path = require("path");
 
 const config = require("./config");
+const { menuFlow, menuSelection } = require("./serviceMenuFlow");
 const { callingRoutes, handleCallingWebhook, isVerifiedMetaWebhook, requestRepresentativeCall } = require("./callingRoutes");
 const { adminDashboard } = require("./adminDashboard");
 const { recordAdminWindows } = require("./adminMessaging");
@@ -116,6 +117,11 @@ function sendWhatsAppMessage(to, message, interactive) {
 
   request.write(data);
   request.end();
+}
+
+function sendMainMenu(number, language, verified) {
+  const flow = verified ? menuFlow(number, language) : null;
+  sendWhatsAppMessage(number, mainMenu(language), flow);
 }
 
 const welcomeImagePath = "/assets/fcs-welcome-v3.jpg";
@@ -295,12 +301,12 @@ async function processMessage(message, verified) {
 
   const type = message.type;
 
-  const customerText =
+  let customerText =
     type === "text"
       ? (message.text?.body || "")
       : "";
 
-  const text = customerText.trim();
+  let text = customerText.trim();
 
   // JOB CV DOCUMENT HANDLING
 
@@ -323,10 +329,21 @@ async function processMessage(message, verified) {
     message.interactive?.type === "button_reply" &&
     languageButtons.find(button => button.id === message.interactive.button_reply?.id);
 
-  if (type !== "text" && !languageChoice) return;
-  if (languageChoice && (isApplying(number) || isSupplierRegistering(number) ||
+  const flowReply = verified && type === "interactive" && message.interactive?.type === "nfm_reply";
+  if (type !== "text" && !languageChoice && !flowReply) return;
+  if ((languageChoice || flowReply) && (isApplying(number) || isSupplierRegistering(number) ||
       isTransportRegistering(number) || isWarehouseRegistering(number) ||
       isJobActive(number) || businessTender.isActive(number))) return;
+
+  if (flowReply) {
+    const selection = menuSelection(number, message.interactive);
+    if (!selection) return;
+    setLanguage(number, selection.language);
+    faqMode.delete(number);
+    tenderMode.delete(number);
+    customerText = selection.option;
+    text = customerText;
+  }
 
   console.log("Customer:", number);
   console.log("Message:", text);
@@ -454,10 +471,7 @@ async function processMessage(message, verified) {
 
       setLanguage(number, selected);
 
-      sendWhatsAppMessage(
-        number,
-        mainMenu(selected)
-      );
+      sendMainMenu(number, selected, verified);
     } else {
       sendWelcomeMessage(number, verified);
     }
@@ -477,10 +491,7 @@ async function processMessage(message, verified) {
     faqMode.delete(number);
     tenderMode.delete(number);
 
-    sendWhatsAppMessage(
-      number,
-      mainMenu(lang)
-    );
+    sendMainMenu(number, lang, verified);
 
     return;
   }
