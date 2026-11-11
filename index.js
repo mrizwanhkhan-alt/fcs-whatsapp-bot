@@ -66,6 +66,18 @@ const WHATSAPP_TOKEN = config.WHATSAPP_TOKEN;
 // =====================================
 
 function sendWhatsAppMessage(to, message, interactive, fallbackInteractive) {
+  const payload = interactive ? { type: "interactive", interactive } : {
+    type: "text",
+    text: { preview_url: false, body: String(message) }
+  };
+  sendWhatsAppPayload(to, payload, status => {
+    if (interactive && status >= 400 && status < 500 && status !== 429) {
+      sendWhatsAppMessage(to, message, fallbackInteractive);
+    }
+  });
+}
+
+function sendWhatsAppPayload(to, payload, onResponse, onClose) {
   if (!PHONE_NUMBER_ID || !WHATSAPP_TOKEN) {
     console.error("WhatsApp credentials missing");
     return;
@@ -75,10 +87,7 @@ function sendWhatsAppMessage(to, message, interactive, fallbackInteractive) {
     messaging_product: "whatsapp",
     recipient_type: "individual",
     to: String(to),
-    ...(interactive ? { type: "interactive", interactive } : {
-      type: "text",
-      text: { preview_url: false, body: String(message) }
-    })
+    ...payload
   });
 
   const request = https.request({
@@ -86,6 +95,7 @@ function sendWhatsAppMessage(to, message, interactive, fallbackInteractive) {
     port: 443,
     path: `/v21.0/${PHONE_NUMBER_ID}/messages`,
     method: "POST",
+    ...(onClose ? { timeout: 5000 } : {}),
     headers: {
       Authorization: `Bearer ${WHATSAPP_TOKEN}`,
       "Content-Type": "application/json",
@@ -99,10 +109,7 @@ function sendWhatsAppMessage(to, message, interactive, fallbackInteractive) {
     });
 
     response.on("end", () => {
-      if (interactive && response.statusCode >= 400 && response.statusCode < 500 &&
-          response.statusCode !== 429) {
-        sendWhatsAppMessage(to, message, fallbackInteractive);
-      }
+      onResponse?.(response.statusCode);
       console.log(
         "WhatsApp Response:",
         response.statusCode,
@@ -115,6 +122,10 @@ function sendWhatsAppMessage(to, message, interactive, fallbackInteractive) {
     console.error("WhatsApp Error:", error.message);
   });
 
+  if (onClose) {
+    request.once("close", onClose);
+    request.once("timeout", () => request.destroy(new Error("WhatsApp menu artwork request timed out")));
+  }
   request.write(data);
   request.end();
 }
@@ -122,14 +133,26 @@ function sendWhatsAppMessage(to, message, interactive, fallbackInteractive) {
 function sendMainMenu(number, language, verified) {
   const flow = verified ? menuFlow(number, language) : null;
   const list = verified ? menuList(language) : null;
-  sendWhatsAppMessage(number, mainMenu(language), flow || list, flow ? list : null);
+  const sendMenu = () => sendWhatsAppMessage(number, mainMenu(language), flow || list, flow ? list : null);
+  const origin = process.env.RENDER_EXTERNAL_URL;
+  if (flow || !list || !origin?.startsWith("https://")) {
+    sendMenu();
+    return;
+  }
+
+  sendWhatsAppPayload(number, {
+    type: "image",
+    image: { link: new URL(menuImagePath, origin).href }
+  }, undefined, sendMenu);
 }
 
 const welcomeImagePath = "/assets/fcs-welcome-v3.jpg";
-const welcomeAssets = new Map([
+const menuImagePath = "/assets/fcs-service-menu.jpg";
+const messageAssets = new Map([
   ["/assets/fcs-welcome-v1.jpg", "image/jpeg"],
   ["/assets/fcs-welcome-v2.png", "image/png"],
-  [welcomeImagePath, "image/jpeg"]
+  [welcomeImagePath, "image/jpeg"],
+  [menuImagePath, "image/jpeg"]
 ]);
 const languageButtons = [
   { id: "fcs_welcome_en", title: "English", language: "en" },
@@ -707,15 +730,18 @@ const server = http.createServer((req, res) => {
     );
   }
 
-  const welcomeContentType = welcomeAssets.get(url.pathname);
-  if (welcomeContentType && (req.method === "GET" || req.method === "HEAD")) {
-    fs.readFile(path.join(__dirname, "assets", path.basename(url.pathname)), (error, image) => {
+  const messageAssetType = messageAssets.get(url.pathname);
+  if (messageAssetType && (req.method === "GET" || req.method === "HEAD")) {
+    const encoded = url.pathname === menuImagePath;
+    const filename = path.basename(url.pathname) + (encoded ? ".base64" : "");
+    fs.readFile(path.join(__dirname, "assets", filename), encoded ? "utf8" : null, (error, contents) => {
       if (error) {
         res.writeHead(404);
         return res.end();
       }
+      const image = encoded ? Buffer.from(contents, "base64") : contents;
       res.writeHead(200, {
-        "Content-Type": welcomeContentType,
+        "Content-Type": messageAssetType,
         "Content-Length": image.length,
         "Cache-Control": "public, max-age=86400",
         "X-Content-Type-Options": "nosniff"
