@@ -342,19 +342,26 @@ test("verified first greeting shows the branded image and native language choice
       await webhook([reply], false);
       assert.equal(sent.length, count);
       await webhook([reply]);
-      assert.equal(sent.length, count + 1);
+      assert.equal(sent.length, count + 2);
+      const artwork = sent.at(-2);
+      assert.equal(artwork.type, "image");
+      assert.equal(artwork.image.link, "https://fcs-example.onrender.com/assets/fcs-service-menu.jpg");
+      const banner = await fetch(base + new URL(artwork.image.link).pathname);
+      assert.equal(banner.status, 200);
+      assert.equal(banner.headers.get("content-type"), "image/jpeg");
+      assert.equal(Buffer.from(await banner.arrayBuffer()).subarray(0, 3).toString("hex"), "ffd8ff");
       const menu = sent.at(-1).interactive;
       assert.equal(menu.type, "list");
       const rows = menu.action.sections.flatMap(section => section.rows);
       assert.equal(rows.length, 10);
-      assert.equal(rows[0].title, language === "en" ? "About FCS Express" : "کمپنی کا تعارف");
-      assert.equal(rows[9].title, language === "en" ? "Talk to a representative" : "نمائندے سے بات کریں");
+      assert.equal(rows[0].title, language === "en" ? "ℹ️ About FCS Express" : "ℹ️ کمپنی کا تعارف");
+      assert.equal(rows[9].title, language === "en" ? "☎️ Talk to our team" : "☎️ نمائندے سے بات کریں");
       assert.ok(rows.every(row => row.title.length <= 24));
       const service = change({ type: "interactive", interactive: {
         type: "list_reply", list_reply: { id: rows[1].id }
       } });
       await webhook([service], false);
-      assert.equal(sent.length, count + 1);
+      assert.equal(sent.length, count + 2);
       await webhook([service]);
       assert.match(sent.at(-1).text.body, language === "en" ? /FCS SERVICES/ : /خدمات/);
       await webhook([change({ type: "text", text: { body: "Hi" } })]);

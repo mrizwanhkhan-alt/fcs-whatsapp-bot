@@ -105,18 +105,19 @@ function menuFlow(number, language) {
 function menuList(language) {
   const urdu = language === "ur";
   const locale = urdu ? "ur" : "en";
+  const icons = ["ℹ️", "📦", "🌐", "🤝", "🏢", "📋", "💼", "❓", "📩", "☎️"];
   return {
     type: "list",
-    header: { type: "text", text: "FCS Express Pakistan" },
+    header: { type: "text", text: "🔴 FCS Express Pakistan" },
     body: { text: urdu ? "آپ کو کس سروس کی ضرورت ہے؟ فہرست سے منتخب کریں۔" : "How can we help? Choose a service from the menu." },
     action: {
-      button: urdu ? "سروسز دیکھیں" : "View services",
+      button: urdu ? "🔴 سروسز دیکھیں" : "🔴 View services",
       sections: [{
         rows: services.map((service, index) => {
           const title = index === 7 && urdu ? "عام سوالات"
-            : index === 9 && !urdu ? "Talk to a representative"
+            : index === 9 && !urdu ? "Talk to our team"
             : service[urdu ? 2 : 1];
-          return { id: `fcs_service_${locale}_${index + 1}`, title };
+          return { id: `fcs_service_${locale}_${index + 1}`, title: `${icons[index]} ${title}` };
         })
       }]
     }
