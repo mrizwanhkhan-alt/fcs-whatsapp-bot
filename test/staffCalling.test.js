@@ -326,8 +326,8 @@ test("verified first greeting shows the branded image and native language choice
       const welcome = sent.at(-1);
       assert.equal(welcome.type, "interactive");
       assert.equal(welcome.interactive.type, "button");
-      assert.equal(welcome.interactive.header.image.link, "https://fcs-example.onrender.com/assets/fcs-welcome-v4.jpg");
-      assert.equal(welcome.interactive.body.text, "*Welcome to FCS Express Pakistan*\n*اپنی پسندیدہ زبان کا انتخاب کریں۔*");
+      assert.equal(welcome.interactive.header.image.link, "https://fcs-example.onrender.com/assets/fcs-welcome-v5.jpg");
+      assert.equal(welcome.interactive.body.text, "*Welcome to FCS Express Pakistan*\n*خوش آمدید*\n\nاپنی پسندیدہ زبان کا انتخاب کریں۔");
       assert.deepEqual(welcome.interactive.action.buttons.map(item => item.reply.title), ["English", "اردو"]);
       const selected = welcome.interactive.action.buttons.find(item => item.reply.title === title);
       assert.ok(selected);
