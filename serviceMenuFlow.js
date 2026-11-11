@@ -109,7 +109,10 @@ function menuList(language) {
   return {
     type: "list",
     header: { type: "text", text: "🔴🔴 FCS Express Pakistan 🔴🔴" },
-    body: { text: urdu ? "آپ کو کس سروس کی ضرورت ہے؟ فہرست سے منتخب کریں۔" : "How can we help? Choose a service from the menu." },
+    body: { text: [
+      "_(Your Shipment Handler)_\n╰────╯",
+      urdu ? "آپ کو کس سروس کی ضرورت ہے؟ فہرست سے منتخب کریں۔" : "How can we help? Choose a service from the menu."
+    ].join("\n\n") },
     action: {
       button: urdu ? "📋 سروسز دیکھیں" : "📋 View services",
       sections: [{
