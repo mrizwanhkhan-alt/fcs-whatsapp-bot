@@ -253,7 +253,7 @@ test("shared webhook still processes existing messaging alongside call events", 
   assert.match(languageMenu, /Please select your preferred language/);
   assert.match(mainMenu, /ٹینڈرز اور وینڈر مواقع/);
   assert.match(mainMenu, /فری فرنچائز/);
-  assert.match(mainMenu, /^⑪ ایف سی ایس کے مجاز نمائندے سے بات کریں$/m);
+  assert.match(mainMenu, /^🔟 ایف سی ایس کے مجاز نمائندے سے بات کریں$/m);
   assert.match(faqMenu, /اکثر پوچھے جانے والے سوالات/);
   assert.match(faqMenu, /1\. فرنچائز/);
   assert.doesNotMatch(faqMenu, /ٹرانسپورٹ|ویئر ہاؤس|سپلائر|وینڈر/);
@@ -343,7 +343,20 @@ test("verified first greeting shows the branded image and native language choice
       assert.equal(sent.length, count);
       await webhook([reply]);
       assert.equal(sent.length, count + 1);
-      assert.match(sent.at(-1).text.body, language === "en" ? /About FCS Express/ : /کمپنی کا تعارف/);
+      const menu = sent.at(-1).interactive;
+      assert.equal(menu.type, "list");
+      const rows = menu.action.sections.flatMap(section => section.rows);
+      assert.equal(rows.length, 10);
+      assert.equal(rows[0].title, language === "en" ? "About FCS Express" : "کمپنی کا تعارف");
+      assert.equal(rows[9].title, language === "en" ? "Talk to a representative" : "نمائندے سے بات کریں");
+      assert.ok(rows.every(row => row.title.length <= 24));
+      const service = change({ type: "interactive", interactive: {
+        type: "list_reply", list_reply: { id: rows[1].id }
+      } });
+      await webhook([service], false);
+      assert.equal(sent.length, count + 1);
+      await webhook([service]);
+      assert.match(sent.at(-1).text.body, language === "en" ? /FCS SERVICES/ : /خدمات/);
       await webhook([change({ type: "text", text: { body: "Hi" } })]);
       assert.deepEqual(sent.at(-1).interactive, welcome.interactive);
     }
