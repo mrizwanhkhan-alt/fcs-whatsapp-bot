@@ -251,13 +251,13 @@ async function updateCall(call, owner, action, sdp) {
 async function handleAction(route, body) {
   if (route === "permission-status" || route === "permission" || route === "permission-delivery" || route === "connect") {
     const number = normalizeNumber(body.number);
-    const permission = await getCallPermission(number);
-    if (route === "permission-status") return permission;
     if (route === "permission-delivery") {
       const id = permissionByNumber.get(number);
       const delivery = id && permissionDeliveries.get(id);
       return delivery ? { status: delivery.status, errorCode: delivery.errorCode, updatedAt: delivery.updatedAt } : { status: "unavailable" };
     }
+    const permission = await getCallPermission(number);
+    if (route === "permission-status") return permission;
     if (route === "permission") {
       if (permission.canCall || ["temporary", "permanent", "granted"].includes(permission.permission)) {
         return { ...permission, submitted: false };
