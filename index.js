@@ -64,7 +64,7 @@ const WHATSAPP_TOKEN = config.WHATSAPP_TOKEN;
 // WHATSAPP MESSAGE SENDING
 // =====================================
 
-function sendWhatsAppMessage(to, message) {
+function sendWhatsAppMessage(to, message, menuImage) {
   if (!PHONE_NUMBER_ID || !WHATSAPP_TOKEN) {
     console.error("WhatsApp credentials missing");
     return;
@@ -74,11 +74,10 @@ function sendWhatsAppMessage(to, message) {
     messaging_product: "whatsapp",
     recipient_type: "individual",
     to: String(to),
-    type: "text",
-    text: {
-      preview_url: false,
-      body: String(message)
-    }
+    ...(menuImage ? { type: "image", image: menuImage } : {
+      type: "text",
+      text: { preview_url: false, body: String(message) }
+    })
   });
 
   const request = https.request({
@@ -99,6 +98,10 @@ function sendWhatsAppMessage(to, message) {
     });
 
     response.on("end", () => {
+      if (menuImage && response.statusCode >= 400 && response.statusCode < 500 &&
+          response.statusCode !== 429) {
+        sendWhatsAppMessage(to, message);
+      }
       console.log(
         "WhatsApp Response:",
         response.statusCode,
@@ -113,6 +116,24 @@ function sendWhatsAppMessage(to, message) {
 
   request.write(data);
   request.end();
+}
+
+function sendMainMenu(number, language, textOnly = false) {
+  const menu = mainMenu(language);
+  const origin = process.env.RENDER_EXTERNAL_URL;
+  if (textOnly || !origin?.startsWith("https://")) {
+    sendWhatsAppMessage(number, menu);
+    return;
+  }
+
+  const greeting = menu.split("\n\n1. ")[0];
+  const textMenuHint = language === "ur"
+    ? "تحریری مینیو کے لیے menu text بھیجیں۔"
+    : "For the text menu, send menu text.";
+  sendWhatsAppMessage(number, menu, {
+    link: new URL(`/menu/v1/${language}.png`, origin).href,
+    caption: `${greeting}\n\n${textMenuHint}\nwww.fcsexpress.com.pk`
+  });
 }
 
 // =====================================
@@ -406,10 +427,7 @@ async function processMessage(message, verified) {
 
       setLanguage(number, selected);
 
-      sendWhatsAppMessage(
-        number,
-        mainMenu(selected)
-      );
+      sendMainMenu(number, selected);
     } else {
       sendWhatsAppMessage(
         number,
@@ -427,15 +445,13 @@ async function processMessage(message, verified) {
   if (
     text === "0" ||
     text.toLowerCase() === "menu" ||
-    text.toLowerCase() === "main menu"
+    text.toLowerCase() === "main menu" ||
+    text.toLowerCase() === "menu text"
   ) {
     faqMode.delete(number);
     tenderMode.delete(number);
 
-    sendWhatsAppMessage(
-      number,
-      mainMenu(lang)
-    );
+    sendMainMenu(number, lang, text.toLowerCase() === "menu text");
 
     return;
   }
@@ -647,6 +663,24 @@ const server = http.createServer((req, res) => {
     return res.end(
       "FCS Express WhatsApp Bot Running"
     );
+  }
+
+  const menuAsset = /^\/menu\/v1\/(en|ur)\.png$/.exec(url.pathname);
+  if (menuAsset && (req.method === "GET" || req.method === "HEAD")) {
+    fs.readFile(path.join(__dirname, "menu", `${menuAsset[1]}.png`), (error, content) => {
+      if (error) {
+        res.writeHead(404);
+        return res.end();
+      }
+      res.writeHead(200, {
+        "Content-Type": "image/png",
+        "Content-Length": content.length,
+        "Cache-Control": "public, max-age=86400",
+        "X-Content-Type-Options": "nosniff"
+      });
+      res.end(req.method === "HEAD" ? undefined : content);
+    });
+    return;
   }
 
   // STAFF CALLING PANEL
