@@ -6,37 +6,29 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>FCS Express | Staff Calling</title>
 <style>
-:root{color-scheme:light;font:16px system-ui,sans-serif;color:#211b20;background:#fff}
 *{box-sizing:border-box}
-body{margin:0;padding:16px}
-.panel{max-width:620px;margin:0 auto;padding:10px 10px 16px}
-h1,h2{margin:0 0 8px;line-height:1.2}
-h1{font-size:1.35rem}
-h2{font-size:1.05rem}
-.panel-brand{color:#9d1330;font-size:.85rem;font-weight:850;letter-spacing:.06em;margin:0 0 7px}
-label{display:block;margin-top:16px;font-weight:650}
+body{margin:0;padding:16px;background:#f4f5f7;font-family:Arial,sans-serif}
+.panel{max-width:460px;margin:15px auto;padding:22px;background:white;border-radius:12px;box-shadow:0 3px 18px #00000012}
+h2{color:#c8102e;margin-bottom:4px}
+h3{margin-top:0;color:#333}
+label{display:block;margin-top:16px;font-weight:bold}
 [hidden]{display:none!important}
-#template{width:auto;min-height:0;margin-right:6px}
-input,button{width:100%;min-height:46px;padding:10px 12px;margin-top:8px;font:inherit;border-radius:11px}
-input{border:1px solid #aa989f;background:#fdfbfc;color:inherit}
-button{background:#b5142e;color:white;border:1px solid #b5142e;cursor:pointer;font-weight:700}
-button:disabled{background:#eee7ea;color:#61555c;border-color:#eee7ea;cursor:not-allowed}
-#check:not(:disabled),#permission:not(:disabled),#reject{background:#fff5f7;color:#83122a;border-color:#dec0c9}
-#end:not(:disabled){background:#34272e;border-color:#34272e}
-#status{white-space:pre-wrap;line-height:1.5;padding:12px;background:#f7f4f5;border-radius:11px;overflow-wrap:anywhere}
-#incoming,#representativeRequests{margin-top:16px;padding:14px;border:1px solid #e7dce0;border-radius:14px;background:#fff5f7}
-#caller{margin:0 0 4px;font-weight:750;overflow-wrap:anywhere}
-#representativeRequestList{margin:8px 0 0;padding-inline-start:18px;overflow-wrap:anywhere}
-#representativeRequestList li+li{margin-top:8px}
-:is(button,input):focus-visible{outline:3px solid #d94862;outline-offset:2px}
-@media(max-width:400px){body{padding:12px}.panel{padding-inline:6px}}
+#template{width:auto;margin-right:6px}
+input,button{width:100%;padding:13px;margin-top:9px;font-size:16px;border-radius:7px}
+input{border:1px solid #ccc}
+button{background:#c8102e;color:white;border:0;cursor:pointer}
+button:disabled{background:#aaa;cursor:not-allowed}
+#end{background:#333}
+#end:disabled{background:#aaa}
+#status{white-space:pre-wrap;line-height:1.5;padding:12px;background:#f5f5f5;border-radius:7px;overflow-wrap:anywhere}
+small{color:#666}
 </style>
 </head>
 <body>
 
 <div class="panel">
-<p class="panel-brand">FCS EXPRESS</p>
-<h1>WhatsApp Staff Calling</h1>
+<h2>FCS EXPRESS</h2>
+<h3>WhatsApp Staff Calling</h3>
 
 <label for="customer">Customer WhatsApp Number</label>
 <input id="customer" type="tel" inputmode="tel" placeholder="923001234567">
