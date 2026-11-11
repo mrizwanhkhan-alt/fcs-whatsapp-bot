@@ -142,7 +142,7 @@ function sendMainMenu(number, language, verified) {
 
   sendWhatsAppPayload(number, {
     type: "image",
-    image: { link: new URL(menuImagePath, origin).href }
+    image: { link: new URL(`${menuImagePath}?v=2`, origin).href }
   }, undefined, sendMenu);
 }
 

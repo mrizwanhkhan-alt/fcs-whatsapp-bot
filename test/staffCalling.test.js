@@ -345,7 +345,7 @@ test("verified first greeting shows the branded image and native language choice
       assert.equal(sent.length, count + 2);
       const artwork = sent.at(-2);
       assert.equal(artwork.type, "image");
-      assert.equal(artwork.image.link, "https://fcs-example.onrender.com/assets/fcs-service-menu.jpg");
+      assert.equal(artwork.image.link, "https://fcs-example.onrender.com/assets/fcs-service-menu.jpg?v=2");
       const banner = await fetch(base + new URL(artwork.image.link).pathname);
       assert.equal(banner.status, 200);
       assert.equal(banner.headers.get("content-type"), "image/jpeg");
