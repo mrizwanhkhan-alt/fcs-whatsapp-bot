@@ -157,7 +157,17 @@ test("permission is checked before dialing and requests use the intended message
   assert.equal(graph.at(-1).options.path, `/v25.0/${phoneId}/call_permissions?user_wa_id=${customer}`);
   assert.equal(graph.at(-1).options.method, "GET");
 
-  assert.equal((await api("permission", { number: "+" + customer })).body.submitted, true);
+  const request = (await api("permission", { number: "+" + customer })).body;
+  assert.equal(request.submitted, true);
+  const poll = async () => (await api("poll", { permissionMessageId: request.permissionMessageId })).body.permissionDelivery;
+  const delivery = { field: "messages", value: {
+    metadata: { phone_number_id: phoneId },
+    statuses: [{ id: request.permissionMessageId, status: "failed", recipient_id: customer, errors: [{ code: 131026 }] }]
+  } };
+  await webhook([delivery], false);
+  assert.deepEqual(await poll(), { status: "accepted", errorCode: null });
+  await webhook([delivery]);
+  assert.deepEqual(await poll(), { status: "failed", errorCode: 131026 });
   assert.deepEqual(sent.at(-1), {
     messaging_product: "whatsapp", recipient_type: "individual", to: customer,
     type: "interactive", interactive: { type: "call_permission_request", action: { name: "call_permission_request" } }

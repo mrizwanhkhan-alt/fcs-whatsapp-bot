@@ -59,6 +59,7 @@ small{color:#666}
 Use approved template outside the messaging window
 </label>
 
+<p id="permissionDelivery" role="status" hidden></p>
 <button id="call" disabled>Call Customer</button>
 <button id="end" disabled>End Call</button>
 <button id="playAudio" hidden>Play Call Audio</button>
@@ -87,6 +88,13 @@ let iceServers = [];
 let busy = false;
 let polling = false;
 let callTimeout;
+let permissionMessageId;
+
+function showPermissionDelivery(message) {
+  const line = $("permissionDelivery");
+  if (line.textContent !== message) line.textContent = message;
+  line.hidden = !message;
+}
 
 function status(message) {
   $("status").textContent = message;
@@ -419,7 +427,8 @@ async function poll() {
   const callId = active?.id;
 
   try {
-    const data = await api("poll", { callId });
+    const deliveryId = permissionMessageId;
+    const data = await api("poll", { callId, permissionMessageId: deliveryId });
 
     if (
       session !== currentSession ||
@@ -429,6 +438,20 @@ async function poll() {
 
     incoming = data.incoming[0] || null;
     representativeRequests = data.requests || [];
+    if (deliveryId && deliveryId === permissionMessageId) {
+      const delivery = data.permissionDelivery;
+      if (!delivery) {
+        showPermissionDelivery("Delivery status is unavailable. Check with the customer before retrying.");
+        permissionMessageId = undefined;
+      } else if (delivery.status === "failed") {
+        const code = delivery.errorCode ? ` (Meta code ${delivery.errorCode})` : "";
+        showPermissionDelivery(`WhatsApp did not deliver the permission request${code}.`);
+      } else if (delivery.status === "delivered" || delivery.status === "read") {
+        showPermissionDelivery("WhatsApp delivered the permission request. Ask the customer to approve it.");
+      } else if (delivery.status === "sent") {
+        showPermissionDelivery("WhatsApp sent the request. Customer delivery is still unconfirmed.");
+      }
+    }
 
     if (active && data.call) {
       try {
@@ -567,6 +590,8 @@ $("check").onclick = () => perform(async () => {
 });
 
 $("permission").onclick = () => perform(async () => {
+  permissionMessageId = undefined;
+  showPermissionDelivery("");
   const data = await api("permission", {
     number: number(),
     useTemplate:
@@ -574,13 +599,15 @@ $("permission").onclick = () => perform(async () => {
       !$("templateOption").hidden
   });
 
-  status(
-    data.submitted
-      ? "Permission request submitted. Ask the customer to approve it, then check permission."
-      : data.canCall
-        ? "Customer calling permission is already approved."
-        : "Permission is approved. Meta currently limits further calls."
-  );
+  if (data.submitted) {
+    permissionMessageId = data.permissionMessageId;
+    status("Permission request submitted to Meta.");
+    showPermissionDelivery("Meta accepted the request. Waiting for WhatsApp delivery confirmation.");
+  } else {
+    status(data.canCall
+      ? "Customer calling permission is already approved."
+      : "Permission is approved. Meta currently limits further calls.");
+  }
 });
 
 $("call").onclick = () => perform(async () => {
