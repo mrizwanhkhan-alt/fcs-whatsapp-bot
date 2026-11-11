@@ -19,6 +19,8 @@ const ICE_SERVERS = process.env.STAFF_CALLING_ICE_SERVERS;
 const defaultIceServers = [{ urls: "stun:stun.l.google.com:19302" }];
 const calls = new Map();
 const pending = new Map();
+const permissionDeliveries = new Map();
+const permissionByNumber = new Map();
 const representativeRequests = new Map();
 const REPRESENTATIVE_REQUEST_MS = REPRESENTATIVE_REQUEST_MINUTES * 60_000;
 const RING_MS = 90000;
@@ -149,6 +151,16 @@ function handleCallingWebhook(data, rawBody, signature) {
   prune();
   for (const entry of data.entry || []) {
     for (const change of entry.changes || []) {
+      if (change.field !== "messages" || change.value?.metadata?.phone_number_id !== PHONE_NUMBER_ID) continue;
+      for (const event of change.value.statuses || []) {
+        const tracked = permissionDeliveries.get(event.id);
+        if (!tracked || !["sent", "delivered", "read", "failed"].includes(event.status)) continue;
+        tracked.status = event.status;
+        tracked.errorCode = event.errors?.[0]?.code || null;
+        tracked.updatedAt = Date.now();
+      }
+    }
+    for (const change of entry.changes || []) {
       const value = change.value;
       if (change.field !== "calls" || !PHONE_NUMBER_ID || value?.metadata?.phone_number_id !== PHONE_NUMBER_ID) {
         continue;
@@ -237,18 +249,31 @@ async function updateCall(call, owner, action, sdp) {
 }
 
 async function handleAction(route, body) {
-  if (route === "permission-status" || route === "permission" || route === "connect") {
+  if (route === "permission-status" || route === "permission" || route === "permission-delivery" || route === "connect") {
     const number = normalizeNumber(body.number);
     const permission = await getCallPermission(number);
     if (route === "permission-status") return permission;
+    if (route === "permission-delivery") {
+      const id = permissionByNumber.get(number);
+      const delivery = id && permissionDeliveries.get(id);
+      return delivery ? { status: delivery.status, errorCode: delivery.errorCode, updatedAt: delivery.updatedAt } : { status: "unavailable" };
+    }
     if (route === "permission") {
       if (permission.canCall || ["temporary", "permanent", "granted"].includes(permission.permission)) {
         return { ...permission, submitted: false };
       }
       if (!permission.canRequest) fail(409, "Meta is not accepting another permission request for this customer yet.");
       if (body.useTemplate === true && !TEMPLATE) fail(503, "No approved call permission template is configured.");
-      await requestCallPermission(number, body.useTemplate === true ? TEMPLATE : null);
-      return { ...permission, submitted: true };
+      const response = await requestCallPermission(number, body.useTemplate === true ? TEMPLATE : null);
+      const messageId = response.messages?.[0]?.id;
+      if (!messageId) fail(502, "Meta accepted the request without returning a message ID.");
+      permissionByNumber.set(number, messageId);
+      permissionDeliveries.set(messageId, { status: "accepted", errorCode: null, updatedAt: Date.now() });
+      if (permissionDeliveries.size > 5000) {
+        const oldest = permissionDeliveries.keys().next().value;
+        permissionDeliveries.delete(oldest);
+      }
+      return { ...permission, submitted: true, deliveryStatus: "accepted" };
     }
     if (!permission.canCall) {
       fail(409, "Meta does not currently allow a call. Check the customer's permission and calling limits.");
