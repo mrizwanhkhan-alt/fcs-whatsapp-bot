@@ -363,6 +363,7 @@ test("verified first greeting shows the branded image and native language choice
       assert.equal(menu.type, "list");
       assert.equal(menu.header.text, "🔴🔴 FCS Express Pakistan 🔴🔴");
       assert.equal(menu.body.text.split("\n")[0], "_(Your Shipment Handler)_");
+      assert.equal(menu.body.text.split("\n")[1], "╰────╯");
       assert.equal(menu.action.button, language === "en" ? "📋 View services" : "📋 سروسز دیکھیں");
       const rows = menu.action.sections.flatMap(section => section.rows);
       assert.equal(rows.length, 10);
