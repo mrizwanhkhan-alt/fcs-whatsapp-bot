@@ -310,3 +310,42 @@ test("option 11 acknowledges a verified request and accepts a customer-initiated
   const panel = (await api("poll")).body;
   assert.ok(panel.incoming.some(call => call.id === "wacid.rep-request" && call.number === from));
 });
+
+test("verified first greeting shows the branded image and native language choices", async () => {
+  const previousOrigin = process.env.RENDER_EXTERNAL_URL;
+  process.env.RENDER_EXTERNAL_URL = "https://fcs-example.onrender.com";
+  try {
+    for (const [language, from, title] of [
+      ["en", "923000000031", "English"],
+      ["ur", "923000000032", "اردو"]
+    ]) {
+      const change = message => ({ field: "messages", value: {
+        metadata: { phone_number_id: phoneId }, messages: [{ from, ...message }]
+      } });
+      await webhook([change({ type: "text", text: { body: "Hi" } })]);
+      const welcome = sent.at(-1);
+      assert.equal(welcome.type, "interactive");
+      assert.equal(welcome.interactive.type, "button");
+      assert.deepEqual(welcome.interactive.action.buttons.map(item => item.reply.title), ["English", "اردو"]);
+      const selected = welcome.interactive.action.buttons.find(item => item.reply.title === title);
+      assert.ok(selected);
+      const image = await fetch(base + new URL(welcome.interactive.header.image.link).pathname);
+      assert.equal(image.status, 200);
+      assert.equal(image.headers.get("content-type"), "image/jpeg");
+      assert.equal(Buffer.from(await image.arrayBuffer()).subarray(0, 3).toString("hex"), "ffd8ff");
+
+      const reply = change({ type: "interactive", interactive: {
+        type: "button_reply", button_reply: { id: selected.reply.id }
+      } });
+      const count = sent.length;
+      await webhook([reply], false);
+      assert.equal(sent.length, count);
+      await webhook([reply]);
+      assert.equal(sent.length, count + 1);
+      assert.match(sent.at(-1).text.body, language === "en" ? /About FCS Express/ : /کمپنی کا تعارف/);
+    }
+  } finally {
+    if (previousOrigin === undefined) delete process.env.RENDER_EXTERNAL_URL;
+    else process.env.RENDER_EXTERNAL_URL = previousOrigin;
+  }
+});

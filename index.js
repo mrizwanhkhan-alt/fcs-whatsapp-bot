@@ -64,7 +64,7 @@ const WHATSAPP_TOKEN = config.WHATSAPP_TOKEN;
 // WHATSAPP MESSAGE SENDING
 // =====================================
 
-function sendWhatsAppMessage(to, message) {
+function sendWhatsAppMessage(to, message, interactive) {
   if (!PHONE_NUMBER_ID || !WHATSAPP_TOKEN) {
     console.error("WhatsApp credentials missing");
     return;
@@ -74,11 +74,10 @@ function sendWhatsAppMessage(to, message) {
     messaging_product: "whatsapp",
     recipient_type: "individual",
     to: String(to),
-    type: "text",
-    text: {
-      preview_url: false,
-      body: String(message)
-    }
+    ...(interactive ? { type: "interactive", interactive } : {
+      type: "text",
+      text: { preview_url: false, body: String(message) }
+    })
   });
 
   const request = https.request({
@@ -99,6 +98,10 @@ function sendWhatsAppMessage(to, message) {
     });
 
     response.on("end", () => {
+      if (interactive && response.statusCode >= 400 && response.statusCode < 500 &&
+          response.statusCode !== 429) {
+        sendWhatsAppMessage(to, message);
+      }
       console.log(
         "WhatsApp Response:",
         response.statusCode,
@@ -113,6 +116,30 @@ function sendWhatsAppMessage(to, message) {
 
   request.write(data);
   request.end();
+}
+
+const welcomeImagePath = "/assets/fcs-welcome-v1.jpg";
+const languageButtons = [
+  { id: "fcs_welcome_en", title: "English", language: "en" },
+  { id: "fcs_welcome_ur", title: "اردو", language: "ur" }
+];
+
+function sendWelcomeMessage(number, verified) {
+  const fallback = languageMenu();
+  const origin = process.env.RENDER_EXTERNAL_URL;
+  if (!verified || !origin?.startsWith("https://")) {
+    sendWhatsAppMessage(number, fallback);
+    return;
+  }
+
+  sendWhatsAppMessage(number, fallback, {
+    type: "button",
+    header: { type: "image", image: { link: new URL(welcomeImagePath, origin).href } },
+    body: { text: "اپنی پسندیدہ زبان منتخب کرنے کے لیے بٹن دبائیں۔\nPlease choose your preferred language." },
+    action: {
+      buttons: languageButtons.map(({ id, title }) => ({ type: "reply", reply: { id, title } }))
+    }
+  });
 }
 
 // =====================================
@@ -287,7 +314,14 @@ async function processMessage(message, verified) {
     return;
   }
 
-  if (type !== "text") return;
+  const languageChoice = verified && type === "interactive" &&
+    message.interactive?.type === "button_reply" &&
+    languageButtons.find(button => button.id === message.interactive.button_reply?.id);
+
+  if (type !== "text" && !languageChoice) return;
+  if (languageChoice && (isApplying(number) || isSupplierRegistering(number) ||
+      isTransportRegistering(number) || isWarehouseRegistering(number) ||
+      isJobActive(number) || businessTender.isActive(number))) return;
 
   console.log("Customer:", number);
   console.log("Message:", text);
@@ -400,9 +434,11 @@ async function processMessage(message, verified) {
 
   // LANGUAGE SELECTION
 
-  if (!hasLanguage(number)) {
-    if (text === "1" || text === "2") {
-      const selected = text === "1" ? "en" : "ur";
+  if (languageChoice || !hasLanguage(number)) {
+    if (languageChoice || text === "1" || text === "2") {
+      const selected = languageChoice ? languageChoice.language : text === "1" ? "en" : "ur";
+      faqMode.delete(number);
+      tenderMode.delete(number);
 
       setLanguage(number, selected);
 
@@ -411,10 +447,7 @@ async function processMessage(message, verified) {
         mainMenu(selected)
       );
     } else {
-      sendWhatsAppMessage(
-        number,
-        languageMenu()
-      );
+      sendWelcomeMessage(number, verified);
     }
 
     return;
@@ -647,6 +680,23 @@ const server = http.createServer((req, res) => {
     return res.end(
       "FCS Express WhatsApp Bot Running"
     );
+  }
+
+  if (url.pathname === welcomeImagePath && (req.method === "GET" || req.method === "HEAD")) {
+    fs.readFile(path.join(__dirname, "assets", "fcs-welcome-v1.jpg"), (error, image) => {
+      if (error) {
+        res.writeHead(404);
+        return res.end();
+      }
+      res.writeHead(200, {
+        "Content-Type": "image/jpeg",
+        "Content-Length": image.length,
+        "Cache-Control": "public, max-age=86400",
+        "X-Content-Type-Options": "nosniff"
+      });
+      res.end(req.method === "HEAD" ? undefined : image);
+    });
+    return;
   }
 
   // STAFF CALLING PANEL
