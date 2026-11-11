@@ -102,6 +102,34 @@ function menuFlow(number, language) {
   };
 }
 
+function menuList(language) {
+  const urdu = language === "ur";
+  const locale = urdu ? "ur" : "en";
+  return {
+    type: "list",
+    header: { type: "text", text: "FCS Express Pakistan" },
+    body: { text: urdu ? "آپ کو کس سروس کی ضرورت ہے؟ فہرست سے منتخب کریں۔" : "How can we help? Choose a service from the menu." },
+    action: {
+      button: urdu ? "سروسز دیکھیں" : "View services",
+      sections: [{
+        rows: services.map((service, index) => {
+          const title = index === 7 && urdu ? "عام سوالات"
+            : index === 9 && !urdu ? "Talk to a representative"
+            : service[urdu ? 2 : 1];
+          return { id: `fcs_service_${locale}_${index + 1}`, title };
+        })
+      }]
+    }
+  };
+}
+
+function listSelection(interactive) {
+  if (interactive?.type !== "list_reply") return null;
+  const match = /^fcs_service_(en|ur)_([1-9]|10)$/.exec(interactive.list_reply?.id);
+  if (!match) return null;
+  return { language: match[1], option: services[Number(match[2]) - 1][0] };
+}
+
 const completedFlows = new Map();
 
 function menuSelection(number, interactive) {
@@ -128,4 +156,4 @@ function menuSelection(number, interactive) {
   }
 }
 
-module.exports = { makeFlow, menuFlow, menuSelection };
+module.exports = { makeFlow, menuFlow, menuList, menuSelection, listSelection };
