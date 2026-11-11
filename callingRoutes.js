@@ -7,7 +7,9 @@ const {
   getCallPermission,
   requestCallPermission,
   connectWhatsAppCall,
-  updateWhatsAppCall
+  updateWhatsAppCall,
+  sendRepresentativeCallButton,
+  REPRESENTATIVE_REQUEST_MINUTES
 } = require("./staffCalling");
 
 const SECRET = process.env.STAFF_CALLING_SECRET || "";
@@ -17,6 +19,8 @@ const ICE_SERVERS = process.env.STAFF_CALLING_ICE_SERVERS;
 const defaultIceServers = [{ urls: "stun:stun.l.google.com:19302" }];
 const calls = new Map();
 const pending = new Map();
+const representativeRequests = new Map();
+const REPRESENTATIVE_REQUEST_MS = REPRESENTATIVE_REQUEST_MINUTES * 60_000;
 const RING_MS = 90000;
 const END_MS = 10 * 60 * 1000;
 const ACTIVE_MS = 12 * 60 * 60 * 1000;
@@ -94,8 +98,38 @@ function prune() {
   for (const [id, call] of calls) {
     if (call.expires <= now) calls.delete(id);
   }
+  for (const [number, request] of representativeRequests) {
+    if (request.requestedAt + REPRESENTATIVE_REQUEST_MS <= now) representativeRequests.delete(number);
+  }
   for (const [id, call] of pending) {
     if (call.expires <= now) pending.delete(id);
+  }
+}
+
+async function requestRepresentativeCall(message, language) {
+  const { from: number, id } = message;
+  const requestedAt = Number(message.timestamp) * 1000;
+  const now = Date.now();
+  if (typeof number !== "string" || !/^[1-9]\d{7,14}$/.test(number) ||
+      typeof id !== "string" || !id || !/^\d{10}$/.test(String(message.timestamp)) ||
+      requestedAt > now || requestedAt + REPRESENTATIVE_REQUEST_MS <= now) return;
+
+  const previous = representativeRequests.get(number);
+  if (previous && (previous.id === id || previous.requestedAt >= requestedAt)) return;
+
+  const request = { id, number, requestedAt, status: "pending" };
+  representativeRequests.delete(number);
+  representativeRequests.set(number, request);
+  if (representativeRequests.size > 1000) {
+    representativeRequests.delete(representativeRequests.keys().next().value);
+  }
+
+  try {
+    await sendRepresentativeCallButton(number, language);
+    request.status = "accepted";
+  } catch (error) {
+    request.status = "failed";
+    throw error;
   }
 }
 
@@ -258,7 +292,10 @@ async function handleAction(route, body) {
       const existing = calls.get(body.callId);
       call = existing?.owner === body.owner ? publicCall(existing) : { id: body.callId, state: "ended" };
     }
-    return { incoming, call, hasTemplate: Boolean(TEMPLATE), ...(route === "session" && { iceServers: iceServers() }) };
+    const requests = Array.from(representativeRequests.values()).reverse().slice(0, 20)
+      .map(({ number, requestedAt, status }) => ({ number, requestedAt, status }));
+    return { incoming, call, requests, hasTemplate: Boolean(TEMPLATE),
+      ...(route === "session" && { iceServers: iceServers() }) };
   }
 
   if (route === "offer") {
@@ -300,4 +337,4 @@ async function callingRoutes(req, res, url) {
   }
 }
 
-module.exports = { callingRoutes, handleCallingWebhook, isVerifiedMetaWebhook };
+module.exports = { callingRoutes, handleCallingWebhook, isVerifiedMetaWebhook, requestRepresentativeCall };

@@ -100,6 +100,33 @@ function requestCallPermission(number, template) {
   });
 }
 
+const REPRESENTATIVE_REQUEST_MINUTES = 60;
+
+function sendRepresentativeCallButton(number, language) {
+  const urdu = language === "ur";
+  return graphRequest("messages", {
+    messaging_product: "whatsapp",
+    recipient_type: "individual",
+    to: normalizeNumber(number),
+    type: "interactive",
+    interactive: {
+      type: "voice_call",
+      body: {
+        text: urdu
+          ? "آپ کی درخواست ایف سی ایس کو موصول ہو گئی ہے۔ ہمارے نمائندے سے بات کرنے کے لیے نیچے کال کا بٹن دبائیں۔"
+          : "FCS has received your request. Tap below to call an FCS representative on WhatsApp."
+      },
+      action: {
+        name: "voice_call",
+        parameters: {
+          display_text: urdu ? "ایف سی ایس کو کال" : "Call FCS",
+          ttl_minutes: REPRESENTATIVE_REQUEST_MINUTES
+        }
+      }
+    }
+  });
+}
+
 function connectWhatsAppCall(number, sdp, reference) {
   return graphRequest("calls", {
     messaging_product: "whatsapp",
@@ -119,4 +146,7 @@ function updateWhatsAppCall(callId, action, sdp) {
   });
 }
 
-module.exports = { normalizeNumber, getCallPermission, requestCallPermission, connectWhatsAppCall, updateWhatsAppCall };
+module.exports = {
+  normalizeNumber, getCallPermission, requestCallPermission, connectWhatsAppCall, updateWhatsAppCall,
+  sendRepresentativeCallButton, REPRESENTATIVE_REQUEST_MINUTES
+};

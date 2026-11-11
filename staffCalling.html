@@ -40,6 +40,11 @@ small{color:#666}
 
 <button id="listen">Connect Calling Panel</button>
 
+<section id="representativeRequests" hidden>
+<h2>Representative call requests</h2>
+<ul id="representativeRequestList"></ul>
+</section>
+
 <div id="incoming" hidden>
 <p id="caller"></p>
 <button id="answer">Answer</button>
@@ -77,6 +82,7 @@ let peer = null;
 let localStream = null;
 let active = null;
 let incoming = null;
+let representativeRequests = [];
 let iceServers = [];
 let busy = false;
 let polling = false;
@@ -161,6 +167,18 @@ function controls() {
     : "Connect Calling Panel";
 
   $("incoming").hidden = !incoming || Boolean(active);
+  $("representativeRequests").hidden = !session || !representativeRequests.length;
+  $("representativeRequestList").replaceChildren(...representativeRequests.map(request => {
+    const item = document.createElement("li");
+    const state = {
+      pending: "Sending call button",
+      accepted: "Call button accepted by WhatsApp",
+      failed: "Call button could not be sent"
+    }[request.status];
+    item.textContent = "+" + request.number + " · " +
+      new Date(request.requestedAt).toLocaleTimeString() + " · " + state;
+    return item;
+  }));
 
   $("caller").textContent = incoming
     ? "Incoming call from " + (incoming.number || "WhatsApp customer")
@@ -410,6 +428,7 @@ async function poll() {
     ) return;
 
     incoming = data.incoming[0] || null;
+    representativeRequests = data.requests || [];
 
     if (active && data.call) {
       try {
@@ -477,6 +496,7 @@ async function connectPanel(token, automatic = false) {
 
     iceServers = data.iceServers;
     incoming = data.incoming[0] || null;
+    representativeRequests = data.requests || [];
 
     $("templateOption").hidden = !data.hasTemplate;
 
@@ -512,6 +532,7 @@ $("listen").onclick = () => perform(async () => {
   if (session) {
     session = null;
     incoming = null;
+    representativeRequests = [];
 
     forgetAccess();
     secret.value = "";
