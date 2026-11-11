@@ -109,7 +109,7 @@ function sendWhatsAppPayload(to, payload, onResponse, onClose) {
     });
 
     response.on("end", () => {
-      onResponse?.(response.statusCode);
+      onResponse?.(response.statusCode, result);
       console.log(
         "WhatsApp Response:",
         response.statusCode,
@@ -130,6 +130,8 @@ function sendWhatsAppPayload(to, payload, onResponse, onClose) {
   request.end();
 }
 
+const pendingMenuArtwork = new Map();
+
 function sendMainMenu(number, language, verified) {
   const flow = verified ? menuFlow(number, language) : null;
   const list = verified ? menuList(language) : null;
@@ -140,10 +142,29 @@ function sendMainMenu(number, language, verified) {
     return;
   }
 
+  let artworkId;
   sendWhatsAppPayload(number, {
     type: "image",
     image: { link: new URL(`${menuImagePath}?v=5`, origin).href }
-  }, undefined, sendMenu);
+  }, (status, result) => {
+    if (status < 200 || status >= 300) return;
+    try {
+      artworkId = JSON.parse(result).messages?.[0]?.id;
+    } catch {
+      return;
+    }
+    if (!artworkId) return;
+    const finish = () => {
+      clearTimeout(timer);
+      pendingMenuArtwork.delete(artworkId);
+      sendMenu();
+    };
+    const timer = setTimeout(finish, 6000);
+    timer.unref();
+    pendingMenuArtwork.set(artworkId, finish);
+  }, () => {
+    if (!artworkId) sendMenu();
+  });
 }
 
 const fleetWelcomeImagePath = "/assets/fcs-welcome-v4.jpg";
@@ -173,7 +194,7 @@ function sendWelcomeMessage(number, verified) {
   sendWhatsAppMessage(number, fallback, {
     type: "button",
     header: { type: "image", image: { link: new URL(welcomeImagePath, origin).href } },
-    body: { text: "*Welcome to FCS Express Pakistan*\n*خوش آمدید*\n\nاپنی پسندیدہ زبان کا انتخاب کریں۔" },
+    body: { text: "*Welcome to FCS Express Pakistan*\n*خوش آمدید*\n\n*براہِ کرم اپنی پسند کی زبان منتخب کریں۔*" },
     action: {
       buttons: languageButtons.map(({ id, title }) => ({ type: "reply", reply: { id, title } }))
     }
@@ -871,13 +892,21 @@ const server = http.createServer((req, res) => {
         for (const entry of data.entry || []) {
           for (const change of entry.changes || []) {
             const value = change.value || {};
+            const verifiedMessage = verified && Boolean(PHONE_NUMBER_ID) &&
+              change.field === "messages" && value.metadata?.phone_number_id === PHONE_NUMBER_ID;
+            if (verifiedMessage) {
+              for (const status of value.statuses || []) {
+                if (["delivered", "read", "failed"].includes(status.status)) {
+                  pendingMenuArtwork.get(status.id)?.();
+                }
+              }
+            }
 
             // EXISTING WHATSAPP MESSAGES
 
             for (const message of value.messages || []) {
               try {
-                await processMessage(message, verified && Boolean(PHONE_NUMBER_ID) &&
-                  change.field === "messages" && value.metadata?.phone_number_id === PHONE_NUMBER_ID);
+                await processMessage(message, verifiedMessage);
               } catch (error) {
                 console.error(
                   "Message Processing Error:",
