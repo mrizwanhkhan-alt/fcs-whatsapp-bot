@@ -5,7 +5,7 @@ const fs = require("fs");
 const path = require("path");
 
 const config = require("./config");
-const { callingRoutes, handleCallingWebhook } = require("./callingRoutes");
+const { callingRoutes, handleCallingWebhook, isVerifiedMetaWebhook, requestRepresentativeCall } = require("./callingRoutes");
 const { adminDashboard } = require("./adminDashboard");
 const { recordAdminWindows } = require("./adminMessaging");
 const { getReply } = require("./openai");
@@ -256,7 +256,7 @@ www.fcsexpress.com.pk`
 // HANDLE INCOMING MESSAGES
 // =====================================
 
-async function processMessage(message) {
+async function processMessage(message, verified) {
   const number = String(message.from || "");
 
   if (!number || isBlocked(number)) return;
@@ -379,6 +379,22 @@ async function processMessage(message) {
       sendWhatsAppMessage(number, result.reply);
     }
 
+    return;
+  }
+
+  if (text === "11" && !faqMode.has(number) && !tenderMode.has(number)) {
+    if (!verified) return;
+    const language = getLanguage(number) || "en";
+    try {
+      await requestRepresentativeCall(message, language);
+    } catch (error) {
+      console.error("Representative call button failed:", error.status || "network error");
+      if (error.status >= 400 && error.status < 500 && error.status !== 429) {
+        sendWhatsAppMessage(number, language === "ur"
+          ? "آپ کی درخواست ایف سی ایس کو موصول ہو گئی ہے۔ اگر کال کا آئیکن دستیاب ہے تو اسی واٹس ایپ چیٹ سے کال کریں۔"
+          : "FCS has received your request. If the call icon is available, use it to call us from this WhatsApp chat.");
+      }
+    }
     return;
   }
 
@@ -745,6 +761,8 @@ const server = http.createServer((req, res) => {
       }
 
       try {
+        const verified = data.object === "whatsapp_business_account" &&
+          isVerifiedMetaWebhook(rawBody, req.headers["x-hub-signature-256"]);
         for (const entry of data.entry || []) {
           for (const change of entry.changes || []) {
             const value = change.value || {};
@@ -753,7 +771,8 @@ const server = http.createServer((req, res) => {
 
             for (const message of value.messages || []) {
               try {
-                await processMessage(message);
+                await processMessage(message, verified && Boolean(PHONE_NUMBER_ID) &&
+                  change.field === "messages" && value.metadata?.phone_number_id === PHONE_NUMBER_ID);
               } catch (error) {
                 console.error(
                   "Message Processing Error:",

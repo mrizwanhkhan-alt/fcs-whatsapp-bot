@@ -281,3 +281,31 @@ test("both contact menus highlight the application bot number", async () => {
     assert.ok(!reply.includes("042 3246 2221"));
   }
 });
+
+test("option 11 acknowledges a verified request and accepts a customer-initiated call", async () => {
+  const from = "923000000011";
+  const message = { from, type: "text", text: { body: "11" },
+    id: "wamid.rep-request", timestamp: String(Math.floor(Date.now() / 1000)) };
+  const change = { field: "messages", value: {
+    metadata: { phone_number_id: phoneId }, messages: [message]
+  } };
+  const count = sent.length;
+  await webhook([change], false);
+  assert.equal(sent.length, count);
+  assert.deepEqual((await api("poll")).body.requests, []);
+  await webhook([change]);
+  await webhook([change]);
+  assert.equal(sent.length, count + 1);
+  const button = sent.at(-1);
+  assert.equal(button.to, from);
+  assert.equal(button.interactive.type, "voice_call");
+  assert.equal(button.interactive.action.name, "voice_call");
+  assert.match(button.interactive.body.text, /received your request/);
+  const request = (await api("poll")).body.requests[0];
+  assert.equal(request.number, from);
+  assert.equal(request.status, "accepted");
+  assert.equal((await api("poll", {}, owner, "incorrect")).status, 401);
+  await webhook([callingChange([{ ...incoming("wacid.rep-request"), from }])]);
+  const panel = (await api("poll")).body;
+  assert.ok(panel.incoming.some(call => call.id === "wacid.rep-request" && call.number === from));
+});
