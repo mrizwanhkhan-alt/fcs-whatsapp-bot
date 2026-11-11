@@ -46,8 +46,7 @@ function mainMenu(language) {
 7️⃣ کیریئر اور ملازمتیں
 8️⃣ اکثر پوچھے جانے والے سوالات
 9️⃣ رابطہ اور معاونت
-🔟 ایف سی ایس ایکسپریس کیوں منتخب کریں؟
-⑪ ایف سی ایس کے مجاز نمائندے سے بات کریں
+🔟 ایف سی ایس کے مجاز نمائندے سے بات کریں
 
 🌐 www.fcsexpress.com.pk`;
   }
@@ -69,8 +68,7 @@ Please select the required service:
 7️⃣ Career & Jobs
 8️⃣ Frequently Asked Questions
 9️⃣ Contact & Support
-🔟 Why Choose FCS Express?
-⑪ Speak with an FCS representative
+🔟 Speak with an FCS representative
 
 🌐 www.fcsexpress.com.pk`;
 }
