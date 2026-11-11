@@ -47,7 +47,7 @@ function mainMenu(language) {
 8️⃣ اکثر پوچھے جانے والے سوالات
 9️⃣ رابطہ اور معاونت
 🔟 ایف سی ایس ایکسپریس کیوں منتخب کریں؟
-11. ایف سی ایس کے مجاز نمائندے سے بات کریں
+1️⃣1️⃣ ایف سی ایس کے مجاز نمائندے سے بات کریں
 
 🌐 www.fcsexpress.com.pk`;
   }
@@ -70,7 +70,7 @@ Please select the required service:
 8️⃣ Frequently Asked Questions
 9️⃣ Contact & Support
 🔟 Why Choose FCS Express?
-11. Speak with an FCS representative
+1️⃣1️⃣ Speak with an FCS representative
 
 🌐 www.fcsexpress.com.pk`;
 }
