@@ -20,6 +20,8 @@ const defaultIceServers = [{ urls: "stun:stun.l.google.com:19302" }];
 const calls = new Map();
 const pending = new Map();
 const representativeRequests = new Map();
+const permissionDeliveries = new Map();
+const deliveryOrder = { accepted: 0, sent: 1, failed: 2, delivered: 3, read: 4 };
 const REPRESENTATIVE_REQUEST_MS = REPRESENTATIVE_REQUEST_MINUTES * 60_000;
 const RING_MS = 90000;
 const END_MS = 10 * 60 * 1000;
@@ -104,6 +106,9 @@ function prune() {
   for (const [id, call] of pending) {
     if (call.expires <= now) pending.delete(id);
   }
+  for (const [id, delivery] of permissionDeliveries) {
+    if (delivery.expires <= now) permissionDeliveries.delete(id);
+  }
 }
 
 async function requestRepresentativeCall(message, language) {
@@ -150,9 +155,22 @@ function handleCallingWebhook(data, rawBody, signature) {
   for (const entry of data.entry || []) {
     for (const change of entry.changes || []) {
       const value = change.value;
-      if (change.field !== "calls" || !PHONE_NUMBER_ID || value?.metadata?.phone_number_id !== PHONE_NUMBER_ID) {
+      if (!PHONE_NUMBER_ID || value?.metadata?.phone_number_id !== PHONE_NUMBER_ID) {
         continue;
       }
+      if (change.field === "messages") {
+        for (const event of value.statuses || []) {
+          const delivery = permissionDeliveries.get(event.id);
+          if (!delivery || deliveryOrder[event.status] <= deliveryOrder[delivery.status] ||
+              !Object.hasOwn(deliveryOrder, event.status)) continue;
+          if (event.recipient_id && event.recipient_id !== delivery.number) continue;
+          delivery.status = event.status;
+          const code = event.errors?.[0]?.code;
+          delivery.errorCode = event.status === "failed" && Number.isInteger(code) ? code : null;
+        }
+        continue;
+      }
+      if (change.field !== "calls") continue;
       for (const event of value.calls || []) recordEvent(event);
       for (const event of value.statuses || []) {
         if (event?.type === "call") recordEvent(event);
@@ -247,8 +265,14 @@ async function handleAction(route, body) {
       }
       if (!permission.canRequest) fail(409, "Meta is not accepting another permission request for this customer yet.");
       if (body.useTemplate === true && !TEMPLATE) fail(503, "No approved call permission template is configured.");
-      await requestCallPermission(number, body.useTemplate === true ? TEMPLATE : null);
-      return { ...permission, submitted: true };
+      const result = await requestCallPermission(number, body.useTemplate === true ? TEMPLATE : null);
+      const permissionMessageId = result?.messages?.[0]?.id;
+      if (!validId(permissionMessageId)) fail(502, "Meta did not confirm acceptance. Check before retrying.");
+      permissionDeliveries.set(permissionMessageId, {
+        owner: body.owner, number, status: "accepted", errorCode: null, expires: Date.now() + ACTIVE_MS
+      });
+      if (permissionDeliveries.size > 5000) permissionDeliveries.delete(permissionDeliveries.keys().next().value);
+      return { ...permission, submitted: true, permissionMessageId };
     }
     if (!permission.canCall) {
       fail(409, "Meta does not currently allow a call. Check the customer's permission and calling limits.");
@@ -294,7 +318,11 @@ async function handleAction(route, body) {
     }
     const requests = Array.from(representativeRequests.values()).reverse().slice(0, 20)
       .map(({ number, requestedAt, status }) => ({ number, requestedAt, status }));
-    return { incoming, call, requests, hasTemplate: Boolean(TEMPLATE),
+    const delivery = permissionDeliveries.get(body.permissionMessageId);
+    const permissionDelivery = delivery?.owner === body.owner
+      ? { status: delivery.status, errorCode: delivery.errorCode }
+      : undefined;
+    return { incoming, call, requests, permissionDelivery, hasTemplate: Boolean(TEMPLATE),
       ...(route === "session" && { iceServers: iceServers() }) };
   }
 
