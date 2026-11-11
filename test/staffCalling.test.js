@@ -253,6 +253,7 @@ test("shared webhook still processes existing messaging alongside call events", 
   assert.match(languageMenu, /Please select your preferred language/);
   assert.match(mainMenu, /ٹینڈرز اور وینڈر مواقع/);
   assert.match(mainMenu, /فری فرنچائز/);
+  assert.match(mainMenu, /^⑪ ایف سی ایس کے مجاز نمائندے سے بات کریں$/m);
   assert.match(faqMenu, /اکثر پوچھے جانے والے سوالات/);
   assert.match(faqMenu, /1\. فرنچائز/);
   assert.doesNotMatch(faqMenu, /ٹرانسپورٹ|ویئر ہاؤس|سپلائر|وینڈر/);

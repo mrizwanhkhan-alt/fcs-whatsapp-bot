@@ -5,48 +5,93 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>FCS Express Admin</title>
   <style>
-    :root { font: 16px system-ui, sans-serif; color: #202124; background: #f5f6f8; }
+    :root {
+      color-scheme: light;
+      font: 16px system-ui, sans-serif;
+      color: #211b20;
+      background: #f7f4f5;
+      --red: #b5142e;
+      --muted: #62565e;
+      --line: #e7dce0;
+    }
     * { box-sizing: border-box; }
     [hidden] { display: none !important; }
     body { margin: 0; }
-    header { background: #b71925; color: white; }
-    header div { max-width: 640px; margin: auto; padding: 14px 20px;
-      display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-    main { max-width: 640px; margin: auto; padding: 24px 16px; }
-    section { padding: 22px; border: 1px solid #dcdfe4; border-radius: 12px; background: white; }
-    h1 { margin: 0 0 12px; font-size: 1.45rem; }
+    header {
+      color: white;
+      background: linear-gradient(118deg, #7d0923 0%, #b5142e 60%, #cb213a 100%);
+      overflow: hidden;
+    }
+    .header-inner {
+      position: relative; isolation: isolate; max-width: 760px; margin: auto;
+      padding: 29px 20px 31px; display: flex; align-items: flex-start;
+      justify-content: space-between; gap: 12px;
+    }
+    .header-inner::after {
+      content: ""; position: absolute; z-index: -1; pointer-events: none;
+      right: 11%; top: -52px; width: 160px; height: 265px;
+      transform: skewX(-32deg); opacity: .24;
+      background: repeating-linear-gradient(90deg, transparent 0 26px, #ff9aab 26px 28px);
+    }
+    .wordmark { display: block; font-size: clamp(1.65rem, 6vw, 2.55rem);
+      font-weight: 850; letter-spacing: .025em; line-height: 1.08; }
+    .company { margin: 7px 0 0; color: #fff1f4; font-size: .875rem; }
+    main { max-width: 760px; margin: auto; padding: 19px 16px 40px; }
+    section { padding: clamp(18px, 4vw, 28px); border: 1px solid var(--line);
+      border-radius: 19px; background: white; box-shadow: 0 8px 28px #38101b0b; }
+    #loginPanel { max-width: 470px; margin-inline: auto; }
+    h1, h2 { margin: 0 0 10px; line-height: 1.2; font-size: 1.35rem; }
     p { margin: 0 0 16px; line-height: 1.45; }
-    form, #templateFields { display: grid; gap: 16px; }
-    label { display: grid; gap: 6px; font-weight: 600; }
-    input, select, textarea, button { font: inherit; min-height: 44px; }
-    input, select, textarea { width: 100%; border: 1px solid #74777e; border-radius: 6px;
-      padding: 9px 10px; background: white; color: inherit; }
+    form, #templateFields { display: grid; gap: 15px; }
+    label { display: grid; gap: 7px; font-weight: 650; }
+    input, select, textarea, button { font: inherit; min-height: 46px; }
+    input, select, textarea { width: 100%; border: 1px solid #aa989f; border-radius: 11px;
+      padding: 10px 12px; background: #fdfbfc; color: inherit; }
+    input::file-selector-button { margin-right: 8px; padding: 6px; }
     textarea { resize: vertical; }
-    button { border-radius: 6px; padding: 8px 14px; cursor: pointer; font-weight: 650;
-      background: #b71925; color: white; border: 1px solid #b71925; }
-    button.secondary { color: #2b2d30; background: white; border-color: #74777e; }
-    header button.secondary { border-color: white; }
+    button { border-radius: 11px; padding: 9px 13px; cursor: pointer; font-weight: 700;
+      background: var(--red); color: white; border: 1px solid var(--red); }
+    button.secondary { color: #83122a; background: #fff5f7; border-color: #dec0c9; }
+    header button.secondary { flex-shrink: 0; color: white; background: #7d0923;
+      border-color: #ffaaba; padding-inline: 10px; font-size: .85rem; }
+    :is(button, a, input, select, textarea):focus-visible {
+      outline: 3px solid #d94862; outline-offset: 2px;
+    }
     button:disabled { opacity: .6; cursor: wait; }
-    small, .hint { color: #4d535a; font-weight: normal; line-height: 1.4; }
+    small, .hint { color: var(--muted); font-weight: normal; line-height: 1.45; }
     .check { display: flex; align-items: center; gap: 10px; }
     .check input { width: 20px; height: 20px; min-height: 0; }
-    .status { margin: 16px 0 0; }
+    .status { margin: 12px 0 0; }
     .status:empty { display: none; }
     .status[data-error="true"] { color: #9e1621; }
-    #workspaceNav { position: sticky; top: 0; z-index: 1; display: flex; gap: 8px;
-      padding: 8px 0; margin-bottom: 12px; background: #f5f6f8; }
-    #workspaceNav a { color: #8e1420; background: white; border: 1px solid #dcdfe4;
-      border-radius: 6px; padding: 10px; text-decoration: none; font-weight: 650; }
-    #workspaceNav a[data-incoming="true"] { background: #b71925; color: white; }
-    #composePanel, #callingPanel { scroll-margin-top: 68px; }
+    #workspaceNav { position: sticky; top: 0; z-index: 1; display: grid;
+      grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 8px;
+      padding: 8px 0; margin: -7px 0 10px; background: #f7f4f5; }
+    #workspaceNav a { display: grid; place-items: center; min-height: 46px;
+      text-align: center; color: #86112a; background: #fff; border: 1px solid var(--line);
+      border-radius: 12px; padding: 8px; text-decoration: none; font-weight: 750; }
+    #workspaceNav a[data-incoming="true"] { background: var(--red); color: white; }
+    #composePanel, #callingPanel { scroll-margin-top: 80px; }
     #callingPanel { margin-top: 16px; padding: 0; overflow: hidden; }
     #callingFrame { display: block; width: 100%; height: 560px; border: 0; }
-    @media (max-width: 400px) { section { padding: 16px; } }
+    @media (max-width: 400px) {
+      .header-inner { padding-inline: 16px; }
+      main { padding-inline: 12px; }
+      #workspaceNav a { font-size: .875rem; }
+    }
   </style>
   <script src="/admin/dashboard.js" defer></script>
 </head>
 <body>
-  <header><div><strong>FCS EXPRESS</strong><button id="logout" class="secondary" type="button" hidden>Sign out</button></div></header>
+  <header>
+    <div class="header-inner">
+      <div>
+        <strong class="wordmark">FCS EXPRESS</strong>
+        <p class="company">Logistics &amp; Transport · WhatsApp Control Panel</p>
+      </div>
+      <button id="logout" class="secondary" type="button" hidden>Sign out</button>
+    </div>
+  </header>
   <main>
     <section id="loginPanel" hidden>
       <h1>Admin sign-in</h1>
@@ -62,11 +107,11 @@
     </nav>
 
     <section id="composePanel" hidden>
-      <h1>Send a WhatsApp message</h1>
+      <h2>Send a WhatsApp message</h2>
       <p class="hint">Send to one customer. Free-form messages and files require a reply from the customer within the last 24 hours.</p>
       <form id="composeForm" method="post">
         <label>Customer WhatsApp number
-          <input id="number" type="tel" autocomplete="off" maxlength="30" placeholder="+92 300 1234567" required>
+          <input id="number" type="tel" inputmode="tel" autocomplete="off" maxlength="30" placeholder="+92 300 1234567" required>
           <small>Include the country code.</small>
         </label>
         <button id="checkWindow" type="button" class="secondary">Check 24-hour window</button>
