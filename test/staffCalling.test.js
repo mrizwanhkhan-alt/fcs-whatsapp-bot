@@ -326,14 +326,14 @@ test("verified first greeting shows the branded image and native language choice
       const welcome = sent.at(-1);
       assert.equal(welcome.type, "interactive");
       assert.equal(welcome.interactive.type, "button");
-      assert.equal(welcome.interactive.body.text, "زبان کا انتخاب");
+      assert.equal(welcome.interactive.body.text, "*Welcome to FCS Express Pakistan*\n*اپنی پسندیدہ زبان کا انتخاب کریں۔*");
       assert.deepEqual(welcome.interactive.action.buttons.map(item => item.reply.title), ["English", "اردو"]);
       const selected = welcome.interactive.action.buttons.find(item => item.reply.title === title);
       assert.ok(selected);
       const image = await fetch(base + new URL(welcome.interactive.header.image.link).pathname);
       assert.equal(image.status, 200);
-      assert.equal(image.headers.get("content-type"), "image/png");
-      assert.equal(Buffer.from(await image.arrayBuffer()).subarray(0, 4).toString("hex"), "89504e47");
+      assert.equal(image.headers.get("content-type"), "image/jpeg");
+      assert.equal(Buffer.from(await image.arrayBuffer()).subarray(0, 3).toString("hex"), "ffd8ff");
 
       const reply = change({ type: "interactive", interactive: {
         type: "button_reply", button_reply: { id: selected.reply.id }
@@ -344,6 +344,8 @@ test("verified first greeting shows the branded image and native language choice
       await webhook([reply]);
       assert.equal(sent.length, count + 1);
       assert.match(sent.at(-1).text.body, language === "en" ? /About FCS Express/ : /کمپنی کا تعارف/);
+      await webhook([change({ type: "text", text: { body: "Hi" } })]);
+      assert.deepEqual(sent.at(-1).interactive, welcome.interactive);
     }
   } finally {
     if (previousOrigin === undefined) delete process.env.RENDER_EXTERNAL_URL;

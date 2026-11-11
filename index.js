@@ -118,8 +118,12 @@ function sendWhatsAppMessage(to, message, interactive) {
   request.end();
 }
 
-const welcomeImagePath = "/assets/fcs-welcome-v2.png";
-const previousWelcomeImagePath = "/assets/fcs-welcome-v1.jpg";
+const welcomeImagePath = "/assets/fcs-welcome-v3.jpg";
+const welcomeAssets = new Map([
+  ["/assets/fcs-welcome-v1.jpg", "image/jpeg"],
+  ["/assets/fcs-welcome-v2.png", "image/png"],
+  [welcomeImagePath, "image/jpeg"]
+]);
 const languageButtons = [
   { id: "fcs_welcome_en", title: "English", language: "en" },
   { id: "fcs_welcome_ur", title: "اردو", language: "ur" }
@@ -136,7 +140,7 @@ function sendWelcomeMessage(number, verified) {
   sendWhatsAppMessage(number, fallback, {
     type: "button",
     header: { type: "image", image: { link: new URL(welcomeImagePath, origin).href } },
-    body: { text: "زبان کا انتخاب" },
+    body: { text: "*Welcome to FCS Express Pakistan*\n*اپنی پسندیدہ زبان کا انتخاب کریں۔*" },
     action: {
       buttons: languageButtons.map(({ id, title }) => ({ type: "reply", reply: { id, title } }))
     }
@@ -433,6 +437,13 @@ async function processMessage(message, verified) {
     return;
   }
 
+  if (/^(hi|hello)[!.]?$/i.test(text) && verified) {
+    faqMode.delete(number);
+    tenderMode.delete(number);
+    sendWelcomeMessage(number, verified);
+    return;
+  }
+
   // LANGUAGE SELECTION
 
   if (languageChoice || !hasLanguage(number)) {
@@ -683,16 +694,15 @@ const server = http.createServer((req, res) => {
     );
   }
 
-  const welcomeAsset = url.pathname === welcomeImagePath || url.pathname === previousWelcomeImagePath;
-  if (welcomeAsset && (req.method === "GET" || req.method === "HEAD")) {
-    const current = url.pathname === welcomeImagePath;
+  const welcomeContentType = welcomeAssets.get(url.pathname);
+  if (welcomeContentType && (req.method === "GET" || req.method === "HEAD")) {
     fs.readFile(path.join(__dirname, "assets", path.basename(url.pathname)), (error, image) => {
       if (error) {
         res.writeHead(404);
         return res.end();
       }
       res.writeHead(200, {
-        "Content-Type": current ? "image/png" : "image/jpeg",
+        "Content-Type": welcomeContentType,
         "Content-Length": image.length,
         "Cache-Control": "public, max-age=86400",
         "X-Content-Type-Options": "nosniff"
