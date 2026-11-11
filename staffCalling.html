@@ -53,6 +53,7 @@ small{color:#666}
 
 <button id="check" disabled>Check Calling Permission</button>
 <button id="permission" disabled>Request Calling Permission</button>
+<button id="delivery" disabled>Check Request Delivery</button>
 
 <label id="templateOption" hidden>
 <input id="template" type="checkbox">
@@ -150,7 +151,7 @@ async function api(endpoint, payload = {}, keepalive = false) {
 }
 
 function controls() {
-  for (const id of ["check", "permission", "call", "answer", "reject"]) {
+  for (const id of ["check", "permission", "delivery", "call", "answer", "reject"]) {
     $(id).disabled = !session || busy || Boolean(active);
   }
 
@@ -576,11 +577,24 @@ $("permission").onclick = () => perform(async () => {
 
   status(
     data.submitted
-      ? "Permission request submitted. Ask the customer to approve it, then check permission."
+      ? "Meta accepted the permission request. Delivery is not confirmed. Press Check Request Delivery."
       : data.canCall
         ? "Customer calling permission is already approved."
         : "Permission is approved. Meta currently limits further calls."
   );
+});
+
+$("delivery").onclick = () => perform(async () => {
+  const result = await api("permission-delivery", { number: number() });
+  const label = {
+    accepted: "Accepted by Meta; not yet confirmed delivered",
+    sent: "Sent by Meta; delivery not yet confirmed",
+    delivered: "Delivered to customer's WhatsApp",
+    read: "Read by customer",
+    failed: "Delivery failed",
+    unavailable: "No tracked request in this server session"
+  }[result.status] || result.status;
+  status("Calling permission request: " + label + (result.errorCode ? " (Meta error " + result.errorCode + ")" : ""));
 });
 
 $("call").onclick = () => perform(async () => {
