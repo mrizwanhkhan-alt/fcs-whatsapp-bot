@@ -343,6 +343,14 @@ test("verified first greeting shows the branded image and native language choice
       await webhook([reply], false);
       assert.equal(sent.length, count);
       await webhook([reply]);
+      assert.equal(sent.length, count + 1);
+      const delivery = { field: "messages", value: {
+        metadata: { phone_number_id: phoneId },
+        statuses: [{ id: "wamid.test", status: "delivered" }]
+      } };
+      await webhook([delivery], false);
+      assert.equal(sent.length, count + 1);
+      await webhook([delivery]);
       assert.equal(sent.length, count + 2);
       const artwork = sent.at(-2);
       assert.equal(artwork.type, "image");
@@ -353,6 +361,8 @@ test("verified first greeting shows the branded image and native language choice
       assert.equal(Buffer.from(await banner.arrayBuffer()).subarray(0, 3).toString("hex"), "ffd8ff");
       const menu = sent.at(-1).interactive;
       assert.equal(menu.type, "list");
+      assert.equal(menu.header.text, "🔴🔴 FCS Express Pakistan 🔴🔴");
+      assert.equal(menu.action.button, language === "en" ? "📋 View services" : "📋 سروسز دیکھیں");
       const rows = menu.action.sections.flatMap(section => section.rows);
       assert.equal(rows.length, 10);
       assert.equal(rows[0].title, language === "en" ? "ℹ️ About FCS Express" : "ℹ️ کمپنی کا تعارف");
