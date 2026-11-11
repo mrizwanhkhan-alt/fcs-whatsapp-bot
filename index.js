@@ -118,7 +118,8 @@ function sendWhatsAppMessage(to, message, interactive) {
   request.end();
 }
 
-const welcomeImagePath = "/assets/fcs-welcome-v1.jpg";
+const welcomeImagePath = "/assets/fcs-welcome-v2.png";
+const previousWelcomeImagePath = "/assets/fcs-welcome-v1.jpg";
 const languageButtons = [
   { id: "fcs_welcome_en", title: "English", language: "en" },
   { id: "fcs_welcome_ur", title: "اردو", language: "ur" }
@@ -135,7 +136,7 @@ function sendWelcomeMessage(number, verified) {
   sendWhatsAppMessage(number, fallback, {
     type: "button",
     header: { type: "image", image: { link: new URL(welcomeImagePath, origin).href } },
-    body: { text: "اپنی پسندیدہ زبان منتخب کرنے کے لیے بٹن دبائیں۔\nPlease choose your preferred language." },
+    body: { text: "زبان کا انتخاب" },
     action: {
       buttons: languageButtons.map(({ id, title }) => ({ type: "reply", reply: { id, title } }))
     }
@@ -682,14 +683,16 @@ const server = http.createServer((req, res) => {
     );
   }
 
-  if (url.pathname === welcomeImagePath && (req.method === "GET" || req.method === "HEAD")) {
-    fs.readFile(path.join(__dirname, "assets", "fcs-welcome-v1.jpg"), (error, image) => {
+  const welcomeAsset = url.pathname === welcomeImagePath || url.pathname === previousWelcomeImagePath;
+  if (welcomeAsset && (req.method === "GET" || req.method === "HEAD")) {
+    const current = url.pathname === welcomeImagePath;
+    fs.readFile(path.join(__dirname, "assets", path.basename(url.pathname)), (error, image) => {
       if (error) {
         res.writeHead(404);
         return res.end();
       }
       res.writeHead(200, {
-        "Content-Type": "image/jpeg",
+        "Content-Type": current ? "image/png" : "image/jpeg",
         "Content-Length": image.length,
         "Cache-Control": "public, max-age=86400",
         "X-Content-Type-Options": "nosniff"
