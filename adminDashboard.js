@@ -26,7 +26,7 @@ const assets = {
 };
 const securityHeaders = {
   "Cache-Control": "no-store",
-  "Content-Security-Policy": "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'; form-action 'self'; base-uri 'none'",
+  "Content-Security-Policy": "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; frame-src 'self'; frame-ancestors 'none'; form-action 'self'; base-uri 'none'",
   "Referrer-Policy": "no-referrer",
   "X-Content-Type-Options": "nosniff"
 };
@@ -204,6 +204,18 @@ async function adminDashboard(req, res, url) {
 
     const token = tokenFrom(req);
     const session = activeSession(token);
+    if (req.method === "GET" && route === "/admin/calling-panel") {
+      if (!session) fail(401, "Your session expired. Sign in again.");
+      const html = await fs.promises.readFile(path.join(__dirname, "staffCalling.html"), "utf8");
+      const script = /<script>([\s\S]*?)<\/script>/.exec(html)?.[1];
+      const scriptHash = crypto.createHash("sha256").update(script).digest("base64");
+      res.writeHead(200, {
+        ...securityHeaders,
+        "Content-Type": "text/html; charset=utf-8",
+        "Content-Security-Policy": `default-src 'none'; script-src 'sha256-${scriptHash}'; style-src 'unsafe-inline'; connect-src 'self'; media-src 'self' blob:; frame-ancestors 'self'; base-uri 'none'; form-action 'none'`
+      });
+      return res.end(html);
+    }
     if (req.method === "GET" && route === "/admin/delivery") {
       if (!session) fail(401, "Your session expired. Sign in again.");
       const id = url.searchParams.get("id") || "";
