@@ -134,7 +134,7 @@ test("login sets a secure session cookie and requires CSRF protection", async ()
 test("the signed-in admin workspace can embed the existing calling panel", async () => {
   const page = await realFetch(base + "/admin");
   assert.match(page.headers.get("content-security-policy"), /frame-src 'self'/);
-  assert.match(await page.text(), /id="callingFrame"[^>]+allow="microphone 'self'; screen-wake-lock 'self'"/);
+  assert.match(await page.text(), /id="callingFrame"[^>]+allow="microphone 'self'"/);
 
   const path = base + "/admin/calling-panel";
   assert.equal((await realFetch(path)).status, 401);
@@ -147,6 +147,7 @@ test("the signed-in admin workspace can embed the existing calling panel", async
   assert.ok(csp.includes(`script-src 'sha256-${hash}'`));
   assert.match(csp, /frame-ancestors 'self'/);
   assert.match(html, /Representative call requests/);
+  assert.doesNotMatch(html, /wakeLock|Keep screen awake/);
   assert.match(html, /\/api\/staff-calling\//);
 });
 
