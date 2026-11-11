@@ -146,11 +146,12 @@ function sendMainMenu(number, language, verified) {
   }, undefined, sendMenu);
 }
 
-const welcomeImagePath = "/assets/fcs-welcome-v3.jpg";
+const welcomeImagePath = "/assets/fcs-welcome-v4.jpg";
 const menuImagePath = "/assets/fcs-service-menu.jpg";
 const messageAssets = new Map([
   ["/assets/fcs-welcome-v1.jpg", "image/jpeg"],
   ["/assets/fcs-welcome-v2.png", "image/png"],
+  ["/assets/fcs-welcome-v3.jpg", "image/jpeg"],
   [welcomeImagePath, "image/jpeg"],
   [menuImagePath, "image/jpeg"]
 ]);
@@ -732,7 +733,7 @@ const server = http.createServer((req, res) => {
 
   const messageAssetType = messageAssets.get(url.pathname);
   if (messageAssetType && (req.method === "GET" || req.method === "HEAD")) {
-    const encoded = url.pathname === menuImagePath;
+    const encoded = url.pathname === menuImagePath || url.pathname === welcomeImagePath;
     const filename = path.basename(url.pathname) + (encoded ? ".base64" : "");
     fs.readFile(path.join(__dirname, "assets", filename), encoded ? "utf8" : null, (error, contents) => {
       if (error) {
