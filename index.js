@@ -146,12 +146,14 @@ function sendMainMenu(number, language, verified) {
   }, undefined, sendMenu);
 }
 
-const welcomeImagePath = "/assets/fcs-welcome-v4.jpg";
+const fleetWelcomeImagePath = "/assets/fcs-welcome-v4.jpg";
+const welcomeImagePath = "/assets/fcs-welcome-v5.jpg";
 const menuImagePath = "/assets/fcs-service-menu.jpg";
 const messageAssets = new Map([
   ["/assets/fcs-welcome-v1.jpg", "image/jpeg"],
   ["/assets/fcs-welcome-v2.png", "image/png"],
   ["/assets/fcs-welcome-v3.jpg", "image/jpeg"],
+  [fleetWelcomeImagePath, "image/jpeg"],
   [welcomeImagePath, "image/jpeg"],
   [menuImagePath, "image/jpeg"]
 ]);
@@ -171,7 +173,7 @@ function sendWelcomeMessage(number, verified) {
   sendWhatsAppMessage(number, fallback, {
     type: "button",
     header: { type: "image", image: { link: new URL(welcomeImagePath, origin).href } },
-    body: { text: "*Welcome to FCS Express Pakistan*\n*اپنی پسندیدہ زبان کا انتخاب کریں۔*" },
+    body: { text: "*Welcome to FCS Express Pakistan*\n*خوش آمدید*\n\nاپنی پسندیدہ زبان کا انتخاب کریں۔" },
     action: {
       buttons: languageButtons.map(({ id, title }) => ({ type: "reply", reply: { id, title } }))
     }
@@ -733,7 +735,7 @@ const server = http.createServer((req, res) => {
 
   const messageAssetType = messageAssets.get(url.pathname);
   if (messageAssetType && (req.method === "GET" || req.method === "HEAD")) {
-    const encoded = url.pathname === menuImagePath || url.pathname === welcomeImagePath;
+    const encoded = [menuImagePath, fleetWelcomeImagePath, welcomeImagePath].includes(url.pathname);
     const filename = path.basename(url.pathname) + (encoded ? ".base64" : "");
     fs.readFile(path.join(__dirname, "assets", filename), encoded ? "utf8" : null, (error, contents) => {
       if (error) {
