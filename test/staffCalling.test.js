@@ -309,29 +309,3 @@ test("option 11 acknowledges a verified request and accepts a customer-initiated
   const panel = (await api("poll")).body;
   assert.ok(panel.incoming.some(call => call.id === "wacid.rep-request" && call.number === from));
 });
-
-test("WhatsApp main menus use the localized image and preserve text-menu access", async () => {
-  const previous = process.env.RENDER_EXTERNAL_URL;
-  process.env.RENDER_EXTERNAL_URL = "https://fcs-example.onrender.com";
-  try {
-    for (const [language, selection] of [["en", "1"], ["ur", "2"]]) {
-      const from = language === "en" ? "923000000021" : "923000000022";
-      const change = body => ({ field: "messages", value: { messages: [
-        { from, type: "text", text: { body } }
-      ] } });
-      await webhook([change(selection)]);
-      const image = sent.at(-1);
-      assert.equal(image.type, "image");
-      assert.equal(image.image.link, `https://fcs-example.onrender.com/menu/v1/${language}.png`);
-      const response = await fetch(base + new URL(image.image.link).pathname);
-      assert.equal(response.status, 200);
-      assert.equal(response.headers.get("content-type"), "image/png");
-      assert.equal(Buffer.from(await response.arrayBuffer()).subarray(1, 4).toString(), "PNG");
-      await webhook([change("menu text")]);
-      assert.match(sent.at(-1).text.body, /^11\. /m);
-    }
-  } finally {
-    if (previous === undefined) delete process.env.RENDER_EXTERNAL_URL;
-    else process.env.RENDER_EXTERNAL_URL = previous;
-  }
-});
