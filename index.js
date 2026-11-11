@@ -194,7 +194,7 @@ function sendWelcomeMessage(number, verified) {
   sendWhatsAppMessage(number, fallback, {
     type: "button",
     header: { type: "image", image: { link: new URL(welcomeImagePath, origin).href } },
-    body: { text: "*Welcome to FCS Express Pakistan*\n*خوش آمدید*\n\nاپنی پسندیدہ زبان کا انتخاب کریں۔" },
+    body: { text: "*Welcome to FCS Express Pakistan*\n*خوش آمدید*\n\n*براہِ کرم اپنی پسند کی زبان منتخب کریں۔*" },
     action: {
       buttons: languageButtons.map(({ id, title }) => ({ type: "reply", reply: { id, title } }))
     }
