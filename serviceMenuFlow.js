@@ -110,7 +110,7 @@ function menuList(language) {
     type: "list",
     header: { type: "text", text: "🔴🔴 FCS Express Pakistan 🔴🔴" },
     body: { text: [
-      "_(Your Shipment Handler)_",
+      "_(Your Shipment Handler)_\n╰────╯",
       urdu ? "آپ کو کس سروس کی ضرورت ہے؟ فہرست سے منتخب کریں۔" : "How can we help? Choose a service from the menu."
     ].join("\n\n") },
     action: {
