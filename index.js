@@ -5,7 +5,7 @@ const fs = require("fs");
 const path = require("path");
 
 const config = require("./config");
-const { menuFlow, menuSelection } = require("./serviceMenuFlow");
+const { menuFlow, menuList, menuSelection, listSelection } = require("./serviceMenuFlow");
 const { callingRoutes, handleCallingWebhook, isVerifiedMetaWebhook, requestRepresentativeCall } = require("./callingRoutes");
 const { adminDashboard } = require("./adminDashboard");
 const { recordAdminWindows } = require("./adminMessaging");
@@ -65,7 +65,7 @@ const WHATSAPP_TOKEN = config.WHATSAPP_TOKEN;
 // WHATSAPP MESSAGE SENDING
 // =====================================
 
-function sendWhatsAppMessage(to, message, interactive) {
+function sendWhatsAppMessage(to, message, interactive, fallbackInteractive) {
   if (!PHONE_NUMBER_ID || !WHATSAPP_TOKEN) {
     console.error("WhatsApp credentials missing");
     return;
@@ -101,7 +101,7 @@ function sendWhatsAppMessage(to, message, interactive) {
     response.on("end", () => {
       if (interactive && response.statusCode >= 400 && response.statusCode < 500 &&
           response.statusCode !== 429) {
-        sendWhatsAppMessage(to, message);
+        sendWhatsAppMessage(to, message, fallbackInteractive);
       }
       console.log(
         "WhatsApp Response:",
@@ -121,7 +121,8 @@ function sendWhatsAppMessage(to, message, interactive) {
 
 function sendMainMenu(number, language, verified) {
   const flow = verified ? menuFlow(number, language) : null;
-  sendWhatsAppMessage(number, mainMenu(language), flow);
+  const list = verified ? menuList(language) : null;
+  sendWhatsAppMessage(number, mainMenu(language), flow || list, flow ? list : null);
 }
 
 const welcomeImagePath = "/assets/fcs-welcome-v3.jpg";
@@ -330,13 +331,14 @@ async function processMessage(message, verified) {
     languageButtons.find(button => button.id === message.interactive.button_reply?.id);
 
   const flowReply = verified && type === "interactive" && message.interactive?.type === "nfm_reply";
-  if (type !== "text" && !languageChoice && !flowReply) return;
-  if ((languageChoice || flowReply) && (isApplying(number) || isSupplierRegistering(number) ||
+  const listReply = verified && type === "interactive" && message.interactive?.type === "list_reply";
+  if (type !== "text" && !languageChoice && !flowReply && !listReply) return;
+  if ((languageChoice || flowReply || listReply) && (isApplying(number) || isSupplierRegistering(number) ||
       isTransportRegistering(number) || isWarehouseRegistering(number) ||
       isJobActive(number) || businessTender.isActive(number))) return;
 
-  if (flowReply) {
-    const selection = menuSelection(number, message.interactive);
+  if (flowReply || listReply) {
+    const selection = flowReply ? menuSelection(number, message.interactive) : listSelection(message.interactive);
     if (!selection) return;
     setLanguage(number, selection.language);
     faqMode.delete(number);
@@ -438,7 +440,7 @@ async function processMessage(message, verified) {
     return;
   }
 
-  if (text === "11" && !faqMode.has(number) && !tenderMode.has(number)) {
+  if ((text === "10" || text === "11") && !faqMode.has(number) && !tenderMode.has(number)) {
     if (!verified) return;
     const language = getLanguage(number) || "en";
     try {
