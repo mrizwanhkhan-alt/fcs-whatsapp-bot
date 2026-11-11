@@ -37,17 +37,17 @@ function mainMenu(language) {
 
 براہِ کرم مطلوبہ سروس کا نمبر منتخب کریں:
 
-1️⃣ کمپنی کا تعارف
-2️⃣ ہمارا ملک گیر نیٹ ورک
-3️⃣ ہماری خدمات
-4️⃣ فری فرنچائز
-5️⃣ سٹی بزنس سینٹر
-6️⃣ ٹینڈرز اور وینڈر مواقع
-7️⃣ کیریئر اور ملازمتیں
-8️⃣ اکثر پوچھے جانے والے سوالات
-9️⃣ رابطہ اور معاونت
-🔟 ایف سی ایس ایکسپریس کیوں منتخب کریں؟
-1️⃣1️⃣ ایف سی ایس کے مجاز نمائندے سے بات کریں
+1. کمپنی کا تعارف
+2. ہمارا ملک گیر نیٹ ورک
+3. ہماری خدمات
+4. فری فرنچائز
+5. سٹی بزنس سینٹر
+6. ٹینڈرز اور وینڈر مواقع
+7. کیریئر اور ملازمتیں
+8. اکثر پوچھے جانے والے سوالات
+9. رابطہ اور معاونت
+10. ایف سی ایس ایکسپریس کیوں منتخب کریں؟
+11. ایف سی ایس کے مجاز نمائندے سے بات کریں
 
 🌐 www.fcsexpress.com.pk`;
   }
@@ -60,17 +60,17 @@ I am Ghulam Qadir, your FCS Express Virtual Assistant.
 
 Please select the required service:
 
-1️⃣ About FCS Express
-2️⃣ Our Nationwide Network
-3️⃣ Our Services
-4️⃣ Free Franchise
-5️⃣ City Business Center
-6️⃣ Tenders & Vendor Opportunities
-7️⃣ Career & Jobs
-8️⃣ Frequently Asked Questions
-9️⃣ Contact & Support
-🔟 Why Choose FCS Express?
-1️⃣1️⃣ Speak with an FCS representative
+1. About FCS Express
+2. Our Nationwide Network
+3. Our Services
+4. Free Franchise
+5. City Business Center
+6. Tenders & Vendor Opportunities
+7. Career & Jobs
+8. Frequently Asked Questions
+9. Contact & Support
+10. Why Choose FCS Express?
+11. Speak with an FCS representative
 
 🌐 www.fcsexpress.com.pk`;
 }
