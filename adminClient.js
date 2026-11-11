@@ -69,6 +69,32 @@ async function request(path, payload, attachment) {
   return result;
 }
 
+const callingFrame = byId("callingFrame");
+const callingLink = byId("callingLink");
+let callingSizeObserver;
+let callingStatusObserver;
+
+function showCallingAlert(incoming) {
+  callingLink.dataset.incoming = String(incoming);
+  callingLink.textContent = incoming ? "Incoming call" : "Calling";
+}
+
+callingFrame.addEventListener("load", () => {
+  callingSizeObserver?.disconnect();
+  callingStatusObserver?.disconnect();
+  const panel = callingFrame.contentDocument?.querySelector(".panel");
+  const incoming = callingFrame.contentDocument?.getElementById("incoming");
+  if (!panel || !incoming) return;
+
+  callingSizeObserver = new ResizeObserver(() => {
+    callingFrame.style.height = `${Math.ceil(panel.getBoundingClientRect().bottom + 32)}px`;
+  });
+  callingSizeObserver.observe(panel);
+  callingStatusObserver = new MutationObserver(() => showCallingAlert(!incoming.hidden));
+  callingStatusObserver.observe(incoming, { attributes: true, attributeFilter: ["hidden"] });
+  showCallingAlert(!incoming.hidden);
+});
+
 function showSession(session) {
   deliveryPoll++;
   csrf = session.csrf;
@@ -76,6 +102,14 @@ function showSession(session) {
   byId("loginPanel").hidden = session.signedIn;
   byId("composePanel").hidden = !session.signedIn;
   logout.hidden = !session.signedIn;
+  byId("workspaceNav").hidden = !session.signedIn;
+  byId("callingPanel").hidden = !session.signedIn;
+  if (session.signedIn && !callingFrame.hasAttribute("src")) {
+    callingFrame.src = "/admin/calling-panel";
+  } else if (!session.signedIn) {
+    callingFrame.removeAttribute("src");
+    showCallingAlert(false);
+  }
   password.value = "";
   template.replaceChildren(new Option(
     templates.length ? "Choose a template" : "No approved templates configured", ""

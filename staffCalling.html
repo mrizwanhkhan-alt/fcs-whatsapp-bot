@@ -39,6 +39,8 @@ small{color:#666}
 </div>
 
 <button id="listen">Connect Calling Panel</button>
+<button id="keepAwake" type="button" aria-pressed="false">Keep screen awake</button>
+<small id="screenStatus" role="status"></small>
 
 <section id="representativeRequests" hidden>
 <h2>Representative call requests</h2>
@@ -87,6 +89,55 @@ let iceServers = [];
 let busy = false;
 let polling = false;
 let callTimeout;
+
+const keepAwake = $("keepAwake");
+const screenStatus = $("screenStatus");
+let wantsScreenAwake = false;
+let wakeLock;
+let wakeLockPending = false;
+
+function showWakeLock() {
+  const enabled = Boolean(wakeLock && !wakeLock.released);
+  keepAwake.setAttribute("aria-pressed", String(enabled));
+  keepAwake.textContent = wantsScreenAwake ? "Turn off keep awake" : "Keep screen awake";
+  screenStatus.textContent = enabled ? "Screen stays awake while this page is visible." : "";
+}
+
+async function requestWakeLock() {
+  if (!wantsScreenAwake || document.hidden || wakeLock || wakeLockPending) return;
+  wakeLockPending = true;
+  try {
+    const lock = await navigator.wakeLock.request("screen");
+    if (!wantsScreenAwake) {
+      await lock.release();
+      return;
+    }
+    wakeLock = lock;
+    lock.addEventListener("release", () => {
+      if (wakeLock === lock) wakeLock = null;
+      showWakeLock();
+    }, { once: true });
+    showWakeLock();
+  } catch {
+    wantsScreenAwake = false;
+    showWakeLock();
+    screenStatus.textContent = "This browser could not keep the screen awake.";
+  } finally {
+    wakeLockPending = false;
+  }
+}
+
+if (navigator.wakeLock) {
+  keepAwake.onclick = () => {
+    wantsScreenAwake = !wantsScreenAwake;
+    showWakeLock();
+    if (wantsScreenAwake) void requestWakeLock();
+    else if (wakeLock) void wakeLock.release();
+  };
+  document.addEventListener("visibilitychange", requestWakeLock);
+} else {
+  keepAwake.hidden = true;
+}
 
 function status(message) {
   $("status").textContent = message;

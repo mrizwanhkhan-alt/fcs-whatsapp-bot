@@ -131,6 +131,25 @@ test("login sets a secure session cookie and requires CSRF protection", async ()
   assert.equal(graph.length, 0);
 });
 
+test("the signed-in admin workspace can embed the existing calling panel", async () => {
+  const page = await realFetch(base + "/admin");
+  assert.match(page.headers.get("content-security-policy"), /frame-src 'self'/);
+  assert.match(await page.text(), /id="callingFrame"[^>]+allow="microphone 'self'; screen-wake-lock 'self'"/);
+
+  const path = base + "/admin/calling-panel";
+  assert.equal((await realFetch(path)).status, 401);
+  const frame = await realFetch(path, { headers: { Cookie: cookie } });
+  assert.equal(frame.status, 200);
+  const html = await frame.text();
+  const script = /<script>([\s\S]*?)<\/script>/.exec(html)[1];
+  const hash = crypto.createHash("sha256").update(script).digest("base64");
+  const csp = frame.headers.get("content-security-policy");
+  assert.ok(csp.includes(`script-src 'sha256-${hash}'`));
+  assert.match(csp, /frame-ancestors 'self'/);
+  assert.match(html, /Representative call requests/);
+  assert.match(html, /\/api\/staff-calling\//);
+});
+
 test("expired, future, unverified and unrelated events do not open the 24-hour window", async () => {
   for (const event of [
     { timestamp: Date.now() - serviceWindow },
