@@ -326,13 +326,14 @@ test("verified first greeting shows the branded image and native language choice
       const welcome = sent.at(-1);
       assert.equal(welcome.type, "interactive");
       assert.equal(welcome.interactive.type, "button");
+      assert.equal(welcome.interactive.body.text, "زبان کا انتخاب");
       assert.deepEqual(welcome.interactive.action.buttons.map(item => item.reply.title), ["English", "اردو"]);
       const selected = welcome.interactive.action.buttons.find(item => item.reply.title === title);
       assert.ok(selected);
       const image = await fetch(base + new URL(welcome.interactive.header.image.link).pathname);
       assert.equal(image.status, 200);
-      assert.equal(image.headers.get("content-type"), "image/jpeg");
-      assert.equal(Buffer.from(await image.arrayBuffer()).subarray(0, 3).toString("hex"), "ffd8ff");
+      assert.equal(image.headers.get("content-type"), "image/png");
+      assert.equal(Buffer.from(await image.arrayBuffer()).subarray(0, 4).toString("hex"), "89504e47");
 
       const reply = change({ type: "interactive", interactive: {
         type: "button_reply", button_reply: { id: selected.reply.id }
