@@ -108,10 +108,10 @@ function menuList(language) {
   const icons = ["ℹ️", "📦", "🌐", "🤝", "🏢", "📋", "💼", "❓", "📩", "☎️"];
   return {
     type: "list",
-    header: { type: "text", text: "🔴 FCS Express Pakistan" },
+    header: { type: "text", text: "🔴🔴 FCS Express Pakistan 🔴🔴" },
     body: { text: urdu ? "آپ کو کس سروس کی ضرورت ہے؟ فہرست سے منتخب کریں۔" : "How can we help? Choose a service from the menu." },
     action: {
-      button: urdu ? "🔴 سروسز دیکھیں" : "🔴 View services",
+      button: urdu ? "📋 سروسز دیکھیں" : "📋 View services",
       sections: [{
         rows: services.map((service, index) => {
           const title = index === 7 && urdu ? "عام سوالات"
