@@ -29,7 +29,7 @@ Please select your preferred language.
 function mainMenu(language) {
 
   if (language === "ur") {
-    return `🇵🇰 FCS EXPRESS PAKISTAN
+    return `🇵🇰 *FCS EXPRESS PAKISTAN*
 
 السلام علیکم!
 
@@ -47,12 +47,12 @@ function mainMenu(language) {
 8️⃣ اکثر پوچھے جانے والے سوالات
 9️⃣ رابطہ اور معاونت
 🔟 ایف سی ایس ایکسپریس کیوں منتخب کریں؟
-🟦 11 ایف سی ایس کے مجاز نمائندے سے بات کریں
+⑪ ایف سی ایس کے مجاز نمائندے سے بات کریں
 
 🌐 www.fcsexpress.com.pk`;
   }
 
-  return `🇵🇰 FCS EXPRESS PAKISTAN
+  return `🇵🇰 *FCS EXPRESS PAKISTAN*
 
 Assalam-o-Alaikum!
 
@@ -70,7 +70,7 @@ Please select the required service:
 8️⃣ Frequently Asked Questions
 9️⃣ Contact & Support
 🔟 Why Choose FCS Express?
-🟦 11 Speak with an FCS representative
+⑪ Speak with an FCS representative
 
 🌐 www.fcsexpress.com.pk`;
 }
