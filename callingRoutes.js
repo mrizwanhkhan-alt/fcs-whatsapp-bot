@@ -36,12 +36,12 @@ function trackCall(call) {
     direction: call.direction || previous?.direction || "incoming",
     startedAt: call.startedAt && (!previous?.startedAt || Date.parse(call.startedAt) < Date.parse(previous.startedAt)) ? call.startedAt : previous?.startedAt || call.startedAt || new Date().toISOString(),
     answeredAt: call.answeredAt && (!previous?.answeredAt || Date.parse(call.answeredAt) < Date.parse(previous.answeredAt)) ? call.answeredAt : previous?.answeredAt || call.answeredAt || null,
-    endedAt: previous?.endedAt || call.endedAt || null,
+    endedAt: call.endedAt || previous?.endedAt || null,
     state: call.state
   };
   if (call.state === "accepted" && !entry.answeredAt) entry.answeredAt = call.answeredAt || new Date().toISOString();
   if (ended(call) && !entry.endedAt) entry.endedAt = new Date().toISOString();
-  const changed = !previous || previous.state !== entry.state || previous.owner !== entry.owner || previous.staffId !== entry.staffId || previous.startedAt !== entry.startedAt || previous.answeredAt !== entry.answeredAt || previous.endedAt !== entry.endedAt;
+  const changed = !previous || previous.state !== entry.state || previous.owner !== entry.owner || previous.staffId !== entry.staffId || previous.startedAt !== entry.startedAt || previous.startedAt !== entry.startedAt || previous.answeredAt !== entry.answeredAt || previous.endedAt !== entry.endedAt;
   callHistory.set(call.id, entry);
   if (changed) appendEvent(entry).catch(error => {
     console.error("Call history persistence failed:", error.message);
