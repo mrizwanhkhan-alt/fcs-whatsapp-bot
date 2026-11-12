@@ -54,7 +54,11 @@ async function replay(handler, limit = 100) {
   await setup();
   const {rows} = await pool.query(`SELECT event_key FROM fcs_call_events
     WHERE processed_at IS NULL AND quarantined_at IS NULL AND (next_retry_at IS NULL OR next_retry_at <= now())
-    ORDER BY CASE WHEN payload ? 'from' OR payload ? 'from_user_id' THEN 0 ELSE 1 END,received_at,event_key LIMIT $1`,[limit]);
+    ORDER BY CASE
+      WHEN payload->>'event'='connect' AND payload->'session'->>'sdp_type'='offer' THEN 0
+      WHEN payload->>'status'='ACCEPTED' THEN 1
+      WHEN payload->>'event'='terminate' OR payload->>'status' IN ('REJECTED','FAILED') THEN 3
+      ELSE 2 END,received_at,event_key LIMIT $1`,[limit]);
   let processed=0;
   for (const candidate of rows) {
     const client=await pool.connect();
