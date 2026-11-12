@@ -43,6 +43,10 @@ async function save(events) {
         [keyFor(event),String(event.id),JSON.stringify(event)]);
     }
     await client.query("COMMIT");
+    // New caller metadata can unblock an earlier quarantined termination.
+    const ids = [...new Set(events.filter(e => e.from || e.from_user_id).map(e => String(e.id)))];
+    if (ids.length) await pool.query(`UPDATE fcs_call_events SET quarantined_at=NULL,attempts=0,next_retry_at=NULL
+      WHERE call_id=ANY($1::text[]) AND processed_at IS NULL AND quarantined_at IS NOT NULL`,[ids]);
   } catch(e) {await client.query("ROLLBACK");throw e;}
   finally {client.release();}
 }
