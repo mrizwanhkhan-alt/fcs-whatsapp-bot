@@ -240,13 +240,10 @@ function recordEvent(event) {
   }
   // A restart clears in-memory call details. Recover terminal webhook metadata
   // from durable history before recording the final state.
-  if (!call && (event.event === "terminate" || event.status === "REJECTED" || event.status === "FAILED") &&
+  if ((!call || (ended(call) && !call.number)) && (event.event === "terminate" || event.status === "REJECTED" || event.status === "FAILED") &&
       !event.from && !event.from_user_id) {
     getById(event.id).then(saved => {
-      if (!saved) {
-        calls.set(event.id, { id: event.id, state: "ended", expires: Date.now() + END_MS });
-        return;
-      }
+      if (!saved) return;
       const current = calls.get(event.id);
       if (current?.number && ended(current)) return;
       const recovered = { ...saved, id: event.id, number: saved.number,
