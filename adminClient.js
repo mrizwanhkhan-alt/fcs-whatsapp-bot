@@ -103,6 +103,17 @@ function showSession(session) {
   const isAdmin = Boolean(session.signedIn && (!session.role || session.role === "super_admin"));
   byId("loginPanel").hidden = session.signedIn || staffLoginMode;
   byId("staffLoginPanel").hidden = session.signedIn || !staffLoginMode;
+  const roleInfo = {
+    business_center: ["City Business Center Dashboard", "Manage visibility of applications, customers and reports for your assigned city or cities.", "Business Center Customer Search", "Business Center City Report", "Business Center Applications"],
+    franchise: ["Franchise Dashboard", "View franchise applications and customers only within your assigned city or cities.", "Franchise Customer Search", "Franchise City Report", "Franchise Applications"],
+    communicator: ["Communicator Dashboard", "Search assigned customers and review follow-up stages. Messaging and calling require separate authorization.", "Customer Follow-up Search", "Customer Follow-up Report", "Assigned Applications"]
+  };
+  const info = roleInfo[session.role] || ["Staff Workspace", "Read-only territory access.", "Territory Customer Search", "Territory Report", "Territory Applications"];
+  byId("staffWorkspaceTitle").textContent = info[0];
+  byId("staffWorkspaceDescription").textContent = info[1];
+  byId("staffCustomerTitle").textContent = info[2];
+  byId("staffReportTitle").textContent = info[3];
+  byId("staffApplicationsTitle").textContent = info[4];
   byId("staffHome").hidden = !session.signedIn || isAdmin;
   for (const id of ["staffCustomerPanel", "staffReportsPanel", "staffApplicationsPanel"]) byId(id).hidden = !session.signedIn || isAdmin;
   byId("territoryLabel").textContent = session.territory ? `Assigned territory: ${session.territory.province} — ${session.territory.cities.join(", ")}` : "";
