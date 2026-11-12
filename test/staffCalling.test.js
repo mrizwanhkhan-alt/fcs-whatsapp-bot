@@ -104,6 +104,10 @@ before(async () => {
   require.cache[settingsPath] = { id: settingsPath, filename: settingsPath, loaded: true,
     exports: { refreshSettings: async () => settings, cachedSettings: () => settings,
       listSettings: async () => new Map(settings), saveSettings: async (id, value) => { settings.set(id, value); return value; } } };
+  // History storage is integration-tested separately; avoid real Google Sheets calls here.
+  const historyPath = require.resolve("../callHistoryStore");
+  require.cache[historyPath] = { id: historyPath, filename: historyPath, loaded: true,
+    exports: { appendEvent: async () => {}, listHistory: async () => [] } };
   try {
     require("../index");
   } finally {
