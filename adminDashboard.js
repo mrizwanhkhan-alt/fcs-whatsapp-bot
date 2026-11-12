@@ -278,6 +278,16 @@ async function adminDashboard(req, res, url) {
       }
       return respond(res, 200, { ok: true });
     }
+    if (req.method === "POST" && route === "/admin/subscription-set") {
+      if (!session || role !== "admin") fail(403, "Head office access required.");
+      if (req.headers["x-admin-request"] !== session.csrf) fail(403, "Invalid request token.");
+      if (!process.env.DATABASE_URL) fail(503, "Central database is not configured.");
+      const { branchId, status } = await readJSON(req);
+      await centralDb.initializeDatabase();
+      const updated = await centralDb.setSubscription(branchId, status);
+      recordAudit("subscription.update", "success", updated.id + ":" + updated.subscription_status);
+      return respond(res, 200, { updated });
+    }
     if (req.method === "GET" && route === "/admin/head-office-summary") {
       if (!session || role !== "admin") fail(403, "Head office access required.");
       const directory = branchSummary(safeStaffList());
@@ -294,7 +304,7 @@ async function adminDashboard(req, res, url) {
       if (process.env.DATABASE_URL) {
         await centralDb.initializeDatabase();
         const records = await centralDb.branchList();
-        return respond(res, 200, { branches: records.map(b => ({ id:b.id,city:b.city,location:b.location,branchType:b.branch_type,parentBusinessCenterId:b.parent_business_center_id,staffCount:b.staff_count,staffLimit:4 })) });
+        return respond(res, 200, { branches: records.map(b => ({ id:b.id,city:b.city,location:b.location,branchType:b.branch_type,parentBusinessCenterId:b.parent_business_center_id,staffCount:b.staff_count,staffLimit:4,subscriptionStatus:b.subscription_status })) });
       }
       return respond(res, 200, { branches: branchSummary(safeStaffList()) });
     }
