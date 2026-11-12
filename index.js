@@ -91,13 +91,39 @@ function sendWhatsAppMessage(to, message, interactive, fallbackInteractive) {
         if (status >= 200 && status < 300) resolve();
         else if (current && status >= 400 && status < 500 && status !== 429) {
           deliver(fallback).then(resolve, reject);
-        } else reject(new Error("WhatsApp reply failed with HTTP " + status));
+        } else {
+          const error = new Error("WhatsApp reply failed with HTTP " + status);
+          error.definitiveRejection = status >= 400 && status < 500;
+          reject(error);
+        }
       }, undefined, reject);
     });
   }
-  const reply = deliver(interactive, fallbackInteractive);
-  outboundReplies.getStore()?.push(reply);
+  const context = outboundReplies.getStore();
+  const send = () => deliver(interactive, fallbackInteractive);
+  const reply = context?.attempt ? sendJournaledReply(context, send) : send();
+  context?.replies.push(reply);
   reply.catch(error => console.error("WhatsApp reply failed:", error.message));
+}
+
+async function sendJournaledReply(context, send) {
+  const { inbox, id, attempt } = context;
+  const position = context.replies.length;
+  if (await inbox.beginReply(id, attempt, position) === "accepted") return;
+  try {
+    await send();
+  } catch (error) {
+    if (error.definitiveRejection) await inbox.finishReply(id, attempt, position, false);
+    throw error;
+  }
+  await inbox.finishReply(id, attempt, position, true);
+}
+
+async function processInboxMessage(message, verified, inbox, attempt) {
+  if (attempt > 1) await inbox.assertRecoverable(message.id, attempt);
+  const context = { inbox, id: message.id, attempt, replies: [] };
+  await outboundReplies.run(context, () => processMessage(message, verified));
+  await Promise.all(context.replies);
 }
 
 function sendWhatsAppPayload(to, payload, onResponse, onClose, onFailure) {
@@ -936,9 +962,7 @@ const server = http.createServer((req, res) => {
                     continue;
                   }
                 } else if (!claimRecentMessage(message.id)) continue;
-                const replies = [];
-                await outboundReplies.run(replies, () => processMessage(message, verifiedMessage));
-                await Promise.all(replies);
+                await processInboxMessage(message, verifiedMessage, inbox, attempt);
                 if (attempt && !await inbox.complete(message.id, attempt)) messageRetry = true;
               } catch (error) {
                 messageRetry = true;
@@ -1062,9 +1086,7 @@ async function recoverMessages() {
       const result = await inbox.claim(message.id, message);
       if (!result.attempt) continue;
       try {
-        const replies = [];
-        await outboundReplies.run(replies, () => processMessage(message, true));
-        await Promise.all(replies);
+        await processInboxMessage(message, true, inbox, result.attempt);
         if (!await inbox.complete(message.id, result.attempt))
           console.error("Message recovery claim expired:", message.id);
       } catch (error) {

@@ -204,7 +204,7 @@ test("message leases survive process restart, fence stale workers and retry fail
   assert.deepEqual(await inbox.claim(id), { retry: false });
 });
 
-test("message retry budget is bounded and preserves the last failure", { skip: !postgresUrl }, async () => {
+test("persisted messages can be recovered after ten failed attempts", { skip: !postgresUrl }, async () => {
   const inbox = require("../messageInbox");
   const id = "wamid.retry-budget";
   for (let attempt = 1; attempt <= 10; attempt++) {
@@ -212,7 +212,83 @@ test("message retry budget is bounded and preserves the last failure", { skip: !
     assert.equal(await inbox.fail(id, attempt, new Error("Graph unavailable")), true);
     await client.query("UPDATE fcs_message_inbox SET next_retry_at=now()-interval '1 second' WHERE message_id=$1", [id]);
   }
-  assert.deepEqual(await inbox.claim(id), { retry: false });
+  assert.deepEqual(await inbox.claim(id), { attempt: 11 });
   const result = await client.query("SELECT completed_at,last_error FROM fcs_message_inbox WHERE message_id=$1", [id]);
   assert.deepEqual(result.rows[0], { completed_at: null, last_error: "Graph unavailable" });
+});
+
+test("application restart recovers without Meta redelivery and parks a crash-ambiguous reply", { skip: !postgresUrl }, async () => {
+  const run = promisify(execFile);
+  const fs = require("node:fs/promises");
+  const path = require("node:path");
+  const dir = await fs.mkdtemp(path.join(require("node:os").tmpdir(), "fcs-inbox-test-"));
+  const sends = path.join(dir, "sends");
+  const id = "wamid.restart-reply";
+  const inbox = require("../messageInbox");
+  const message = { id, from: "923000000000", type: "text", text: { body: "Hi" } };
+  const expire = () => client.query(
+    "UPDATE fcs_message_inbox SET lease_until=now()-interval '1 second' WHERE message_id=$1", [id]);
+  const script = `
+    const fs = require("node:fs");
+    const https = require("node:https");
+    const { EventEmitter } = require("node:events");
+    const [file, mode, id] = process.argv.slice(1);
+    https.request = (options, callback) => {
+      if (options.hostname !== "graph.facebook.com") throw Error("Unexpected network request");
+      const req = new EventEmitter();
+      req.write = () => {};
+      req.end = () => queueMicrotask(() => {
+        fs.appendFileSync(file, "accepted\\n");
+        if (mode === "crash") process.exit(73);
+        const response = new EventEmitter();
+        response.statusCode = 200;
+        callback(response);
+        response.emit("data", JSON.stringify({messages:[{id:"wamid.graph-reply"}]}));
+        response.emit("end");
+        req.emit("close");
+      });
+      return req;
+    };
+    require("./index");
+    const {Client}=require("pg");
+    const client=new Client({connectionString:process.env.DATABASE_URL});
+    (async()=>{
+      await client.connect();
+      for(let i=0;i<100;i++){
+        const {rows} = await client.query(
+          "SELECT completed_at, last_error, next_retry_at = 'infinity'::timestamptz AS parked FROM fcs_message_inbox WHERE message_id=$1",[id]);
+        if(rows[0]?.parked || rows[0]?.completed_at) {
+          console.log(JSON.stringify(rows[0]));
+          process.exit(0);
+        }
+        await require("node:timers/promises").setTimeout(25);
+      }
+      throw Error("Recovery did not reach a final state");
+    })().catch(error=>{console.error(error);process.exit(1)});
+  `;
+  const options = { cwd: path.resolve(__dirname, ".."), timeout: 8000, env: {
+    ...process.env, PORT: "0", PHONE_NUMBER_ID: "123", WHATSAPP_TOKEN: "test",
+    META_APP_SECRET: "test", GOOGLE_SERVICE_ACCOUNT: "{}", OPENAI_API_KEY: "test",
+    RENDER_EXTERNAL_URL: ""
+  } };
+  try {
+    assert.deepEqual(await inbox.claim(id, message), { attempt: 1 });
+    await expire();
+    await assert.rejects(run(process.execPath, ["-e", script, sends, "crash", id], options),
+      error => error.code === 73);
+    await expire();
+    const recovery = await run(process.execPath, ["-e", script, sends, "recover", id], options);
+    assert.match(recovery.stdout, /"parked":true/);
+    assert.deepEqual(await inbox.claim(id, message), { retry: false });
+    assert.equal((await fs.readFile(sends, "utf8")).trim().split("\n").length, 1);
+
+    const next = "wamid.restart-unsent";
+    await inbox.claim(next, { ...message, id: next });
+    await client.query("UPDATE fcs_message_inbox SET lease_until=now()-interval '1 second' WHERE message_id=$1", [next]);
+    const unsent = await run(process.execPath, ["-e", script, sends, "recover", next], options);
+    assert.match(unsent.stdout, /"completed_at":"[^"]+"/);
+    assert.equal((await fs.readFile(sends, "utf8")).trim().split("\n").length, 2);
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
 });

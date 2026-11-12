@@ -18,6 +18,7 @@ async function setup() {
     await pool.query("ALTER TABLE fcs_message_inbox ADD COLUMN IF NOT EXISTS attempts integer NOT NULL DEFAULT 0");
     await pool.query("ALTER TABLE fcs_message_inbox ADD COLUMN IF NOT EXISTS next_retry_at timestamptz");
     await pool.query("ALTER TABLE fcs_message_inbox ADD COLUMN IF NOT EXISTS payload jsonb");
+    await pool.query("ALTER TABLE fcs_message_inbox ADD COLUMN IF NOT EXISTS reply_states jsonb NOT NULL DEFAULT '{}'");
   })().catch(e=>{ready=null;throw e;});
   await ready;
 }
@@ -37,9 +38,9 @@ async function claim(id, payload) {
     RETURNING message_id,attempts`,[String(id),JSON.stringify(payload || null)]);
   if (rows.length) return { attempt: rows[0].attempts };
   const result = await pool.query(
-    "SELECT completed_at, attempts FROM fcs_message_inbox WHERE message_id = $1", [String(id)]);
+    "SELECT completed_at, attempts, next_retry_at = 'infinity'::timestamptz AS parked FROM fcs_message_inbox WHERE message_id = $1", [String(id)]);
   const existing = result.rows[0];
-  return { retry: !existing?.completed_at };
+  return { retry: !existing?.completed_at && !existing?.parked };
 }
 async function complete(id, attempt) {
   await setup();
@@ -51,9 +52,9 @@ async function complete(id, attempt) {
 async function fail(id, attempt, error) {
   await setup();
   const result = await pool.query(`UPDATE fcs_message_inbox SET lease_until=NULL,
-    next_retry_at=now()+interval '30 seconds',last_error=$3
+    next_retry_at=CASE WHEN $4 THEN 'infinity'::timestamptz ELSE now()+interval '30 seconds' END,last_error=$3
     WHERE message_id=$1 AND attempts=$2 AND completed_at IS NULL`,
-    [String(id), attempt, String(error?.message || error).slice(0, 500)]);
+    [String(id), attempt, String(error?.message || error).slice(0, 500), error?.code === "REPLY_OUTCOME_UNKNOWN"]);
   return result.rowCount === 1;
 }
 async function pending(limit=30) {
@@ -65,4 +66,49 @@ async function pending(limit=30) {
     ORDER BY claimed_at LIMIT $1`,[limit]);
   return rows;
 }
-module.exports = { enabled: !!pool, claim, complete, fail, pending };
+function unknownReplyOutcome() {
+  const error = new Error("Previous WhatsApp reply outcome is unknown and needs review");
+  error.code = "REPLY_OUTCOME_UNKNOWN";
+  return error;
+}
+
+async function assertRecoverable(id, attempt) {
+  await setup();
+  const result = await pool.query(`SELECT EXISTS (
+      SELECT 1 FROM jsonb_each_text(reply_states) WHERE value='dispatching'
+    ) AS uncertain FROM fcs_message_inbox
+    WHERE message_id=$1 AND attempts=$2 AND completed_at IS NULL AND lease_until > now()`,
+    [String(id), attempt]);
+  if (!result.rowCount) throw new Error("Message reply lease expired");
+  if (result.rows[0].uncertain) throw unknownReplyOutcome();
+}
+
+// Store the dispatch intent before contacting Meta. A worker must never
+// repeat a reply whose outcome was lost between dispatch and acknowledgement.
+async function beginReply(id, attempt, position) {
+  await setup();
+  const args = [String(id), attempt, String(position)];
+  const update = await pool.query(`UPDATE fcs_message_inbox
+    SET reply_states=jsonb_set(reply_states,ARRAY[$3::text],'"dispatching"'::jsonb)
+    WHERE message_id=$1 AND attempts=$2 AND completed_at IS NULL
+      AND lease_until > now() AND NOT (reply_states ? $3)
+    RETURNING message_id`, args);
+  if (update.rowCount) return "dispatching";
+  const result = await pool.query(`SELECT reply_states->>$3 AS state FROM fcs_message_inbox
+    WHERE message_id=$1 AND attempts=$2 AND completed_at IS NULL AND lease_until > now()`, args);
+  if (!result.rowCount) throw new Error("Message reply lease expired");
+  if (result.rows[0].state === "accepted") return "accepted";
+  throw unknownReplyOutcome();
+}
+
+async function finishReply(id, attempt, position, accepted) {
+  await setup();
+  const result = await pool.query(`UPDATE fcs_message_inbox SET reply_states=CASE WHEN $4
+    THEN jsonb_set(reply_states,ARRAY[$3::text],'"accepted"'::jsonb)
+    ELSE reply_states - $3::text END
+    WHERE message_id=$1 AND attempts=$2 AND completed_at IS NULL AND lease_until > now()
+      AND reply_states->>$3='dispatching'`, [String(id), attempt, String(position), accepted]);
+  if (!result.rowCount) throw new Error("Message reply lease expired");
+}
+
+module.exports = { enabled: !!pool, claim, complete, fail, pending, assertRecoverable, beginReply, finishReply };
