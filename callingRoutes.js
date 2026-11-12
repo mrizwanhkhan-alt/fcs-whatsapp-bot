@@ -21,6 +21,26 @@ const calls = new Map();
 const pending = new Map();
 const representativeRequests = new Map();
 const permissionDeliveries = new Map();
+const callHistory = new Map();
+const HISTORY_LIMIT = 1000;
+function trackCall(call) {
+  if (!call?.id || !call.number) return;
+  const previous = callHistory.get(call.id);
+  const entry = {
+    id: call.id, number: call.number,
+    owner: call.owner || previous?.owner || null,
+    direction: call.direction || previous?.direction || "incoming",
+    startedAt: previous?.startedAt || new Date().toISOString(),
+    answeredAt: previous?.answeredAt || null,
+    endedAt: previous?.endedAt || null,
+    state: call.state
+  };
+  if (call.state === "accepted" && !entry.answeredAt) entry.answeredAt = new Date().toISOString();
+  if (ended(call) && !entry.endedAt) entry.endedAt = new Date().toISOString();
+  callHistory.set(call.id, entry);
+  while (callHistory.size > HISTORY_LIMIT) callHistory.delete(callHistory.keys().next().value);
+}
+
 const deliveryOrder = { accepted: 0, sent: 1, delivered: 2, read: 3 };
 const REPRESENTATIVE_REQUEST_MS = REPRESENTATIVE_REQUEST_MINUTES * 60_000;
 const RING_MS = 90000;
@@ -89,7 +109,7 @@ function iceServers() {
 
 function setState(call, state, duration) {
   call.state = state;
-  call.expires = Date.now() + duration;
+  call.expires = Date.now() + duration;\n  if (call.id) trackCall(call);
   if (duration === END_MS) {
     call.sdp = undefined;
   }
@@ -207,7 +227,7 @@ function recordEvent(event) {
     setState(call, incoming ? "incoming" : "dialing", RING_MS);
   }
   call.id = event.id;
-  calls.set(call.id, call);
+  calls.set(call.id, call);\n  trackCall(call);
 
   if (ended(call)) return;
   if (terminal) {
@@ -290,7 +310,7 @@ async function handleAction(route, body) {
     if (Array.from(pending.values()).some(belongsToStaff) || Array.from(calls.values()).some(belongsToStaff)) {
       fail(409, "This staff session already has a call.");
     }
-    const call = { number, owner: body.owner };
+    const call = { number, owner: body.owner, direction: "outgoing" };
     const reference = crypto.randomUUID();
     setState(call, "dialing", RING_MS);
     pending.set(reference, call);
@@ -303,7 +323,7 @@ async function handleAction(route, body) {
         Object.assign(call, earlyEvent, { number, owner: body.owner });
       }
       call.id = id;
-      calls.set(id, call);
+      calls.set(id, call);\n      trackCall(call);
       return publicCall(call);
     } catch (error) {
       if (call.id) return publicCall(call);
@@ -333,7 +353,7 @@ async function handleAction(route, body) {
       ...(route === "session" && { iceServers: iceServers() }) };
   }
 
-  if (route === "offer") {
+  if (route === "history") {\n    return { history: Array.from(callHistory.values()).filter(item => item.owner === body.owner).reverse().slice(0, 100), persistent: false };\n  }\n\n  if (route === "offer") {
     const call = getCall(body.callId);
     if (call.state !== "incoming" || call.operation) fail(409, "This incoming call is no longer available.");
     return publicCall(call);
