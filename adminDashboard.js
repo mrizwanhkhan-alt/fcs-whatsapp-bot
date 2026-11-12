@@ -99,7 +99,6 @@ async function readJSON(req) {
 }
 
 async function login(req, res, previousToken) {
-  if (!credential) fail(503, "Admin login is awaiting server configuration.");
 
   const now = Date.now();
   while (loginAttempts.length && loginAttempts[0].at <= now - LOGIN_INTERVAL) loginAttempts.shift();
@@ -108,7 +107,8 @@ async function login(req, res, previousToken) {
       "Retry-After": String(Math.ceil((loginAttempts[0].at + LOGIN_INTERVAL - now) / 1000))
     });
   }
-  const { password } = await readJSON(req);
+  const { password, staffId } = await readJSON(req);
+  if (!credential && !staffId) fail(503, "Admin login is awaiting server configuration.");
   if (typeof password !== "string" || !password || password.length > 256) {
     fail(400, "Enter your admin password.");
   }
@@ -116,10 +116,15 @@ async function login(req, res, previousToken) {
   const attemptTime = { at: Date.now() };
   if (loginAttempts.length >= LOGIN_LIMIT) fail(429, "Too many sign-in attempts. Try again in five minutes.");
   loginAttempts.push(attemptTime);
-  const digest = await scrypt(password, Buffer.from(credential[1], "hex"), 64);
-  if (!crypto.timingSafeEqual(digest, Buffer.from(credential[2], "hex"))) {
-    fail(401, "Incorrect admin password.");
+  let identity;
+  if (staffId) {
+    identity = await authenticateStaff(staffId, password);
+  } else {
+    const digest = await scrypt(password, Buffer.from(credential[1], "hex"), 64);
+    if (crypto.timingSafeEqual(digest, Buffer.from(credential[2], "hex"))) identity = { id: "admin", role: "admin" };
   }
+  if (!identity) { recordAudit("login", "failed", String(staffId || "admin").slice(0,32)); fail(401, "Incorrect credentials."); }
+  recordAudit("login", "success", identity.id);
 
   const attemptIndex = loginAttempts.indexOf(attemptTime);
   if (attemptIndex !== -1) loginAttempts.splice(attemptIndex, 1);
@@ -130,9 +135,9 @@ async function login(req, res, previousToken) {
   if (sessions.size >= 100) sessions.delete(sessions.keys().next().value);
   const token = crypto.randomBytes(32).toString("hex");
   sessions.set(token, {
-    csrf: crypto.randomBytes(32).toString("hex"), expires: Date.now() + SESSION_MS
+    csrf: crypto.randomBytes(32).toString("hex"), expires: Date.now() + SESSION_MS, identity
   });
-  return respond(res, 200, { signedIn: true }, {
+  return respond(res, 200, { signedIn: true, identity }, {
     "Set-Cookie": cookie(token, SESSION_MS / 1000)
   });
 }
@@ -213,6 +218,10 @@ async function adminDashboard(req, res, url) {
 
     const token = tokenFrom(req);
     const session = activeSession(token);
+    const role = session?.identity?.role;
+    const adminOnly = new Set(["/admin/security-audit","/admin/staff-ids","/admin/backup-export"]);
+    const operatorOnly = new Set(["/admin/customer-engagement","/admin/send","/admin/window"]);
+    if (session && role !== "admin" && (adminOnly.has(route) || (role !== "operator" && operatorOnly.has(route)))) fail(403, "Your staff role does not permit this action.");
     if (req.method === "GET" && route === "/admin/calling-panel") {
       if (!session) fail(401, "Your session expired. Sign in again.");
       const html = await fs.promises.readFile(path.join(__dirname, "staffCalling.html"), "utf8");
@@ -277,7 +286,7 @@ async function adminDashboard(req, res, url) {
     }
     if (req.method === "GET" && route === "/admin/session") {
       if (!session) return respond(res, 200, { signedIn: false });
-      return respond(res, 200, { signedIn: true, csrf: session.csrf, templates });
+      return respond(res, 200, { signedIn: true, csrf: session.csrf, templates, identity: session.identity });
     }
 
     if (req.method !== "POST" ||
