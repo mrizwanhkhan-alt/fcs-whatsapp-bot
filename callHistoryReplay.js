@@ -51,4 +51,21 @@ async function replayPendingHistory() {
     }
   }
 }
-module.exports = { replayPendingHistory };
+async function replaySingleHistoryEvent(event) {
+  const state = stateOf(event);
+  if (!event?.id || !state) return;
+  const saved = await getById(event.id);
+  if (saved && terminalStates.has(saved.state)) return;
+  const number = saved?.number || event.from || event.from_user_id;
+  // Events without a caller number must wait for a prior event to provide it.
+  if (!number) throw new Error("Missing caller number for call " + event.id);
+  const time = eventTime(event) || saved?.startedAt || new Date().toISOString();
+  await appendEvent({
+    id:event.id, number, staffId:saved?.staffId || null, owner:saved?.owner || null,
+    direction:saved?.direction || (state === "incoming" ? "incoming" : "outgoing"),
+    startedAt:saved?.startedAt || time,
+    answeredAt:saved?.answeredAt || (state === "accepted" ? time : null),
+    endedAt:saved?.endedAt || (terminalStates.has(state) ? time : null), state
+  });
+}
+module.exports = { replayPendingHistory, replaySingleHistoryEvent };
