@@ -332,6 +332,15 @@ byId("customerForm").addEventListener("submit", event => {
   }, byId("customerStatus"));
 });
 
+function highlightNavigation() {
+  for (const link of byId("workspaceNav").querySelectorAll('a[href^="#"]')) {
+    if (link.getAttribute("href") === location.hash) link.setAttribute("aria-current", "location");
+    else link.removeAttribute("aria-current");
+  }
+}
+window.addEventListener("hashchange", highlightNavigation);
+highlightNavigation();
+
 request("session").then(session => {
   showSession(session);
   feedback();
