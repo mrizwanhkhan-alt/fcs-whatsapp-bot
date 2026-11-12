@@ -17,7 +17,7 @@ const { updateEngagement } = require("./googleSheets");
 const { recordAudit, recentAudit } = require("./securityAudit");
 const { recentCallLogs } = require("./callingRoutes");
 const { safeStaffList, authenticateStaff } = require("./staffAccounts");
-const { branchSummary } = require("./branchDirectory");
+const { branchSummary, branches } = require("./branchDirectory");
 
 const COOKIE = "__Host-fcs_admin";
 const SESSION_MS = 8 * 60 * 60 * 1000;
@@ -222,9 +222,12 @@ async function adminDashboard(req, res, url) {
     const role = session?.identity?.role;
     const adminOnly = new Set(["/admin/security-audit","/admin/staff-ids","/admin/backup-export"]);
     const operatorOnly = new Set(["/admin/customer-engagement","/admin/send","/admin/window"]);
+    const branchUnsafe = new Set(["/admin/customer-engagement","/admin/send","/admin/window"]);
+    if (session && role !== "admin" && branchUnsafe.has(route)) fail(403, "Branch-specific permissions require customer-to-branch assignment.");
     if (session && role !== "admin" && (adminOnly.has(route) || (role !== "operator" && operatorOnly.has(route)))) fail(403, "Your staff role does not permit this action.");
     if (req.method === "GET" && route === "/admin/calling-panel") {
       if (!session) fail(401, "Your session expired. Sign in again.");
+      if (role !== "admin") fail(403, "Calling requires branch-scoped authorization.");
       if (role === "viewer") fail(403, "Viewer accounts cannot access calling.");
       const html = await fs.promises.readFile(path.join(__dirname, "staffCalling.html"), "utf8");
       const script = /<script>([\s\S]*?)<\/script>/.exec(html)?.[1];
@@ -237,6 +240,7 @@ async function adminDashboard(req, res, url) {
       return res.end(html);
     }
     if (req.method === "GET" && route === "/admin/customer-lookup") {
+      if (role !== "admin") fail(403, "Customer data is restricted until branch ownership is configured.");
       if (!session) fail(401, "Your session expired. Sign in again.");
       const phone = url.searchParams.get("phone") || "";
       if (!/^[+()\d\s-]{7,24}$/.test(phone)) fail(400, "Enter a valid phone number.");
@@ -249,12 +253,25 @@ async function adminDashboard(req, res, url) {
     }
     if (req.method === "GET" && route === "/admin/customer-status-report") {
       if (!session) fail(401, "Your session expired. Sign in again.");
+      if (role !== "admin") fail(403, "Cross-branch data is restricted until branch ownership is configured.");
       return respond(res, 200, { ...customerStatusReport(await getApplications()), updatedAt: new Date().toISOString() });
     }
     if (req.method === "GET" && route === "/admin/province-city-report") {
       if (!session) fail(401, "Your session expired. Sign in again.");
+      if (role !== "admin") fail(403, "Cross-branch data is restricted until branch ownership is configured.");
       const rows = await getApplications();
       return respond(res, 200, { provinces: provinceCityReport(rows), updatedAt: new Date().toISOString() });
+    }
+    if (req.method === "GET" && route === "/admin/head-office-summary") {
+      if (!session || role !== "admin") fail(403, "Head office access required.");
+      const directory = branchSummary(safeStaffList());
+      return respond(res, 200, {
+        totalBranches: directory.length,
+        totalStaff: directory.reduce((sum, branch) => sum + branch.staffCount, 0),
+        availableStaffSlots: directory.reduce((sum, branch) => sum + branch.staffLimit - branch.staffCount, 0),
+        cities: [...new Set(directory.map(branch => branch.city))].length,
+        branches: directory
+      });
     }
     if (req.method === "GET" && route === "/admin/branches") {
       if (!session || role !== "admin") fail(403, "Head office access required.");
@@ -262,10 +279,12 @@ async function adminDashboard(req, res, url) {
     }
     if (req.method === "GET" && route === "/admin/staff-ids") {
       if (!session) fail(401, "Your session expired. Sign in again.");
+      if (role !== "admin") fail(403, "Head office access required.");
       return respond(res, 200, { staff: safeStaffList(), source: "ADMIN_STAFF_ACCOUNTS" });
     }
     if (req.method === "GET" && route === "/admin/calling-logs") {
       if (!session) fail(401, "Your session expired. Sign in again.");
+      if (role !== "admin") fail(403, "Cross-branch data is restricted until branch ownership is configured.");
       return respond(res, 200, { calls: recentCallLogs(), persistent: false });
     }
     if (req.method === "GET" && route === "/admin/backup-export") {
@@ -276,14 +295,17 @@ async function adminDashboard(req, res, url) {
     }
     if (req.method === "GET" && route === "/admin/cost-monitoring") {
       if (!session) fail(401, "Your session expired. Sign in again.");
+      if (role !== "admin") fail(403, "Cross-branch data is restricted until branch ownership is configured.");
       return respond(res, 200, usageSummary());
     }
     if (req.method === "GET" && route === "/admin/message-activity") {
       if (!session) fail(401, "Your session expired. Sign in again.");
+      if (role !== "admin") fail(403, "Cross-branch data is restricted until branch ownership is configured.");
       return respond(res, 200, { messages: recentDeliveryStatuses(), note: "Recent in-memory activity only; not a permanent archive." });
     }
     if (req.method === "GET" && route === "/admin/delivery") {
       if (!session) fail(401, "Your session expired. Sign in again.");
+      if (role !== "admin") fail(403, "Cross-branch data is restricted until branch ownership is configured.");
       const id = url.searchParams.get("id") || "";
       if (!/^wamid\.[A-Za-z0-9_=.%-]{8,512}$/.test(id)) fail(400, "Invalid message ID.");
       const status = deliveryStatus(id);
