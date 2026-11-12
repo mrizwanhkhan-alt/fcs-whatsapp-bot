@@ -27,7 +27,7 @@ before(async () => {
   Object.assign(process.env, {
     ADMIN_PASSWORD_HASH: salt.toString("hex") + ":" + crypto.scryptSync(password, salt, 64).toString("hex"),
     STAFF_ACCOUNTS_JSON: JSON.stringify([{
-      id: "agent01", role: "communicator", territory: { province: "Punjab", cities: ["Lahore"] },
+      id: "agent01", role: "communicator", active: true, startsAt: "2026-01-01", expiresAt: "2099-12-31", territory: { province: "Punjab", cities: ["Lahore"] },
       passwordHash: salt.toString("hex") + ":" + crypto.scryptSync("test-staff-secret", salt, 64).toString("hex")
     }]),
     ADMIN_WHATSAPP_TEMPLATES: JSON.stringify([
@@ -285,6 +285,7 @@ test("staff accounts sign in with separate credentials and cannot access admin t
   assert.equal(session.staffId, "agent01");
   assert.deepEqual(session.templates, []);
   assert.deepEqual(session.territory, { province: "Punjab", cities: ["Lahore"] });
+  assert.equal(session.subscription.status, "active");
   for (const route of ["calling-panel"]) {
     const response = await realFetch(base + "/admin/" + route, { headers: { Cookie: staffCookie } });
     assert.equal(response.status, 403, route);
@@ -301,6 +302,13 @@ test("staff accounts sign in with separate credentials and cannot access admin t
     body: JSON.stringify({ number: customer, type: "text", text: "Blocked" })
   });
   assert.equal(denied.status, 403);
+});
+
+test("Super Admin can see subscription status but staff cannot", async () => {
+  const response = await admin("subscriptions");
+  assert.equal(response.status, 200);
+  assert.equal(response.body.accounts[0].status, "active");
+  assert.ok(!JSON.stringify(response.body).includes("passwordHash"));
 });
 
 test("logout revokes the server-side session and repeated login failures are rate limited", async () => {
