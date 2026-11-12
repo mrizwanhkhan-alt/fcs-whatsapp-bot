@@ -107,6 +107,8 @@ function showSession(session) {
   byId("reportsPanel").hidden = !session.signedIn;
   byId("statusReportPanel").hidden = !session.signedIn;
   byId("messageActivityPanel").hidden = !session.signedIn;
+  byId("engagementPanel").hidden = !session.signedIn;
+  byId("securityAuditPanel").hidden = !session.signedIn;
   if (session.signedIn) void loadMessageActivity();
   if (session.signedIn) void loadCustomerStatusReport();
   byId("customerPanel").hidden = !session.signedIn;
@@ -325,3 +327,18 @@ async function loadMessageActivity(){
  } catch(error){status.textContent=`Activity unavailable: ${error.message}`;}
 }
 byId("refreshMessageActivity").addEventListener("click",loadMessageActivity);
+
+byId("engagementForm").addEventListener("submit",async event=>{
+ event.preventDefault();const status=byId("engagementStatus");status.textContent="Saving…";
+ try{const result=await request("customer-engagement",{rowNumber:Number(byId("engagementRow").value),stage:byId("engagementStage").value.trim(),nextDate:byId("engagementDate").value});
+ status.textContent=result.saved?"Engagement saved.":"Save not confirmed.";
+ if(result.saved){void loadCustomerStatusReport();void loadProvinceCityReport();}
+ }catch(error){status.textContent=`Save failed: ${error.message}`;}
+});
+async function loadSecurityAudit(){
+ const status=byId("auditStatus"),root=byId("auditResults");status.textContent="Loading audit…";root.replaceChildren();
+ try{const result=await request("security-audit");status.textContent=`${result.events.length} recent audit events`;
+ for(const entry of result.events){const p=document.createElement("p");p.textContent=`${entry.at} — ${entry.action} — ${entry.outcome} — ${entry.details}`;root.append(p);}
+ }catch(error){status.textContent=`Audit unavailable: ${error.message}`;}
+}
+byId("refreshAudit").addEventListener("click",loadSecurityAudit);
