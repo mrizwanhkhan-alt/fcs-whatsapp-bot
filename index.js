@@ -884,8 +884,8 @@ const server = http.createServer((req, res) => {
         if (events.length) {
           try {
             const transactional = require("./callTransactionalJournal");
-            if (transactional.enabled) await transactional.save(events);
-            else await require("./callWebhookInbox").saveVerifiedEvents(events);
+            if (!transactional.enabled) throw new Error("DATABASE_URL is required for safe calling event persistence");
+            await transactional.save(events);
           }
           catch (error) {
             console.error("Durable call webhook intake failed:", error.message);
@@ -988,14 +988,8 @@ async function replayCallJournal() {
       });
       return;
     }
-    await require("./callHistoryReplay").replayPendingHistory();
-    const events = await require("./callWebhookInbox").getSavedEvents();
-    const { replaySavedCallEvent } = require("./callingRoutes");
-    for (const event of events) {
-      if (event.event === "terminate" || ["REJECTED","FAILED"].includes(event.status)) {
-        replaySavedCallEvent(event);
-      }
-    }
+    // No Sheets-only replay: multi-process Sheets writes cannot be atomic.
+    // Calling requires PostgreSQL; messaging remains independent.
   } catch (error) {
     console.error("Durable call journal replay failed:", error.message);
   } finally {
