@@ -24,7 +24,7 @@ const representativeRequests = new Map();
 const permissionDeliveries = new Map();
 const callHistory = new Map();
 const incomingChecks = new Set();
-const checkedIncoming = new Set();
+
 const HISTORY_LIMIT = 1000;
 function trackCall(call) {
   if (!call?.id || !call.number) return;
@@ -226,7 +226,10 @@ function handleCallingWebhook(data, rawBody, signature) {
   }
 }
 
-function recordEvent(event) {
+function recordEventVerifiedIncoming(event) {
+  recordEvent(event, true);
+}
+function recordEvent(event, incomingVerified = false) {
   if (!validId(event?.id)) return;
   const existing = calls.get(event.id);
   const outbound = pending.get(event.biz_opaque_callback_data);
@@ -238,7 +241,7 @@ function recordEvent(event) {
   const terminalEvent = event.event === "terminate" || ["REJECTED", "FAILED"].includes(event.status);
   // After restart, never expose an offer until durable history is checked.
   if (!call && !terminalEvent && event.event === "connect" && event.session?.sdp_type === "offer" &&
-      !checkedIncoming.has(event.id)) {
+      !incomingVerified) {
     if (incomingChecks.has(event.id)) return;
     incomingChecks.add(event.id);
     getById(event.id).then(saved => {
@@ -246,8 +249,10 @@ function recordEvent(event) {
         calls.set(event.id,{id:event.id,state:saved.state,number:saved.number,expires:Date.now()+END_MS});
         return;
       }
-      checkedIncoming.add(event.id);
-      recordEvent(event);
+      // Persisted history is authoritative even after local tombstone expiry.
+      const live = calls.get(event.id);
+      if (live && ended(live)) return;
+      recordEventVerifiedIncoming(event);
     }).catch(error => console.error("Incoming call history check failed:",error.message))
       .finally(() => incomingChecks.delete(event.id));
     return;
