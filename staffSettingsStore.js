@@ -6,6 +6,9 @@ const { sheets } = require("./googleSheets");
 const { GOOGLE_SHEET_ID } = require("./config");
 const TAB = "FCS_Staff_Settings";
 let queue = Promise.resolve();
+let cache = null;
+let loadedAt = 0;
+let loading = null;
 const validId = id => typeof id === "string" && /^[A-Za-z0-9_-]{3,40}$/.test(id);
 function error(message) { return Object.assign(new Error(message), { status: 503 }); }
 
@@ -37,6 +40,17 @@ async function listSettings() {
   return result;
 }
 
+async function refreshSettings(force = false) {
+  if (!force && cache && Date.now() - loadedAt < 15000) return cache;
+  if (!loading) loading = listSettings().then(result => {
+    cache = result;
+    loadedAt = Date.now();
+    return cache;
+  }).finally(() => { loading = null; });
+  return loading;
+}
+function cachedSettings() { return cache; }
+
 async function saveSettings(id, settings) {
   if (!validId(id) || typeof settings.calling !== "boolean" || typeof settings.recording !== "boolean" ||
       typeof settings.active !== "boolean" || (settings.recording && !settings.calling) ||
@@ -52,6 +66,8 @@ async function saveSettings(id, settings) {
         value.startsAt, value.expiresAt])];
     await sheets.spreadsheets.values.update({ spreadsheetId: GOOGLE_SHEET_ID,
       range: "'FCS_Staff_Settings'!A1:F", valueInputOption: "RAW", requestBody: { values } });
+    cache = existing;
+    loadedAt = Date.now();
     return settings;
   };
   const next = queue.then(job);
@@ -59,4 +75,4 @@ async function saveSettings(id, settings) {
   return next;
 }
 
-module.exports = { listSettings, saveSettings };
+module.exports = { listSettings, saveSettings, refreshSettings, cachedSettings };
