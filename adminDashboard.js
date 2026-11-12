@@ -274,7 +274,7 @@ async function adminDashboard(req, res, url) {
     const session = activeSession(token);
     if (req.method === "GET" && route === "/admin/calling-panel") {
       if (!session) fail(401, "Your session expired. Sign in again.");
-      if (session.role !== "super_admin") fail(403, "This tool requires Super Admin access.");
+      if (!callingAccess(req)?.calling) fail(403, "Calling permission is disabled for this account.");
       const html = await fs.promises.readFile(path.join(__dirname, "staffCalling.html"), "utf8");
       const script = /<script>([\s\S]*?)<\/script>/.exec(html)?.[1];
       const scriptHash = crypto.createHash("sha256").update(script).digest("base64");
