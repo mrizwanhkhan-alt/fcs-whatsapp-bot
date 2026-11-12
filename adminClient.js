@@ -106,7 +106,7 @@ function showSession(session) {
   const roleInfo = {
     business_center: ["City Business Center Dashboard", "Manage visibility of applications, customers and reports for your assigned city or cities.", "Business Center Customer Search", "Business Center City Report", "Business Center Applications"],
     franchise: ["Franchise Dashboard", "View franchise applications and customers only within your assigned city or cities.", "Franchise Customer Search", "Franchise City Report", "Franchise Applications"],
-    communicator: ["Communicator Dashboard", "Search assigned customers and review follow-up stages. Messaging and calling require separate authorization.", "Customer Follow-up Search", "Customer Follow-up Report", "Assigned Applications"]
+    communicator: ["Communicator Dashboard", "Search assigned customers and review follow-up stages. Send approved templates to customers who have opted in. Calling requires separate authorization.", "Customer Follow-up Search", "Customer Follow-up Report", "Assigned Applications"]
   };
   const info = roleInfo[session.role] || ["Staff Workspace", "Read-only territory access.", "Territory Customer Search", "Territory Report", "Territory Applications"];
   byId("staffWorkspaceTitle").textContent = info[0];
@@ -125,6 +125,16 @@ function showSession(session) {
     ? `Signed in as ${session.staffId || "staff"} (${String(session.role).replaceAll("_", " ")})`
     : "";
   byId("composePanel").hidden = !isAdmin;
+  byId("staffTemplatePanel").hidden = !session.signedIn || isAdmin;
+  byId("staffTemplateForm").reset();
+  byId("staffTemplateStatus").textContent = "";
+  const staffTemplateChoice = byId("staffTemplateChoice");
+  const staffChoices = session.signedIn && !isAdmin ? templates : [];
+  staffTemplateChoice.replaceChildren(new Option(
+    staffChoices.length ? "Choose a template" : "No fixed templates configured", ""
+  ));
+  for (const item of staffChoices) staffTemplateChoice.add(new Option(`${item.name} (${item.language})`, item.key));
+  byId("staffTemplateSend").disabled = !staffChoices.length;
   byId("roleOverview").hidden = !isAdmin;
   logout.hidden = !session.signedIn;
   byId("workspaceNav").hidden = !isAdmin;
@@ -258,6 +268,20 @@ checkWindow.addEventListener("click", () => {
       ? `Window open until ${new Date(result.expires).toLocaleString()} (your time).`
       : "No verified window. Use an approved template or wait for a customer reply.", false, windowStatus);
   }, windowStatus);
+});
+
+byId("staffTemplateForm").addEventListener("submit", event => {
+  event.preventDefault();
+  const status = byId("staffTemplateStatus");
+  run(event.submitter, async () => {
+    await request("staff-template", {
+      number: byId("staffTemplateNumber").value,
+      template: byId("staffTemplateChoice").value,
+      optIn: byId("staffTemplateConsent").checked
+    });
+    byId("staffTemplateForm").reset();
+    feedback("WhatsApp accepted the template.", false, status);
+  }, status);
 });
 
 compose.addEventListener("submit", event => {

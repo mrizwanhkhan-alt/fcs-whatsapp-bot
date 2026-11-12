@@ -142,6 +142,21 @@
       <p id="subscriptionsStatus" role="status"></p>
       <div id="subscriptionsResults"></div>
     </section>
+    <section id="staffTemplatePanel" hidden>
+      <h1>Send an approved WhatsApp template</h1>
+      <form id="staffTemplateForm">
+        <label>Customer WhatsApp number
+          <input id="staffTemplateNumber" type="tel" autocomplete="off" maxlength="30" required>
+          <small>Include the country code.</small>
+        </label>
+        <label>Approved template <select id="staffTemplateChoice" required></select></label>
+        <label class="check"><input id="staffTemplateConsent" type="checkbox" required>
+          The customer opted in to receive this type of WhatsApp message.
+        </label>
+        <button id="staffTemplateSend" type="submit">Send template</button>
+      </form>
+      <p id="staffTemplateStatus" class="status" role="status" aria-live="polite"></p>
+    </section>
     <section id="composePanel" hidden>
       <h1>Send a WhatsApp message</h1>
       <p class="hint">Send to one customer. Free-form messages and files require a reply from the customer within the last 24 hours.</p>

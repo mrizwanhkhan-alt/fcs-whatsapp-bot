@@ -33,7 +33,8 @@ before(async () => {
     ADMIN_WHATSAPP_TEMPLATES: JSON.stringify([
       { name: "follow_up", language: "en", bodyParameters: 1 },
       { name: "send_pdf", language: "en", header: "document" },
-      { name: "send_image", language: "en", header: "image" }
+      { name: "send_image", language: "en", header: "image" },
+      { name: "fixed_notice", language: "en" }
     ]),
     PHONE_NUMBER_ID: phoneId,
     WHATSAPP_TOKEN: token,
@@ -144,7 +145,7 @@ test("login sets a secure session cookie and requires CSRF protection", async ()
   cookie = signedIn.cookie.split(";")[0];
   const session = await admin("session");
   assert.equal(session.body.signedIn, true);
-  assert.equal(session.body.templates.length, 3);
+  assert.equal(session.body.templates.length, 4);
   csrf = session.body.csrf;
   assert.equal((await admin("send", { number: customer }, { request: "wrong" })).status, 403);
   assert.equal((await admin("send", { number: customer }, { site: "same-site" })).status, 403);
@@ -299,7 +300,7 @@ test("staff accounts sign in with separate credentials and cannot access admin t
   const session = await realFetch(base + "/admin/session", { headers: { Cookie: staffCookie } }).then(r => r.json());
   assert.equal(session.role, "communicator");
   assert.equal(session.staffId, "agent01");
-  assert.deepEqual(session.templates, []);
+  assert.deepEqual(session.templates.map(item => item.key), ["fixed_notice:en"]);
   assert.deepEqual(session.territory, { province: "Punjab", cities: ["Lahore"] });
   assert.equal(session.subscription.status, "active");
   for (const route of ["calling-panel"]) {
@@ -318,6 +319,31 @@ test("staff accounts sign in with separate credentials and cannot access admin t
     body: JSON.stringify({ number: customer, type: "text", text: "Blocked" })
   });
   assert.equal(denied.status, 403);
+  const fixed = { number: "923001234579", template: "fixed_notice:en", optIn: true };
+  const sendFixed = (payload, request = session.csrf, sessionCookie = staffCookie) =>
+    realFetch(base + "/admin/staff-template", {
+      method: "POST",
+      headers: { Cookie: sessionCookie, "Content-Type": "application/json", "X-Admin-Request": request },
+      body: JSON.stringify(payload)
+    });
+  const before = graph.length;
+  assert.equal((await sendFixed(fixed, session.csrf, "")).status, 401);
+  assert.equal((await sendFixed(fixed, "invalid")).status, 403);
+  assert.equal((await sendFixed({ ...fixed, optIn: false })).status, 400);
+  assert.equal((await sendFixed({ ...fixed, text: "Edited" })).status, 400);
+  assert.equal((await sendFixed({ ...fixed, parameters: ["Edited"] })).status, 400);
+  assert.equal((await sendFixed({ ...fixed, template: "follow_up:en" })).status, 400);
+  assert.equal((await sendFixed({ ...fixed, template: "send_pdf:en" })).status, 400);
+  assert.equal((await sendFixed({ ...fixed, template: "unlisted:en" })).status, 400);
+  assert.equal(graph.length, before);
+  const sent = await sendFixed(fixed);
+  assert.equal(sent.status, 200);
+  assert.equal((await sent.json()).accepted, true);
+  assert.equal(graph.length, before + 1);
+  assert.deepEqual(JSON.parse(graph.at(-1).options.body), {
+    messaging_product: "whatsapp", recipient_type: "individual", to: fixed.number,
+    type: "template", template: { name: "fixed_notice", language: { code: "en" }, components: [] }
+  });
 });
 
 test("Super Admin can see subscription status but staff cannot", async () => {

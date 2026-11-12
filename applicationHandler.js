@@ -206,9 +206,7 @@ async function handleApplication(number, answer) {
       answer
     );
 
-  app.step++;
-
-  if (app.step >= questions[lang].length) {
+  if (app.step + 1 >= questions[lang].length) {
     const data = app.data;
 
     const applicationNumber =
@@ -281,6 +279,7 @@ Our team will review your application and contact you.
     };
   }
 
+  app.step++;
   applications.set(number, app);
 
   return {

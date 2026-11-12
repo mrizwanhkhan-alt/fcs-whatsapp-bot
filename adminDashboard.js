@@ -46,6 +46,7 @@ function staffAccounts() {
 const sessions = new Map();
 const loginAttempts = [];
 let sendsInProgress = 0;
+const staffTemplates = templates.filter(item => !item.header && item.bodyParameters === 0);
 
 const assets = {
   "/admin": ["admin.html", "text/html; charset=utf-8"],
@@ -249,14 +250,29 @@ async function readAttachment(req) {
   return { ...upload, bytes: Buffer.concat(chunks, length) };
 }
 
-async function send(req, res, session, token) {
+async function send(req, res, session, token, staffOnly = false) {
   if (session.sending || sendsInProgress >= 2) fail(429, "A send is in progress. Try again shortly.");
   session.sending = true;
   sendsInProgress++;
   try {
-    const { message, file, bytes } = req.headers["content-type"] === "application/octet-stream"
-      ? await readAttachment(req)
-      : prepare(await readJSON(req), false);
+    let prepared;
+    if (staffOnly) {
+      if (req.headers["content-type"] !== "application/json") fail(415, "Send template details as JSON.");
+      const input = await readJSON(req);
+      if (!input || Object.keys(input).some(key => !["number", "template", "optIn"].includes(key))) {
+        fail(400, "Staff can send fixed templates only.");
+      }
+      if (!staffTemplates.some(item => item.key === input.template)) {
+        fail(400, "Choose an approved template with fixed content.");
+      }
+      prepared = prepare({ number: input.number, template: input.template,
+        optIn: input.optIn, type: "template", parameters: [] }, false);
+    } else {
+      prepared = req.headers["content-type"] === "application/octet-stream"
+        ? await readAttachment(req)
+        : prepare(await readJSON(req), false);
+    }
+    const { message, file, bytes } = prepared;
 
     const result = await sendAdminMessage(message, file, bytes, () => activeSession(token) === session);
     return respond(res, 200, { accepted: true, messageId: result.messageId, status: "accepted" });
@@ -268,7 +284,14 @@ async function send(req, res, session, token) {
 
 async function adminDashboard(req, res, url) {
   try {
-    // Settings outages must not lock out Super Admin or break public login checks.\n    // Staff sessions still fail closed because missing cached settings are unconfigured.\n    if (url.pathname !== "/admin" && url.pathname !== "/admin/" && url.pathname !== "/admin/dashboard.js") {\n      try { await refreshSettings(); } catch (error) {\n        // Saving staff settings and staff access remain unavailable until storage recovers.\n        if (url.pathname === "/admin/staff-settings" || url.pathname === "/admin/calling-permissions") throw error;\n      }\n    }
+    // Settings outages must not lock out Super Admin or break public login checks.
+    // Staff sessions still fail closed because missing cached settings are unconfigured.
+    if (url.pathname !== "/admin" && url.pathname !== "/admin/" && url.pathname !== "/admin/dashboard.js") {
+      try { await refreshSettings(); } catch (error) {
+        // Saving staff settings and staff access remain unavailable until storage recovers.
+        if (url.pathname === "/admin/staff-settings" || url.pathname === "/admin/calling-permissions") throw error;
+      }
+    }
     const route = url.pathname;
     const asset = assets[route];
     if (req.method === "GET" && route === "/admin/") {
@@ -345,11 +368,11 @@ async function adminDashboard(req, res, url) {
     }
     if (req.method === "GET" && route === "/admin/session") {
       if (!session) return respond(res, 200, { signedIn: false });
-      return respond(res, 200, { signedIn: true, csrf: session.csrf, role: session.role || "super_admin", staffId: session.staffId || null, territory: session.role === "super_admin" ? null : session.territory, subscription: session.role === "super_admin" ? null : effectiveSubscription(staffAccounts().find(item => item.id === session.staffId)), callingPermissions: callingAccess(req), templates: session.role === "super_admin" ? templates : [] });
+      return respond(res, 200, { signedIn: true, csrf: session.csrf, role: session.role || "super_admin", staffId: session.staffId || null, territory: session.role === "super_admin" ? null : session.territory, subscription: session.role === "super_admin" ? null : effectiveSubscription(staffAccounts().find(item => item.id === session.staffId)), callingPermissions: callingAccess(req), templates: session.role === "super_admin" ? templates : staffTemplates });
     }
 
     if (req.method !== "POST" ||
-        !["/admin/login", "/admin/staff-login", "/admin/logout", "/admin/window", "/admin/send", "/admin/calling-permissions", "/admin/staff-settings"].includes(route)) {
+        !["/admin/login", "/admin/staff-login", "/admin/logout", "/admin/window", "/admin/send", "/admin/staff-template", "/admin/calling-permissions", "/admin/staff-settings"].includes(route)) {
       fail(404, "Page not found.");
     }
 
@@ -372,6 +395,7 @@ async function adminDashboard(req, res, url) {
       sessions.delete(token);
       return respond(res, 200, { signedIn: false }, { "Set-Cookie": cookie("", 0) });
     }
+    if (route === "/admin/staff-template") return await send(req, res, session, token, true);
     if (session.role !== "super_admin") fail(403, "This tool requires Super Admin access.");
     if (route === "/admin/calling-permissions" || route === "/admin/staff-settings") {
       const { id, calling, recording, active, startsAt, expiresAt } = await readJSON(req);
