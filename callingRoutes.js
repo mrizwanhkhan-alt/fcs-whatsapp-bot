@@ -29,6 +29,7 @@ function trackCall(call) {
   const entry = {
     id: call.id, number: call.number,
     owner: call.owner || previous?.owner || null,
+    staffId: call.staffId || previous?.staffId || null,
     direction: call.direction || previous?.direction || "incoming",
     startedAt: previous?.startedAt || new Date().toISOString(),
     answeredAt: previous?.answeredAt || null,
@@ -283,7 +284,7 @@ async function updateCall(call, owner, action, sdp) {
   return publicCall(call);
 }
 
-async function handleAction(route, body) {
+async function handleAction(route, body, access = {}) {
   if (route === "permission-status" || route === "permission" || route === "connect") {
     const number = normalizeNumber(body.number);
     const permission = await getCallPermission(number);
@@ -312,7 +313,7 @@ async function handleAction(route, body) {
     if (Array.from(pending.values()).some(belongsToStaff) || Array.from(calls.values()).some(belongsToStaff)) {
       fail(409, "This staff session already has a call.");
     }
-    const call = { number, owner: body.owner, direction: "outgoing" };
+    const call = { number, owner: body.owner, staffId: access.staffId || null, direction: "outgoing" };
     const reference = crypto.randomUUID();
     setState(call, "dialing", RING_MS);
     pending.set(reference, call);
@@ -322,7 +323,7 @@ async function handleAction(route, body) {
       if (!validId(id)) fail(502, "Meta did not return a WhatsApp call ID.");
       const earlyEvent = calls.get(id);
       if (earlyEvent && earlyEvent !== call) {
-        Object.assign(call, earlyEvent, { number, owner: body.owner });
+        Object.assign(call, earlyEvent, { number, owner: body.owner, staffId: access.staffId || null });
       }
       call.id = id;
       calls.set(id, call);
@@ -357,7 +358,7 @@ async function handleAction(route, body) {
   }
 
   if (route === "history") {
-    return { history: Array.from(callHistory.values()).filter(item => item.owner === body.owner).reverse().slice(0, 100), persistent: false };
+    return { history: Array.from(callHistory.values()).filter(item => access.role === "super_admin" ? item.owner === body.owner : Boolean(access.staffId) && item.staffId === access.staffId && item.owner === body.owner).reverse().slice(0, 100), persistent: false };
   }
 
   if (route === "offer") {
@@ -403,7 +404,7 @@ async function callingRoutes(req, res, url) {
     }
     prune();
     const route = url.pathname.slice("/api/staff-calling/".length);
-    sendJSON(res, 200, { success: true, ...await handleAction(route, body) });
+    sendJSON(res, 200, { success: true, ...await handleAction(route, body, access) });
   } catch (error) {
     sendJSON(res, error.status || 502, { success: false, error: error.message });
   }
