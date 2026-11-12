@@ -268,7 +268,7 @@ async function send(req, res, session, token) {
 
 async function adminDashboard(req, res, url) {
   try {
-    if (url.pathname !== "/admin" && url.pathname !== "/admin/" && url.pathname !== "/admin/dashboard.js") await refreshSettings();
+    // Settings outages must not lock out Super Admin or break public login checks.\n    // Staff sessions still fail closed because missing cached settings are unconfigured.\n    if (url.pathname !== "/admin" && url.pathname !== "/admin/" && url.pathname !== "/admin/dashboard.js") {\n      try { await refreshSettings(); } catch (error) {\n        // Saving staff settings and staff access remain unavailable until storage recovers.\n        if (url.pathname === "/admin/staff-settings" || url.pathname === "/admin/calling-permissions") throw error;\n      }\n    }
     const route = url.pathname;
     const asset = assets[route];
     if (req.method === "GET" && route === "/admin/") {
