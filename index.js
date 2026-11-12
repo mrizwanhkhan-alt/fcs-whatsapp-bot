@@ -975,6 +975,7 @@ async function replayCallJournal() {
   if (replayRunning) return;
   replayRunning = true;
   try {
+    await require("./callHistoryReplay").replayPendingHistory();
     const events = await require("./callWebhookInbox").getSavedEvents();
     const { replaySavedCallEvent } = require("./callingRoutes");
     for (const event of events) {
