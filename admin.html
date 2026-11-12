@@ -73,8 +73,23 @@
         <label>Admin password <input id="password" type="password" autocomplete="current-password" maxlength="256" required></label>
         <button type="submit">Sign in</button>
       </form>
+      <button id="showStaffLogin" class="secondary" type="button">Staff login</button>
     </section>
 
+    <section id="staffLoginPanel" hidden>
+      <h1>Staff sign-in</h1>
+      <form id="staffLoginForm">
+        <label>Staff ID <input id="staffId" autocomplete="username" maxlength="40" required></label>
+        <label>Password <input id="staffPassword" type="password" autocomplete="current-password" maxlength="256" required></label>
+        <button type="submit">Staff sign in</button>
+      </form>
+      <button id="showAdminLogin" class="secondary" type="button">Admin login</button>
+    </section>
+    <section id="staffHome" hidden>
+      <h1>Staff Workspace</h1>
+      <p id="staffGreeting"></p>
+      <p class="hint">Your account is signed in securely. Territory permissions and staff-specific tools are not yet enabled.</p>
+    </section>
     <nav id="workspaceNav" aria-label="WhatsApp workspace" hidden>
       <a href="#composePanel">Messaging</a>
       <a id="callingLink" href="#callingPanel" aria-live="polite">Calling</a>
