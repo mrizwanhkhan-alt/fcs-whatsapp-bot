@@ -869,6 +869,29 @@ const server = http.createServer((req, res) => {
         return;
       }
 
+      // Persist verified calling events BEFORE acknowledging Meta.
+      // A storage outage returns 503 so Meta can redeliver the webhook.
+      const signature = req.headers["x-hub-signature-256"];
+      const verifiedCallWebhook = data.object === "whatsapp_business_account" &&
+        isVerifiedMetaWebhook(rawBody, signature);
+      if (verifiedCallWebhook) {
+        const events = [];
+        for (const entry of data.entry || []) for (const change of entry.changes || []) {
+          if (change.field !== "calls" || change.value?.metadata?.phone_number_id !== PHONE_NUMBER_ID) continue;
+          for (const event of change.value.calls || []) if (event?.id) events.push(event);
+          for (const event of change.value.statuses || []) if (event?.type === "call" && event?.id) events.push(event);
+        }
+        if (events.length) {
+          try { await require("./callWebhookInbox").saveVerifiedEvents(events); }
+          catch (error) {
+            console.error("Durable call webhook intake failed:", error.message);
+            res.writeHead(503, { "Content-Type": "text/plain" });
+            res.end("Call event storage temporarily unavailable");
+            return;
+          }
+        }
+      }
+
       res.writeHead(200, {
         "Content-Type": "text/plain"
       });
