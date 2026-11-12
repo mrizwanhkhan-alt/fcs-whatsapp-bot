@@ -69,6 +69,7 @@
       <a href="#messageActivityPanel">Message activity</a>
       <a href="#engagementPanel">Engagement</a>
       <a href="#costMonitoringPanel">Usage &amp; cost</a>
+      <a href="#backupPanel">Backup</a>
       <a href="#securityAuditPanel">Audit</a>
     </nav>
 
@@ -111,6 +112,7 @@
       <form id="customerLookupForm"><label>Customer phone number<input id="customerPhone" type="tel" autocomplete="off" required></label><button type="submit">Find customer</button></form>
       <p id="customerLookupStatus" role="status"></p><div id="customerLookupResult"></div>
     </section>
+    <section id="backupPanel" hidden><h1>Data Backup</h1><p class="hint">Download a JSON copy of the Franchise Applications sheet. Keep the file secure; it contains customer information.</p><button id="downloadBackup" type="button">Download applications backup</button><p id="backupStatus" role="status"></p></section>
     <section id="costMonitoringPanel" hidden><h1>Cost Monitoring</h1><button id="refreshCostMonitoring" type="button" class="secondary">Refresh usage</button><p id="costMonitoringStatus" role="status"></p><div id="costMonitoringResults"></div></section>
     <section id="engagementPanel" hidden><h1>Customer Engagement</h1><form id="engagementForm"><label>Application sheet row<input id="engagementRow" type="number" min="2" step="1" required></label><label>Status<input id="engagementStage" maxlength="80" required></label><label>Next follow-up<input id="engagementDate" type="date"></label><button type="submit">Save engagement</button></form><p id="engagementStatus" role="status"></p></section>
     <section id="securityAuditPanel" hidden><h1>Security Audit</h1><button id="refreshAudit" type="button" class="secondary">Refresh audit</button><p id="auditStatus" role="status"></p><div id="auditResults"></div><p class="hint">Recent in-memory audit events, not permanent storage.</p></section>
