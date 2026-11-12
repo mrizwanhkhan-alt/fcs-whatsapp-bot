@@ -289,7 +289,7 @@ async function adminDashboard(req, res, url) {
       return respond(res, 200, { updated });
     }
     if (req.method === "GET" && route === "/admin/network-explorer") {
-      if (!session || role !== "admin") fail(403, "Head office access required.");
+      if (!session) fail(401, "Sign in required.");
       let directory;
       let staff;
       if (process.env.DATABASE_URL) {
@@ -299,6 +299,15 @@ async function adminDashboard(req, res, url) {
       } else {
         directory = branches();
         staff = safeStaffList();
+      }
+      // Never trust a client-provided center ID: derive the scope from the authenticated staff identity.
+      if (role !== "admin") {
+        const centerId = session.identity?.branchId;
+        const center = directory.find(b => b.id === centerId && b.branchType === "business_center");
+        if (!center) fail(403, "Business Center access required.");
+        const permitted = new Set([center.id, ...directory.filter(b => b.branchType === "franchise" && b.parentBusinessCenterId === center.id).map(b => b.id)]);
+        directory = directory.filter(b => permitted.has(b.id));
+        staff = staff.filter(s => permitted.has(s.branchId || s.branch_id));
       }
       return respond(res, 200, {branches:directory,staff:staff.map(s=>({id:s.id,role:s.role,branchId:s.branchId||s.branch_id})),provinceCoverage:directory.every(b=>Boolean(b.province))});
     }
