@@ -32,14 +32,14 @@ function trackCall(call) {
     owner: call.owner || previous?.owner || null,
     staffId: call.staffId || previous?.staffId || null,
     direction: call.direction || previous?.direction || "incoming",
-    startedAt: previous?.startedAt || new Date().toISOString(),
-    answeredAt: previous?.answeredAt || null,
-    endedAt: previous?.endedAt || null,
+    startedAt: previous?.startedAt || call.startedAt || new Date().toISOString(),
+    answeredAt: previous?.answeredAt || call.answeredAt || null,
+    endedAt: previous?.endedAt || call.endedAt || null,
     state: call.state
   };
   if (call.state === "accepted" && !entry.answeredAt) entry.answeredAt = new Date().toISOString();
   if (ended(call) && !entry.endedAt) entry.endedAt = new Date().toISOString();
-  const changed = !previous || previous.state !== entry.state || previous.owner !== entry.owner || previous.staffId !== entry.staffId;
+  const changed = !previous || previous.state !== entry.state || previous.owner !== entry.owner || previous.staffId !== entry.staffId || previous.answeredAt !== entry.answeredAt || previous.endedAt !== entry.endedAt;
   callHistory.set(call.id, entry);
   if (changed) appendEvent(entry).catch(error => {
     console.error("Call history persistence failed:", error.message);
@@ -238,7 +238,10 @@ function recordEvent(event) {
   if (!call && (event.event === "terminate" || event.status === "REJECTED" || event.status === "FAILED") &&
       !event.from && !event.from_user_id) {
     getById(event.id).then(saved => {
-      if (!saved) return;
+      if (!saved) {
+        calls.set(event.id, { id: event.id, state: "ended", expires: Date.now() + END_MS });
+        return;
+      }
       const current = calls.get(event.id);
       if (current?.number) return;
       const recovered = { ...saved, id: event.id, number: saved.number,
