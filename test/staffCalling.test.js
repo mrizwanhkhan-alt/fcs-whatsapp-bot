@@ -184,9 +184,9 @@ test("permission is checked before dialing and requests use the intended message
     statuses: [{ id: request.permissionMessageId, status: "failed", recipient_id: customer, errors: [{ code: 131026 }] }]
   } };
   await webhook([delivery], false);
-  assert.deepEqual(await poll(), { status: "accepted", errorCode: null });
+  assert.deepEqual(await poll(), { status: "accepted", errorCode: null, errorReason: null });
   await webhook([delivery]);
-  assert.deepEqual(await poll(), { status: "failed", errorCode: 131026 });
+  assert.deepEqual(await poll(), { status: "failed", errorCode: 131026, errorReason: null });
   assert.deepEqual(sent.at(-1), {
     messaging_product: "whatsapp", recipient_type: "individual", to: customer,
     type: "interactive", interactive: { type: "call_permission_request", action: { name: "call_permission_request" } }
