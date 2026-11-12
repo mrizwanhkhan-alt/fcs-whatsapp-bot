@@ -1,5 +1,5 @@
 "use strict";
-// Durable message claims with bounded retry and expiring worker leases.
+// Durable message claims with expiring worker leases. Never silently discard an unfinished message after a fixed retry count.
 const { Pool } = require("pg");
 const pool = process.env.DATABASE_URL ? new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -31,13 +31,13 @@ async function claim(id) {
     WHERE fcs_message_inbox.completed_at IS NULL
       AND (fcs_message_inbox.lease_until IS NULL OR fcs_message_inbox.lease_until < now())
       AND (fcs_message_inbox.next_retry_at IS NULL OR fcs_message_inbox.next_retry_at <= now())
-      AND fcs_message_inbox.attempts < 10
+
     RETURNING message_id,attempts`,[String(id)]);
   if (rows.length) return { attempt: rows[0].attempts };
   const result = await pool.query(
     "SELECT completed_at, attempts FROM fcs_message_inbox WHERE message_id = $1", [String(id)]);
   const existing = result.rows[0];
-  return { retry: !existing?.completed_at && (existing?.attempts ?? 0) < 10 };
+  return { retry: !existing?.completed_at };
 }
 async function complete(id, attempt) {
   await setup();
