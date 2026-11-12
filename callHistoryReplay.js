@@ -56,6 +56,14 @@ async function replaySingleHistoryEvent(event) {
   if (!event?.id || !state) return;
   const saved = await getById(event.id);
   if (saved && terminalStates.has(saved.state)) return;
+  // A delayed offer can correct the start time without regressing an answered call.
+  if (saved?.answeredAt && state === "incoming") {
+    const offerTime = eventTime(event);
+    if (offerTime && (!saved.startedAt || Date.parse(offerTime) < Date.parse(saved.startedAt))) {
+      await appendEvent({ ...saved, startedAt:offerTime, state:saved.state });
+    }
+    return;
+  }
   // Never regress an answered call to a late ringing or incoming event.
   if (saved?.answeredAt && (state === "ringing" || state === "incoming")) return;
   if (saved?.state === "accepted" && state === "ringing") return;
