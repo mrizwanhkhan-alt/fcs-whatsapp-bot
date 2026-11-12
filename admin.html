@@ -44,6 +44,11 @@
     #reportResults summary { cursor: pointer; font-weight: 650; }
     #reportResults p { margin: 8px 0; }
     #roleOverview { margin-bottom: 16px; }
+    .quickGrid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; margin-top: 18px; }
+    .quickAction { display: flex; flex-direction: column; gap: 5px; min-height: 84px; padding: 14px; border-radius: 10px; background: #b71925; color: #fff; text-decoration: none; font-weight: 700; }
+    .quickAction small { color: #fff; opacity: .9; font-weight: 400; }
+    .quickAction:focus-visible, #workspaceNav a:focus-visible { outline: 3px solid #222; outline-offset: 3px; }
+    #workspaceNav a[aria-current="location"] { background: #b71925; color: white; }
     .roleGrid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
     .roleCard { display: block; padding: 16px; border: 1px solid #e4d9db; border-radius: 12px; background: #fffafa; color: #292326; text-decoration: none; }
     .roleCard strong { display: block; color: #a51b28; margin-bottom: 6px; }
@@ -86,6 +91,14 @@
         <div class="roleCard pending"><strong>Business Center</strong><small>Staff access pending</small></div>
         <div class="roleCard pending"><strong>Franchise</strong><small>Staff access pending</small></div>
         <div class="roleCard pending"><strong>Communicator</strong><small>Staff access pending</small></div>
+      </div>
+      <h2>Quick actions</h2>
+      <div class="quickGrid" aria-label="Admin quick actions">
+        <a class="quickAction" href="#customerPanel">Customer Search<small>Find a customer by phone</small></a>
+        <a class="quickAction" href="#reportsPanel">City Reports<small>View province and city totals</small></a>
+        <a class="quickAction" href="#applicationsPanel">Applications<small>Review recent records</small></a>
+        <a class="quickAction" href="#composePanel">Send Message<small>Text, PDF or approved template</small></a>
+        <a class="quickAction" href="#callingPanel">Calling<small>Open existing staff calling panel</small></a>
       </div>
     </section>
     <section id="composePanel" hidden>
