@@ -106,6 +106,8 @@ function showSession(session) {
   byId("callingPanel").hidden = !session.signedIn;
   byId("reportsPanel").hidden = !session.signedIn;
   byId("statusReportPanel").hidden = !session.signedIn;
+  byId("messageActivityPanel").hidden = !session.signedIn;
+  if (session.signedIn) void loadMessageActivity();
   if (session.signedIn) void loadCustomerStatusReport();
   byId("customerPanel").hidden = !session.signedIn;
   if (session.signedIn) void loadProvinceCityReport();
@@ -313,3 +315,13 @@ async function loadCustomerStatusReport() {
  } catch(error){summary.textContent=`Status report unavailable: ${error.message}`;}
 }
 byId("refreshStatusReport").addEventListener("click",loadCustomerStatusReport);
+
+async function loadMessageActivity(){
+ const status=byId("messageActivityStatus"),root=byId("messageActivityResults");
+ status.textContent="Loading recent activity…";root.replaceChildren();
+ try {const result=await request("message-activity");
+  status.textContent=`${result.messages.length} recent message records`;
+  for(const entry of result.messages){const line=document.createElement("p");line.textContent=`${entry.number} — ${entry.status} — ${entry.updatedAt || ""}`;root.append(line);}
+ } catch(error){status.textContent=`Activity unavailable: ${error.message}`;}
+}
+byId("refreshMessageActivity").addEventListener("click",loadMessageActivity);
