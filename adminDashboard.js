@@ -243,6 +243,12 @@ async function adminDashboard(req, res, url) {
       const rows = await getApplications();
       return respond(res, 200, { provinces: provinceCityReport(rows), updatedAt: new Date().toISOString() });
     }
+    if (req.method === "GET" && route === "/admin/backup-export") {
+      if (!session) fail(401, "Your session expired. Sign in again.");
+      const rows = await getApplications();
+      recordAudit("applications.backup", "success", `${rows.length} rows`);
+      return respond(res, 200, { format: "FCS-Applications-Backup-v1", exportedAt: new Date().toISOString(), source: "Franchise_Applications", rows }, { "Content-Disposition": 'attachment; filename="fcs-applications-backup.json"' });
+    }
     if (req.method === "GET" && route === "/admin/cost-monitoring") {
       if (!session) fail(401, "Your session expired. Sign in again.");
       return respond(res, 200, usageSummary());
