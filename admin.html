@@ -89,6 +89,7 @@
       <h1 id="staffWorkspaceTitle">Staff Workspace</h1>
       <p id="staffGreeting"></p>
       <p id="territoryLabel" class="hint"></p>
+      <p id="staffSubscriptionLabel" class="hint"></p>
       <p id="staffWorkspaceDescription" class="hint">Read-only customer records and reports are restricted to your assigned territory. Messaging and calling remain Super Admin-only.</p>
       <a href="#staffCustomerPanel">Customer Search</a> · <a href="#staffReportsPanel">Territory Reports</a> · <a href="#staffApplicationsPanel">Applications</a>
     </section>
@@ -113,6 +114,7 @@
       <a href="#reportsPanel">Province &amp; City Reports</a>
       <a href="#customerPanel">Customer Search</a>
       <a href="#applicationsPanel">Applications</a>
+      <a href="#subscriptionsPanel">Staff Subscriptions</a>
     </nav>
 
     <section id="roleOverview" hidden>
@@ -132,6 +134,13 @@
         <a class="quickAction" href="#composePanel">Send Message<small>Text, PDF or approved template</small></a>
         <a class="quickAction" href="#callingPanel">Calling<small>Open existing staff calling panel</small></a>
       </div>
+    </section>
+    <section id="subscriptionsPanel" hidden>
+      <h1>Staff Subscriptions &amp; Access</h1>
+      <p class="hint">Read-only server configuration status. Activation, suspension and renewal require an authorized change to STAFF_ACCOUNTS_JSON in Render.</p>
+      <button id="refreshSubscriptions" class="secondary" type="button">Refresh subscriptions</button>
+      <p id="subscriptionsStatus" role="status"></p>
+      <div id="subscriptionsResults"></div>
     </section>
     <section id="composePanel" hidden>
       <h1>Send a WhatsApp message</h1>
