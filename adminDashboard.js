@@ -37,7 +37,7 @@ function staffAccounts() {
     const hash = /^([a-f0-9]{32}):([a-f0-9]{128})$/.exec(entry.passwordHash || "");
     if (!hash || !territoryOf(entry)) return [];
     ids.add(entry.id);
-    accounts.push({ id: entry.id, role: entry.role, hash, territory: territoryOf(entry), subscription: subscriptionOf(entry) });
+    accounts.push({ id: entry.id, role: entry.role, hash, territory: territoryOf(entry), subscription: subscriptionOf(entry), permissions: { calling: entry.permissions?.calling === true, recording: entry.permissions?.recording === true && entry.permissions?.calling === true } });
   }
   return accounts;
 }
@@ -187,6 +187,15 @@ async function staffLogin(req, res, previousToken) {
   return respond(res, 200, { signedIn: true }, { "Set-Cookie": cookie(token, SESSION_MS / 1000) });
 }
 
+function callingAccess(req) {
+  const session = activeSession(tokenFrom(req));
+  if (!session) return null;
+  if (session.role === "super_admin") return { role: "super_admin", calling: true, recording: false };
+  const account = staffAccounts().find(item => item.id === session.staffId);
+  if (!account || account.role !== session.role || account.subscription.status !== "active") return null;
+  return { role: account.role, calling: account.permissions.calling, recording: account.permissions.recording, staffId: account.id };
+}
+
 function prepare(input, binary) {
   const message = prepareMessage(input);
   const expected = message.type === "media" ? "attachment" : message.template?.header;
@@ -319,12 +328,12 @@ async function adminDashboard(req, res, url) {
       if (!session) fail(401, "Your session expired. Sign in again.");
       if (session.role !== "super_admin") fail(403, "Super Admin access required.");
       return respond(res, 200, { accounts: staffAccounts().map(account => ({
-        id: account.id, role: account.role, territory: account.territory, ...account.subscription
+        id: account.id, role: account.role, territory: account.territory, permissions: account.permissions, ...account.subscription
       })) });
     }
     if (req.method === "GET" && route === "/admin/session") {
       if (!session) return respond(res, 200, { signedIn: false });
-      return respond(res, 200, { signedIn: true, csrf: session.csrf, role: session.role || "super_admin", staffId: session.staffId || null, territory: session.role === "super_admin" ? null : session.territory, subscription: session.role === "super_admin" ? null : staffAccounts().find(item => item.id === session.staffId)?.subscription, templates: session.role === "super_admin" ? templates : [] });
+      return respond(res, 200, { signedIn: true, csrf: session.csrf, role: session.role || "super_admin", staffId: session.staffId || null, territory: session.role === "super_admin" ? null : session.territory, subscription: session.role === "super_admin" ? null : staffAccounts().find(item => item.id === session.staffId)?.subscription, callingPermissions: callingAccess(req), templates: session.role === "super_admin" ? templates : [] });
     }
 
     if (req.method !== "POST" ||
@@ -369,4 +378,4 @@ async function adminDashboard(req, res, url) {
   }
 }
 
-module.exports = { adminDashboard };
+module.exports = { adminDashboard, callingAccess };
