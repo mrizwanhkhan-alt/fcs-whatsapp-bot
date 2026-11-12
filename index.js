@@ -929,7 +929,7 @@ const server = http.createServer((req, res) => {
               const inbox = require("./messageInbox");
               try {
                 if (inbox.enabled) {
-                  const claim = await inbox.claim(message.id);
+                  const claim = await inbox.claim(message.id, message);
                   attempt = claim.attempt;
                   if (!attempt) {
                     messageRetry ||= claim.retry;
@@ -1047,6 +1047,38 @@ async function replayCallJournal() {
     replayRunning = false;
   }
 }
+// Independently recover persisted message deliveries even if Meta stops retrying.
+// Claims use the same PostgreSQL lease as the webhook worker.
+let messageRecoveryRunning = false;
+async function recoverMessages() {
+  if (messageRecoveryRunning) return;
+  const inbox = require("./messageInbox");
+  if (!inbox.enabled) return;
+  messageRecoveryRunning = true;
+  try {
+    for (const row of await inbox.pending()) {
+      const message = row.payload;
+      if (!message?.id || !message?.from) continue;
+      const result = await inbox.claim(message.id, message);
+      if (!result.attempt) continue;
+      try {
+        const replies = [];
+        await outboundReplies.run(replies, () => processMessage(message, true));
+        await Promise.all(replies);
+        if (!await inbox.complete(message.id, result.attempt))
+          console.error("Message recovery claim expired:", message.id);
+      } catch (error) {
+        console.error("Message recovery failed:", message.id, error.message);
+        await inbox.fail(message.id, result.attempt, error);
+      }
+    }
+  } catch (error) { console.error("Message recovery worker error:", error.message); }
+  finally { messageRecoveryRunning = false; }
+}
+const messageRecoveryTimer = setInterval(recoverMessages, 30000);
+messageRecoveryTimer.unref?.();
+recoverMessages();
+
 const journalReplayTimer = setInterval(replayCallJournal, 60000);
 journalReplayTimer.unref?.();
 replayCallJournal();
