@@ -194,7 +194,7 @@ function effectivePermissions(account) {
   return saved ? { calling: saved.calling, recording: saved.recording && saved.calling } : { calling: false, recording: false };
 }
 function effectiveSubscription(account) {
-  const saved = cachedSettings()?.get(account.id);
+  const saved = account && cachedSettings()?.get(account.id);
   return saved ? subscriptionOf(saved) : { status: "unconfigured", expiresAt: null };
 }
 
