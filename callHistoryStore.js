@@ -36,6 +36,8 @@ async function appendEvent(entry) {
       entry.startedAt || "", entry.answeredAt || "", entry.endedAt || ""].join("|");
     if ((existing.data.values || []).some(row =>
       [row[1],row[2] || "",row[3] || "",row[6],row[7] || "",row[8] || "",row[9] || ""].join("|") === eventKey)) return;
+    // Never append a stale nonterminal event after a terminal event was persisted.
+    if (!["ended","rejected","failed"].includes(entry.state) && (existing.data.values || []).some(row => row[1] === entry.id && ["ended","rejected","failed"].includes(row[6]))) return;
     await sheets.spreadsheets.values.append({ spreadsheetId: GOOGLE_SHEET_ID,
       range: "'FCS_Call_History'!A:J", valueInputOption: "RAW", insertDataOption: "INSERT_ROWS",
       requestBody: { values: [[new Date().toISOString(),entry.id,entry.staffId || "",entry.owner || "",
@@ -56,6 +58,7 @@ async function listHistory({ staffId, owner, superAdmin = false, limit = 100 } =
     if (!id || !number) continue;
     if (!superAdmin && (!staffId || rowStaff !== staffId)) continue;
     if (owner && rowOwner !== owner) continue;
+    if (latest.has(id) && ["ended","rejected","failed"].includes(latest.get(id).state) && !["ended","rejected","failed"].includes(state)) continue;
     latest.set(id, { id, staffId: rowStaff || null, owner: rowOwner || null, number,
       direction, state, startedAt, answeredAt: answeredAt || null, endedAt: endedAt || null,
       updatedAt: eventAt, durationSeconds: answeredAt && endedAt ? Math.max(0, Math.floor((Date.parse(endedAt) - Date.parse(answeredAt)) / 1000)) : null });
@@ -69,7 +72,7 @@ async function getById(id) {
   const response = await sheets.spreadsheets.values.get({ spreadsheetId: GOOGLE_SHEET_ID,
     range: "'FCS_Call_History'!A2:J" });
   const rows = (response.data.values || []).filter(row => row[1] === id);
-  const row = rows[rows.length - 1];
+  const row = [...rows].reverse().find(row => ["ended","rejected","failed"].includes(row[6])) || rows[rows.length - 1];
   if (!row) return null;
   return { id: row[1], staffId: row[2] || null, owner: row[3] || null, number: row[4],
     direction: row[5], state: row[6], startedAt: row[7],
