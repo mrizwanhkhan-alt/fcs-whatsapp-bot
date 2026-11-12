@@ -106,8 +106,9 @@ function showSession(session) {
   byId("callingPanel").hidden = !session.signedIn;
   byId("reportsPanel").hidden = !session.signedIn;
   byId("customerPanel").hidden = !session.signedIn;
+  byId("applicationsPanel").hidden = !session.signedIn;
   if (!session.signedIn) { byId("customerResult").replaceChildren(); byId("customerStatus").textContent = ""; }
-  if (session.signedIn) void loadProvinceCityReport();
+  if (session.signedIn) { void loadProvinceCityReport(); void loadApplications(); }
   else byId("reportResults").replaceChildren();
   if (session.signedIn && !callingFrame.hasAttribute("src")) {
     callingFrame.src = "/admin/calling-panel";
@@ -278,6 +279,26 @@ async function loadProvinceCityReport() {
   }
 }
 byId("refreshReport").addEventListener("click", loadProvinceCityReport);
+
+async function loadApplications() {
+  const status = byId("applicationsStatus");
+  const root = byId("applicationsResults");
+  status.textContent = "Loading application records…";
+  try {
+    const result = await request("application-records");
+    if (!csrf) return;
+    root.replaceChildren();
+    for (const record of result.records || []) {
+      const line = document.createElement("p");
+      line.textContent = `Row ${record.rowNumber} — ${record.province || "Unspecified"} / ${record.city || "Unspecified"} — ${record.stage}`;
+      root.append(line);
+    }
+    status.textContent = `Showing ${(result.records || []).length} of ${result.total} application records.`;
+  } catch (error) {
+    status.textContent = "Applications unavailable: " + error.message;
+  }
+}
+byId("refreshApplications").addEventListener("click", loadApplications);
 
 byId("customerForm").addEventListener("submit", event => {
   event.preventDefault();
