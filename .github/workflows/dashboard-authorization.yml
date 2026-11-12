@@ -1,0 +1,20 @@
+name: Dashboard authorization checks
+on:
+  push:
+    branches:
+      - feature/integrated-modules-work
+  workflow_dispatch:
+jobs:
+  dashboard-scope:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate role module syntax
+        run: node --check dashboardRoles.js
+      - name: Validate hierarchy regression checks
+        run: node dashboardRoles.scope.test.js
