@@ -13,6 +13,7 @@ const { getApplications } = require("./googleSheets");
 const { provinceCityReport } = require("./provinceCityReport");
 const { findCustomer } = require("./customerLookup");
 const { territoryOf, filterRows } = require("./staffTerritory");
+const { subscriptionOf } = require("./staffSubscription");
 
 const COOKIE = "__Host-fcs_admin";
 const SESSION_MS = 8 * 60 * 60 * 1000;
@@ -36,7 +37,7 @@ function staffAccounts() {
     const hash = /^([a-f0-9]{32}):([a-f0-9]{128})$/.exec(entry.passwordHash || "");
     if (!hash || !territoryOf(entry)) return [];
     ids.add(entry.id);
-    accounts.push({ id: entry.id, role: entry.role, hash, territory: territoryOf(entry) });
+    accounts.push({ id: entry.id, role: entry.role, hash, territory: territoryOf(entry), subscription: subscriptionOf(entry) });
   }
   return accounts;
 }
@@ -74,7 +75,13 @@ function tokenFrom(req) {
 
 function activeSession(token) {
   const session = sessions.get(token);
-  if (session?.expires > Date.now()) return session;
+  if (session?.expires > Date.now()) {
+    if (session.role === "super_admin") return session;
+    const account = staffAccounts().find(item => item.id === session.staffId);
+    if (account && account.role === session.role && account.subscription.status === "active" &&
+        JSON.stringify(account.territory) === JSON.stringify(session.territory) &&
+        account.hash[0] === session.passwordHash) return session;
+  }
   sessions.delete(token);
   return null;
 }
@@ -162,11 +169,12 @@ async function staffLogin(req, res, previousToken) {
   loginAttempts.push({ at: now });
   const account = staffAccounts().find(item => item.id === id);
   // Use a dummy scrypt hash when the staff ID does not exist to reduce account enumeration.
-  const hash = account?.hash || [Buffer.alloc(16).toString("hex"), Buffer.alloc(64).toString("hex")];
+  const hash = account?.hash || [null, Buffer.alloc(16).toString("hex"), Buffer.alloc(64).toString("hex")];
   const digest = await scrypt(password, Buffer.from(hash[1], "hex"), 64);
   if (!account || !crypto.timingSafeEqual(digest, Buffer.from(hash[2], "hex"))) {
     fail(401, "Incorrect staff ID or password.");
   }
+  if (account.subscription.status !== "active") fail(403, "Staff account is disabled, not yet active or expired.");
   loginAttempts.pop();
   sessions.delete(previousToken);
   for (const [key, value] of sessions) if (value.expires <= Date.now()) sessions.delete(key);
@@ -174,7 +182,7 @@ async function staffLogin(req, res, previousToken) {
   const token = crypto.randomBytes(32).toString("hex");
   sessions.set(token, {
     csrf: crypto.randomBytes(32).toString("hex"),
-    expires: Date.now() + SESSION_MS, role: account.role, staffId: account.id, territory: account.territory
+    expires: Date.now() + SESSION_MS, role: account.role, staffId: account.id, territory: account.territory, passwordHash: account.hash[0]
   });
   return respond(res, 200, { signedIn: true }, { "Set-Cookie": cookie(token, SESSION_MS / 1000) });
 }
@@ -307,9 +315,16 @@ async function adminDashboard(req, res, url) {
       if (!status) fail(404, "Message status unavailable or expired.");
       return respond(res, 200, { status: status.status, updatedAt: status.updatedAt, errorCode: status.errorCode });
     }
+    if (req.method === "GET" && route === "/admin/subscriptions") {
+      if (!session) fail(401, "Your session expired. Sign in again.");
+      if (session.role !== "super_admin") fail(403, "Super Admin access required.");
+      return respond(res, 200, { accounts: staffAccounts().map(account => ({
+        id: account.id, role: account.role, territory: account.territory, ...account.subscription
+      })) });
+    }
     if (req.method === "GET" && route === "/admin/session") {
       if (!session) return respond(res, 200, { signedIn: false });
-      return respond(res, 200, { signedIn: true, csrf: session.csrf, role: session.role || "super_admin", staffId: session.staffId || null, territory: session.role === "super_admin" ? null : session.territory, templates: session.role === "super_admin" ? templates : [] });
+      return respond(res, 200, { signedIn: true, csrf: session.csrf, role: session.role || "super_admin", staffId: session.staffId || null, territory: session.role === "super_admin" ? null : session.territory, subscription: session.role === "super_admin" ? null : staffAccounts().find(item => item.id === session.staffId)?.subscription, templates: session.role === "super_admin" ? templates : [] });
     }
 
     if (req.method !== "POST" ||
