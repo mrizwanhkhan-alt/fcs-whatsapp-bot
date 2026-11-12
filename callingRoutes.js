@@ -12,7 +12,7 @@ const {
   REPRESENTATIVE_REQUEST_MINUTES
 } = require("./staffCalling");
 
-const SECRET = process.env.STAFF_CALLING_SECRET || "";
+const { callingAccess } = require("./adminDashboard");
 const APP_SECRET = process.env.META_APP_SECRET || "";
 const TEMPLATE = process.env.CALL_PERMISSION_TEMPLATE_NAME || "";
 const ICE_SERVERS = process.env.STAFF_CALLING_ICE_SERVERS;
@@ -350,7 +350,8 @@ async function callingRoutes(req, res, url) {
     sendJSON(res, 405, { success: false, error: "Method not allowed." });
     return;
   }
-  if (SECRET.length < 24 || !safeEqual(req.headers.authorization, "Bearer " + SECRET)) {
+  const access = callingAccess(req);
+  if (!access?.calling) {
     sendJSON(res, 401, { success: false, error: "Unauthorized staff access." });
     return;
   }
