@@ -26,6 +26,10 @@ before(async () => {
   const salt = Buffer.alloc(16, 42);
   Object.assign(process.env, {
     ADMIN_PASSWORD_HASH: salt.toString("hex") + ":" + crypto.scryptSync(password, salt, 64).toString("hex"),
+    STAFF_ACCOUNTS_JSON: JSON.stringify([{
+      id: "agent01", role: "communicator",
+      passwordHash: salt.toString("hex") + ":" + crypto.scryptSync("test-staff-secret", salt, 64).toString("hex")
+    }]),
     ADMIN_WHATSAPP_TEMPLATES: JSON.stringify([
       { name: "follow_up", language: "en", bodyParameters: 1 },
       { name: "send_pdf", language: "en", header: "document" },
@@ -269,6 +273,27 @@ test("window is checked again after an upload and Meta errors do not expose upst
   } finally {
     graphResponse = null;
   }
+});
+
+test("staff accounts sign in with separate credentials and cannot access admin tools", async () => {
+  assert.equal((await admin("staff-login", { id: "agent01", password: "wrong" }, { signedIn: false })).status, 401);
+  const staff = await admin("staff-login", { id: "agent01", password: "test-staff-secret" }, { signedIn: false });
+  assert.equal(staff.status, 200);
+  const staffCookie = staff.cookie.split(";")[0];
+  const session = await realFetch(base + "/admin/session", { headers: { Cookie: staffCookie } }).then(r => r.json());
+  assert.equal(session.role, "communicator");
+  assert.equal(session.staffId, "agent01");
+  assert.deepEqual(session.templates, []);
+  for (const route of ["customer-lookup?phone=923001234567", "application-records", "province-city-report", "calling-panel"]) {
+    const response = await realFetch(base + "/admin/" + route, { headers: { Cookie: staffCookie } });
+    assert.equal(response.status, 403, route);
+  }
+  const denied = await realFetch(base + "/admin/send", {
+    method: "POST",
+    headers: { Cookie: staffCookie, "Content-Type": "application/json", "X-Admin-Request": session.csrf },
+    body: JSON.stringify({ number: customer, type: "text", text: "Blocked" })
+  });
+  assert.equal(denied.status, 403);
 });
 
 test("logout revokes the server-side session and repeated login failures are rate limited", async () => {
