@@ -45,6 +45,7 @@
     #reportResults p { margin: 8px 0; }
     #callingPanel { margin-top: 16px; padding: 0; overflow: hidden; }
     #callingFrame { display: block; width: 100%; height: 560px; border: 0; }
+    header {background:linear-gradient(110deg,#82121e,#b71925);box-shadow:0 5px 20px #600e1825} header div{max-width:1240px;min-height:72px} main{max-width:1240px;padding:24px clamp(14px,3vw,36px)} section{border-radius:18px;box-shadow:0 7px 25px #14213d0a;margin-bottom:18px} #workspaceNav{overflow-x:auto;scrollbar-width:thin} #workspaceNav a{flex-shrink:0;border-radius:999px;padding:11px 15px} #branchesPanel [role="group"],#subscriptionFeatures{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0} #branchesResults>p,#networkDetails>div{background:#f8f9fc;border:1px solid #e5e8ef;border-radius:12px;padding:14px;margin:10px 0} #networkExplorerPanel label{margin:10px 0} @media(min-width:760px){#networkExplorerPanel{display:grid;grid-template-columns:1fr 1fr;gap:12px 20px}#networkExplorerPanel h1,#networkExplorerPanel>p,#networkExplorerPanel>button,#networkStatus,#networkDetails{grid-column:1/-1}}
     @media (max-width: 400px) { section { padding: 16px; } }
   </style>
   <script src="/admin/dashboard.js" defer></script>
@@ -73,8 +74,10 @@
       <a href="#backupPanel">Backup</a>
       <a href="#callingLogsPanel">Calling logs</a>
       <a href="#staffIdsPanel">Staff IDs</a>
-      <a href="#branchesPanel">Branches</a>\n      <a href="#subscriptionPanel">Subscription</a>
-      <a href="#headOfficePanel">Head office</a>\n      <a href="#networkExplorerPanel">Network explorer</a>
+      <a href="#branchesPanel">Branches</a>
+      <a href="#subscriptionPanel">Subscription</a>
+      <a href="#headOfficePanel">Head office</a>
+      <a href="#networkExplorerPanel">Network explorer</a>
       <a href="#securityAuditPanel">Audit</a>
     </nav>
 
@@ -155,6 +158,7 @@
 <form id="branchEditor" hidden>
 <h2 id="branchEditorTitle">Add Branch</h2>
 <label>Branch ID <input id="branchIdInput" required maxlength="32" pattern="[A-Za-z0-9_-]{2,32}"></label>
+<label>Province <input id="branchProvinceInput" maxlength="100" placeholder="Punjab"></label>
 <label>City <input id="branchCityInput" required maxlength="100"></label>
 <label>Location <input id="branchLocationInput" required maxlength="200"></label>
 <label>Type <select id="branchTypeInput"><option value="franchise">Franchise</option><option value="business_center">Business Center</option></select></label>
