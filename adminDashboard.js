@@ -20,6 +20,25 @@ const LOGIN_LIMIT = 10;
 const MAX_REQUEST_BYTES = 32 * 1024;
 const scrypt = promisify(crypto.scrypt);
 const credential = /^([a-f0-9]{32}):([a-f0-9]{128})$/.exec(process.env.ADMIN_PASSWORD_HASH || "");
+// STAFF_ACCOUNTS_JSON: [{"id":"agent1","role":"communicator","passwordHash":"<salt>:<scrypt>"}]
+// Never store plaintext staff passwords or expose account hashes to browsers.
+function staffAccounts() {
+  let entries;
+  try { entries = JSON.parse(process.env.STAFF_ACCOUNTS_JSON || "[]"); } catch { return []; }
+  if (!Array.isArray(entries) || entries.length > 100) return [];
+  const ids = new Set();
+  const allowed = new Set(["business_center", "franchise", "communicator"]);
+  const accounts = [];
+  for (const entry of entries) {
+    if (!entry || typeof entry.id !== "string" || !/^[a-zA-Z0-9_-]{3,40}$/.test(entry.id) ||
+        ids.has(entry.id) || !allowed.has(entry.role)) return [];
+    const hash = /^([a-f0-9]{32}):([a-f0-9]{128})$/.exec(entry.passwordHash || "");
+    if (!hash) return [];
+    ids.add(entry.id);
+    accounts.push({ id: entry.id, role: entry.role, hash });
+  }
+  return accounts;
+}
 const sessions = new Map();
 const loginAttempts = [];
 let sendsInProgress = 0;
@@ -125,11 +144,38 @@ async function login(req, res, previousToken) {
   if (sessions.size >= 100) sessions.delete(sessions.keys().next().value);
   const token = crypto.randomBytes(32).toString("hex");
   sessions.set(token, {
-    csrf: crypto.randomBytes(32).toString("hex"), expires: Date.now() + SESSION_MS
+    csrf: crypto.randomBytes(32).toString("hex"), expires: Date.now() + SESSION_MS, role: "super_admin"
   });
   return respond(res, 200, { signedIn: true }, {
     "Set-Cookie": cookie(token, SESSION_MS / 1000)
   });
+}
+
+async function staffLogin(req, res, previousToken) {
+  const now = Date.now();
+  while (loginAttempts.length && loginAttempts[0].at <= now - LOGIN_INTERVAL) loginAttempts.shift();
+  if (loginAttempts.length >= LOGIN_LIMIT) fail(429, "Too many sign-in attempts. Try again in five minutes.");
+  const { id, password } = await readJSON(req);
+  if (typeof id !== "string" || typeof password !== "string" ||
+      id.length > 40 || !id || !password || password.length > 256) fail(400, "Enter staff ID and password.");
+  loginAttempts.push({ at: now });
+  const account = staffAccounts().find(item => item.id === id);
+  // Use a dummy scrypt hash when the staff ID does not exist to reduce account enumeration.
+  const hash = account?.hash || [Buffer.alloc(16).toString("hex"), Buffer.alloc(64).toString("hex")];
+  const digest = await scrypt(password, Buffer.from(hash[1], "hex"), 64);
+  if (!account || !crypto.timingSafeEqual(digest, Buffer.from(hash[2], "hex"))) {
+    fail(401, "Incorrect staff ID or password.");
+  }
+  loginAttempts.pop();
+  sessions.delete(previousToken);
+  for (const [key, value] of sessions) if (value.expires <= Date.now()) sessions.delete(key);
+  if (sessions.size >= 100) sessions.delete(sessions.keys().next().value);
+  const token = crypto.randomBytes(32).toString("hex");
+  sessions.set(token, {
+    csrf: crypto.randomBytes(32).toString("hex"),
+    expires: Date.now() + SESSION_MS, role: account.role, staffId: account.id
+  });
+  return respond(res, 200, { signedIn: true }, { "Set-Cookie": cookie(token, SESSION_MS / 1000) });
 }
 
 function prepare(input, binary) {
@@ -210,6 +256,7 @@ async function adminDashboard(req, res, url) {
     const session = activeSession(token);
     if (req.method === "GET" && route === "/admin/calling-panel") {
       if (!session) fail(401, "Your session expired. Sign in again.");
+      if (session.role !== "super_admin") fail(403, "This tool requires Super Admin access.");
       const html = await fs.promises.readFile(path.join(__dirname, "staffCalling.html"), "utf8");
       const script = /<script>([\s\S]*?)<\/script>/.exec(html)?.[1];
       const scriptHash = crypto.createHash("sha256").update(script).digest("base64");
@@ -254,17 +301,21 @@ async function adminDashboard(req, res, url) {
     }
     if (req.method === "GET" && route === "/admin/session") {
       if (!session) return respond(res, 200, { signedIn: false });
-      return respond(res, 200, { signedIn: true, csrf: session.csrf, templates });
+      return respond(res, 200, { signedIn: true, csrf: session.csrf, role: session.role || "super_admin", staffId: session.staffId || null, templates: session.role === "super_admin" ? templates : [] });
     }
 
     if (req.method !== "POST" ||
-        !["/admin/login", "/admin/logout", "/admin/window", "/admin/send"].includes(route)) {
+        !["/admin/login", "/admin/staff-login", "/admin/logout", "/admin/window", "/admin/send"].includes(route)) {
       fail(404, "Page not found.");
     }
 
     const site = req.headers["sec-fetch-site"];
     if ((site && site !== "same-origin" && site !== "none") || !req.headers["x-admin-request"]) {
       fail(403, "Cross-origin request denied.");
+    }
+    if (route === "/admin/staff-login") {
+      if (req.headers["x-admin-request"] !== "login") fail(403, "Invalid sign-in request.");
+      return await staffLogin(req, res, token);
     }
     if (route === "/admin/login") {
       if (req.headers["x-admin-request"] !== "login") fail(403, "Invalid sign-in request.");
@@ -277,6 +328,7 @@ async function adminDashboard(req, res, url) {
       sessions.delete(token);
       return respond(res, 200, { signedIn: false }, { "Set-Cookie": cookie("", 0) });
     }
+    if (session.role !== "super_admin") fail(403, "This tool requires Super Admin access.");
     if (route === "/admin/window") {
       const number = recipient((await readJSON(req)).number);
       checkRecipient(number, "template");
