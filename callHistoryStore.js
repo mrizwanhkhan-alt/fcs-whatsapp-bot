@@ -60,6 +60,19 @@ async function listHistory({ staffId, owner, superAdmin = false, limit = 100 } =
       direction, state, startedAt, answeredAt: answeredAt || null, endedAt: endedAt || null,
       updatedAt: eventAt, durationSeconds: answeredAt && endedAt ? Math.max(0, Math.floor((Date.parse(endedAt) - Date.parse(answeredAt)) / 1000)) : null });
   }
-  return Array.from(latest.values()).reverse().slice(0, Math.min(Math.max(Number(limit)||100,1),100));
+  return Array.from(latest.values()).sort((a,b) => Date.parse(b.updatedAt || 0) - Date.parse(a.updatedAt || 0)).slice(0, Math.min(Math.max(Number(limit)||100,1),100));
 }
-module.exports = { appendEvent, listHistory };
+async function getById(id) {
+  if (!id) return null;
+  await queue;
+  await ensureTab();
+  const response = await sheets.spreadsheets.values.get({ spreadsheetId: GOOGLE_SHEET_ID,
+    range: "'FCS_Call_History'!A2:J" });
+  const rows = (response.data.values || []).filter(row => row[1] === id);
+  const row = rows[rows.length - 1];
+  if (!row) return null;
+  return { id: row[1], staffId: row[2] || null, owner: row[3] || null, number: row[4],
+    direction: row[5], state: row[6], startedAt: row[7],
+    answeredAt: row[8] || null, endedAt: row[9] || null };
+}
+module.exports = { appendEvent, listHistory, getById };
