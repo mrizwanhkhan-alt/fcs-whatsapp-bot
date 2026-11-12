@@ -32,6 +32,10 @@ const windows = new Map();
 const deliveryStatuses = new Map();
 const MAX_DELIVERY_STATUSES = 5000;
 
+function recentDeliveryStatuses(limit = 50) {
+  return [...deliveryStatuses.entries()].slice(-Math.min(100, Math.max(1, limit))).reverse().map(([messageId, entry]) => ({ messageId, number: entry.number || "", status: entry.status, updatedAt: entry.updatedAt, errorCode: entry.errorCode }));
+}
+
 function deliveryStatus(id) {
   return deliveryStatuses.get(id) || null;
 }
@@ -282,6 +286,6 @@ async function sendAdminMessage(message, file, bytes, authorized) {
 }
 
 module.exports = {
-  attachment, checkRecipient, deliveryStatus, fail, prepareMessage, recipient, recordAdminWindows,
+  attachment, checkRecipient, deliveryStatus, recentDeliveryStatuses, fail, prepareMessage, recipient, recordAdminWindows,
   sendAdminMessage, templates, windowExpiry
 };
