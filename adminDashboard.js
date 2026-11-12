@@ -124,6 +124,7 @@ async function login(req, res, previousToken) {
   if (staffId) {
     identity = await authenticateStaff(staffId, password);
   } else {
+    if (!credential) fail(503, "Admin login is awaiting server configuration.");
     const digest = await scrypt(password, Buffer.from(credential[1], "hex"), 64);
     if (crypto.timingSafeEqual(digest, Buffer.from(credential[2], "hex"))) identity = { id: "admin", role: "admin" };
   }
@@ -189,6 +190,7 @@ async function readAttachment(req) {
 }
 
 async function send(req, res, session, token) {
+  if (session.identity?.role !== "admin") fail(403, "Sending is restricted until branch-scoped messaging is configured.");
   if (session.sending || sendsInProgress >= 2) fail(429, "A send is in progress. Try again shortly.");
   session.sending = true;
   sendsInProgress++;
