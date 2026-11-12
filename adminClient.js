@@ -111,6 +111,7 @@ function showSession(session) {
   byId("costMonitoringPanel").hidden = !session.signedIn;
   byId("backupPanel").hidden = !session.signedIn;
   byId("callingLogsPanel").hidden = !session.signedIn;
+  byId("staffIdsPanel").hidden = !session.signedIn;
   byId("securityAuditPanel").hidden = !session.signedIn;
   if (session.signedIn) void loadMessageActivity();
   if (session.signedIn) void loadCustomerStatusReport();
@@ -374,3 +375,11 @@ async function loadCallingLogs(){
  }catch(error){status.textContent=`Calling logs unavailable: ${error.message}`;}
 }
 byId("refreshCallingLogs").addEventListener("click",loadCallingLogs);
+
+async function loadStaffIds(){
+ const status=byId("staffIdsStatus"),root=byId("staffIdsResults");status.textContent="Loading staff…";root.replaceChildren();
+ try{const data=await request("staff-ids");status.textContent=`${data.staff.length} configured staff IDs`;
+ for(const staff of data.staff){const p=document.createElement("p");p.textContent=`${staff.id} — ${staff.role}`;root.append(p);}
+ }catch(error){status.textContent=`Staff list unavailable: ${error.message}`;}
+}
+byId("refreshStaffIds").addEventListener("click",loadStaffIds);
