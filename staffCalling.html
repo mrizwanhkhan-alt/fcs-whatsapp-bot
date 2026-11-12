@@ -527,7 +527,7 @@ async function connectPanel(token, automatic = false) {
     status(
       automatic
         ? "FCS Calling is ready. Enter a customer number and press Call Customer."
-        : "Calling panel connected. Access remembered for next time."
+        : "Calling panel connected through your dashboard login."
     );
 
     controls();
@@ -536,11 +536,9 @@ async function connectPanel(token, automatic = false) {
     session = null;
 
     if (automatic && error.status === 401) {
-      forgetAccess();
-      secret.value = "";
-      status(
-        "Saved access is no longer valid. Enter your Staff Secret once."
-      );
+      // Session permissions are managed by Super Admin.
+      secret.value = "session";
+      status("Calling access is unavailable. Contact Super Admin.");
       return;
     }
 
@@ -742,11 +740,11 @@ setInterval(() => {
 }, 1000);
 
 async function startPanel() {
-  const token = savedAccess();
+  const token = "session";
 
   if (!token) {
     status(
-      "Enter Staff Access Secret once and press Connect Calling Panel."
+      "Sign in to the FCS Dashboard to access calling."
     );
     controls();
     return;
