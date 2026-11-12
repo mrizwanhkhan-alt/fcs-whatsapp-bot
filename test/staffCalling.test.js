@@ -159,7 +159,8 @@ function incoming(id) {
 test("staff routes require authorization and calling settings stay private", async () => {
   assert.equal((await api("session", {}, owner, "incorrect")).status, 401);
   const crossSite = await fetch(base + "/api/staff-calling/session", { method: "POST",
-    headers: { "Content-Type": "application/json", "X-Requested-With": "FCS-Calling",\n      "Sec-Fetch-Site": "cross-site", Cookie: adminCookie },
+    headers: { "Content-Type": "application/json", "X-Requested-With": "FCS-Calling",
+      "Sec-Fetch-Site": "cross-site", Cookie: adminCookie },
     body: JSON.stringify({ owner }) });
   assert.equal(crossSite.status, 403);
   const { status, body } = await api("session");
