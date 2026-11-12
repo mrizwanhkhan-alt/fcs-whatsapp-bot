@@ -100,6 +100,11 @@
     </section>
     <p id="status" class="status" role="status" aria-live="polite">Loading dashboard…</p>
     <noscript>Enable JavaScript to use the admin dashboard.</noscript>
+    <section id="customerPanel" hidden>
+      <h1>Customer Lookup</h1>
+      <form id="customerLookupForm"><label>Customer phone number<input id="customerPhone" type="tel" autocomplete="off" required></label><button type="submit">Find customer</button></form>
+      <p id="customerLookupStatus" role="status"></p><div id="customerLookupResult"></div>
+    </section>
     <section id="reportsPanel" hidden>
       <h1>Province &amp; City Applications</h1>
       <p class="hint">Read-only live report from Franchise Applications. Engagement stages are sheet values, not confirmed WhatsApp delivery.</p>
