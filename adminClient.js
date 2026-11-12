@@ -104,6 +104,8 @@ function showSession(session) {
   byId("loginPanel").hidden = session.signedIn || staffLoginMode;
   byId("staffLoginPanel").hidden = session.signedIn || !staffLoginMode;
   byId("staffHome").hidden = !session.signedIn || isAdmin;
+  for (const id of ["staffCustomerPanel", "staffReportsPanel", "staffApplicationsPanel"]) byId(id).hidden = !session.signedIn || isAdmin;
+  byId("territoryLabel").textContent = session.territory ? `Assigned territory: ${session.territory.province} — ${session.territory.cities.join(", ")}` : "";
   byId("staffGreeting").textContent = session.signedIn && !isAdmin
     ? `Signed in as ${session.staffId || "staff"} (${String(session.role).replaceAll("_", " ")})`
     : "";
@@ -117,6 +119,7 @@ function showSession(session) {
   byId("applicationsPanel").hidden = !isAdmin;
   if (!session.signedIn) { byId("customerResult").replaceChildren(); byId("customerStatus").textContent = ""; }
   if (isAdmin) { void loadProvinceCityReport(); void loadApplications(); }
+  if (session.signedIn && !isAdmin) { void loadStaffReport(); void loadStaffApplications(); }
   else byId("reportResults").replaceChildren();
   if (isAdmin && !callingFrame.hasAttribute("src")) {
     callingFrame.src = "/admin/calling-panel";
@@ -359,6 +362,54 @@ byId("customerForm").addEventListener("submit", event => {
       root.append(line);
     }
   }, byId("customerStatus"));
+});
+
+async function loadStaffReport() {
+  const root = byId("staffReportResults");
+  const status = byId("staffReportStatus");
+  root.replaceChildren();
+  try {
+    const data = await request("province-city-report");
+    for (const province of data.provinces || []) {
+      for (const city of province.cities || []) {
+        const p = document.createElement("p");
+        p.textContent = `${province.province} / ${city.city}: ${city.total} applications`;
+        root.append(p);
+      }
+    }
+    status.textContent = "Territory report loaded.";
+  } catch (error) { status.textContent = error.message; }
+}
+async function loadStaffApplications() {
+  const root = byId("staffApplicationsResults");
+  const status = byId("staffApplicationsStatus");
+  root.replaceChildren();
+  try {
+    const data = await request("application-records");
+    for (const record of data.records || []) {
+      const p = document.createElement("p");
+      p.textContent = `Row ${record.rowNumber}: ${record.province} / ${record.city} — ${record.stage}`;
+      root.append(p);
+    }
+    status.textContent = `Showing ${data.records.length} of ${data.total} territory applications.`;
+  } catch (error) { status.textContent = error.message; }
+}
+byId("staffRefreshReport").addEventListener("click", loadStaffReport);
+byId("staffRefreshApplications").addEventListener("click", loadStaffApplications);
+byId("staffCustomerForm").addEventListener("submit", event => {
+  event.preventDefault();
+  run(event.submitter, async () => {
+    const data = await request("customer-lookup?phone=" + encodeURIComponent(byId("staffCustomerPhone").value.trim()));
+    const root = byId("staffCustomerResults");
+    root.replaceChildren();
+    const status = byId("staffCustomerStatus");
+    status.textContent = data.found ? "Customer found in assigned territory." : "No customer found in assigned territory.";
+    if (data.found) for (const [key, value] of Object.entries(data.customer)) {
+      const p = document.createElement("p");
+      p.textContent = `${key}: ${value || "—"}`;
+      root.append(p);
+    }
+  }, byId("staffCustomerStatus"));
 });
 
 function highlightNavigation() {
