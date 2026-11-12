@@ -110,6 +110,7 @@ function showSession(session) {
   byId("engagementPanel").hidden = !session.signedIn;
   byId("costMonitoringPanel").hidden = !session.signedIn;
   byId("backupPanel").hidden = !session.signedIn;
+  byId("callingLogsPanel").hidden = !session.signedIn;
   byId("securityAuditPanel").hidden = !session.signedIn;
   if (session.signedIn) void loadMessageActivity();
   if (session.signedIn) void loadCustomerStatusReport();
@@ -365,3 +366,11 @@ byId("downloadBackup").addEventListener("click",async()=>{
   status.textContent=`Backup prepared: ${data.rows.length} sheet rows. Store securely.`;
  }catch(error){status.textContent=`Backup failed: ${error.message}`;}
 });
+
+async function loadCallingLogs(){
+ const status=byId("callingLogsStatus"),root=byId("callingLogsResults");status.textContent="Loading calls…";root.replaceChildren();
+ try{const data=await request("calling-logs");status.textContent=`${data.calls.length} recent call records`;
+ for(const call of data.calls){const p=document.createElement("p");p.textContent=`${call.updatedAt} — ${call.direction} — ${call.number} — ${call.state}`;root.append(p);}
+ }catch(error){status.textContent=`Calling logs unavailable: ${error.message}`;}
+}
+byId("refreshCallingLogs").addEventListener("click",loadCallingLogs);
