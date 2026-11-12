@@ -274,6 +274,10 @@ async function adminDashboard(req, res, url) {
       if (!/^\+?[0-9 ()-]{8,24}$/.test(phone)) fail(400, "Enter a valid customer phone number.");
       const rows = await getApplications();
       const customer = findCustomer(session.role === "super_admin" ? rows : filterRows(rows, session.territory), phone);
+      if (customer && session.role !== "super_admin") {
+        // Filtered row positions are not original sheet row numbers; avoid exposing misleading indices.
+        delete customer.rowNumber;
+      }
       return respond(res, 200, { found: Boolean(customer), customer });
     }
     if (req.method === "GET" && route === "/admin/application-records") {
@@ -296,6 +300,7 @@ async function adminDashboard(req, res, url) {
     }
     if (req.method === "GET" && route === "/admin/delivery") {
       if (!session) fail(401, "Your session expired. Sign in again.");
+      if (session.role !== "super_admin") fail(403, "This tool requires Super Admin access.");
       const id = url.searchParams.get("id") || "";
       if (!/^wamid\.[A-Za-z0-9_=.%-]{8,512}$/.test(id)) fail(400, "Invalid message ID.");
       const status = deliveryStatus(id);
