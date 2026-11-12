@@ -23,6 +23,8 @@ const pending = new Map();
 const representativeRequests = new Map();
 const permissionDeliveries = new Map();
 const callHistory = new Map();
+const incomingChecks = new Set();
+const checkedIncoming = new Set();
 const HISTORY_LIMIT = 1000;
 function trackCall(call) {
   if (!call?.id || !call.number) return;
@@ -234,6 +236,22 @@ function recordEvent(event) {
   }
   let call = outbound || existing;
   const terminalEvent = event.event === "terminate" || ["REJECTED", "FAILED"].includes(event.status);
+  // After restart, never expose an offer until durable history is checked.
+  if (!call && !terminalEvent && event.event === "connect" && event.session?.sdp_type === "offer" &&
+      !checkedIncoming.has(event.id)) {
+    if (incomingChecks.has(event.id)) return;
+    incomingChecks.add(event.id);
+    getById(event.id).then(saved => {
+      if (saved && ended(saved)) {
+        calls.set(event.id,{id:event.id,state:saved.state,number:saved.number,expires:Date.now()+END_MS});
+        return;
+      }
+      checkedIncoming.add(event.id);
+      recordEvent(event);
+    }).catch(error => console.error("Incoming call history check failed:",error.message))
+      .finally(() => incomingChecks.delete(event.id));
+    return;
+  }
   // Install the tombstone synchronously, before any asynchronous Sheets lookup.
   if (!call && terminalEvent && !event.from && !event.from_user_id) {
     calls.set(event.id, { id: event.id, state: "ended", expires: Date.now() + END_MS });
