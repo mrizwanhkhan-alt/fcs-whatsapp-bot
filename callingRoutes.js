@@ -269,7 +269,9 @@ function recordEvent(event, incomingVerified = false) {
       if (!saved) return;
       const current = calls.get(event.id);
       if (current?.number && ended(current)) return;
+      const webhookEndedAt = Number(event.timestamp) > 0 ? new Date(Number(event.timestamp) * 1000).toISOString() : null;
       const recovered = { ...saved, id: event.id, number: saved.number,
+        endedAt: webhookEndedAt || saved.endedAt || null,
         state: event.status === "REJECTED" ? "rejected" : event.status === "FAILED" ? "failed" : "ended" };
       calls.set(event.id, recovered);
       trackCall(recovered);
@@ -297,6 +299,7 @@ function recordEvent(event, incomingVerified = false) {
 
   if (ended(call)) return;
   if (terminal) {
+    if (Number(event.timestamp) > 0) call.endedAt = new Date(Number(event.timestamp) * 1000).toISOString();
     const state = event.status === "REJECTED" ? "rejected" : event.status === "FAILED" ? "failed" : "ended";
     setState(call, state, END_MS);
   } else if (incoming && call.state === "incoming" && !call.sdp) {
