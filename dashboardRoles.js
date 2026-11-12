@@ -64,10 +64,28 @@ function canAccessCustomer(actor, customer) {
 function filterAuthorizedCustomers(actor, customers) {
   return Array.isArray(customers) ? customers.filter(customer => canAccessCustomer(actor, customer)) : [];
 }
+/** Territory matching never grants customer ownership by itself. */
+function inAssignedTerritory(actor, customer) {
+  if (!actor || !customer || !Array.isArray(actor.territories)) return false;
+  const norm = value => typeof value === "string" ? value.trim().toLocaleLowerCase("en") : "";
+  const province = norm(customer.province);
+  const city = norm(customer.city);
+  const area = norm(customer.area);
+  if (!province || !city) return false;
+  return normalizeTerritories(actor.territories).some(t =>
+    norm(t.province) === province && norm(t.city) === city &&
+    (!t.area || (area && norm(t.area) === area)));
+}
+function canMessageCustomer(actor, customer, subscription) {
+  if (!canAccess(actor, "messaging", subscription)) return false;
+  if (!canAccessCustomer(actor, customer)) return false;
+  if (normalizeRole(actor.role) === "communicator") return inAssignedTerritory(actor, customer);
+  return true;
+}
 function normalizeTerritories(input) {
   if (!Array.isArray(input)) return [];
   return input.filter(t => t && typeof t === "object" && typeof t.province === "string" && typeof t.city === "string")
     .map(t => ({ province: t.province.trim(), city: t.city.trim(), area: typeof t.area === "string" ? t.area.trim() : "" }))
     .filter(t => t.province && t.city);
 }
-module.exports = { ALL_FEATURES, ROLE_FEATURES, normalizeRole, dashboardFeatures, canAccess, withinScope, normalizeTerritories, canAccessCustomer, filterAuthorizedCustomers };
+module.exports = { ALL_FEATURES, ROLE_FEATURES, normalizeRole, dashboardFeatures, canAccess, withinScope, normalizeTerritories, canAccessCustomer, filterAuthorizedCustomers, inAssignedTerritory, canMessageCustomer };
