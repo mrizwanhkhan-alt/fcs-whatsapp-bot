@@ -73,6 +73,7 @@
       <a href="#backupPanel">Backup</a>
       <a href="#callingLogsPanel">Calling logs</a>
       <a href="#staffIdsPanel">Staff IDs</a>
+      <a href="#branchesPanel">Branches</a>
       <a href="#securityAuditPanel">Audit</a>
     </nav>
 
@@ -115,6 +116,7 @@
       <form id="customerLookupForm"><label>Customer phone number<input id="customerPhone" type="tel" autocomplete="off" required></label><button type="submit">Find customer</button></form>
       <p id="customerLookupStatus" role="status"></p><div id="customerLookupResult"></div>
     </section>
+    <section id="branchesPanel" hidden><h1>Branch Management</h1><button id="refreshBranches" type="button" class="secondary">Refresh branches</button><p id="branchesStatus" role="status"></p><div id="branchesResults"></div></section>
     <section id="staffIdsPanel" hidden><h1>Staff IDs</h1><button id="refreshStaffIds" type="button" class="secondary">Refresh staff</button><p id="staffIdsStatus" role="status"></p><div id="staffIdsResults"></div><p class="hint">Staff accounts are configured securely on the server. This panel does not expose passwords.</p></section>
     <section id="callingLogsPanel" hidden><h1>Calling Logs</h1><button id="refreshCallingLogs" type="button" class="secondary">Refresh calls</button><p id="callingLogsStatus" role="status"></p><div id="callingLogsResults"></div><p class="hint">Recent call events only; no audio recordings. History resets on server restart.</p></section>
     <section id="backupPanel" hidden><h1>Data Backup</h1><p class="hint">Download a JSON copy of the Franchise Applications sheet. Keep the file secure; it contains customer information.</p><button id="downloadBackup" type="button">Download applications backup</button><p id="backupStatus" role="status"></p></section>
