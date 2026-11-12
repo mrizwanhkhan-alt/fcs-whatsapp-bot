@@ -26,10 +26,12 @@ async function replayPendingHistory() {
     grouped.get(event.id).push(event);
   }
   for (const [id, entries] of grouped) {
-    // Keep chronological order stable, and process terminal states last.
-    entries.sort((a,b) => (Number(a.timestamp) || 0) - (Number(b.timestamp) || 0) ||
-      Number(terminalStates.has(stateOf(a))) - Number(terminalStates.has(stateOf(b))));
+    // Preserve chronological nonterminal transitions, then make termination final.
+    entries.sort((a,b) => Number(terminalStates.has(stateOf(a))) - Number(terminalStates.has(stateOf(b))) ||
+      (Number(a.timestamp) || 0) - (Number(b.timestamp) || 0));
     let saved = await getById(id);
+    // A terminal row is authoritative; never replay older transient states over it.
+    if (saved && terminalStates.has(saved.state)) continue;
     for (const event of entries) {
       const state = stateOf(event);
       if (saved && terminalStates.has(saved.state)) break;
