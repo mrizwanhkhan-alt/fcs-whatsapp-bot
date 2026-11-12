@@ -100,19 +100,22 @@ function showSession(session) {
   csrf = session.csrf;
   templates = session.templates || [];
   byId("loginPanel").hidden = session.signedIn;
-  byId("composePanel").hidden = !session.signedIn;
+  const role = session.identity?.role || "admin";
+  const canWrite = session.signedIn && role !== "viewer";
+  const isAdmin = session.signedIn && role === "admin";
+  byId("composePanel").hidden = !canWrite;
   logout.hidden = !session.signedIn;
   byId("workspaceNav").hidden = !session.signedIn;
   byId("callingPanel").hidden = !session.signedIn;
   byId("reportsPanel").hidden = !session.signedIn;
   byId("statusReportPanel").hidden = !session.signedIn;
   byId("messageActivityPanel").hidden = !session.signedIn;
-  byId("engagementPanel").hidden = !session.signedIn;
+  byId("engagementPanel").hidden = !canWrite;
   byId("costMonitoringPanel").hidden = !session.signedIn;
-  byId("backupPanel").hidden = !session.signedIn;
+  byId("backupPanel").hidden = !isAdmin;
   byId("callingLogsPanel").hidden = !session.signedIn;
-  byId("staffIdsPanel").hidden = !session.signedIn;
-  byId("securityAuditPanel").hidden = !session.signedIn;
+  byId("staffIdsPanel").hidden = !isAdmin;
+  byId("securityAuditPanel").hidden = !isAdmin;
   if (session.signedIn) void loadMessageActivity();
   if (session.signedIn) void loadCustomerStatusReport();
   byId("customerPanel").hidden = !session.signedIn;
@@ -189,7 +192,7 @@ async function run(button, action, errorElement = pageStatus) {
 loginForm.addEventListener("submit", event => {
   event.preventDefault();
   run(event.submitter, async () => {
-    const payload = { password: password.value };
+    const payload = { password: password.value, staffId: byId("staffId").value.trim() };
     password.value = "";
     await request("login", payload);
     showSession(await request("session"));
