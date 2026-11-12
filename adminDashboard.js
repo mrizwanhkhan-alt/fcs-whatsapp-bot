@@ -267,7 +267,7 @@ async function adminDashboard(req, res, url) {
       const rows = await getApplications();
       return respond(res, 200, { provinces: provinceCityReport(rows), updatedAt: new Date().toISOString() });
     }
-    if (req.method === "POST" && ["/admin/branch-create","/admin/branch-edit","/admin/franchise-transfer"].includes(route)) {
+    if (req.method === "POST" && ["/admin/branch-create","/admin/branch-edit","/admin/franchise-transfer", "/admin/subscription-set"].includes(route)) {
       if (!session || role !== "admin") fail(403, "Head office access required.");
       if (!process.env.DATABASE_URL) fail(503, "Central database is not configured.");
       if (req.headers["x-admin-request"] !== session.csrf) fail(403, "Invalid request token.");
@@ -306,12 +306,19 @@ async function adminDashboard(req, res, url) {
       }
       // Never trust a client-provided center ID: derive the scope from the authenticated staff identity.
       if (role !== "admin") {
-        const centerId = session.identity?.branchId;
-        const center = directory.find(b => b.id === centerId && b.branchType === "business_center");
-        if (!center) fail(403, "Business Center access required.");
-        const permitted = new Set([center.id, ...directory.filter(b => b.branchType === "franchise" && b.parentBusinessCenterId === center.id).map(b => b.id)]);
+        const branchId = session.identity?.branchId;
+        const own = directory.find(b => b.id === branchId);
+        if (!own) fail(403, "Assigned branch not found.");
+        const permitted = new Set([own.id]);
+        if (own.branchType === "business_center") {
+          for (const b of directory) {
+            if (b.branchType === "franchise" && b.parentBusinessCenterId === own.id) permitted.add(b.id);
+          }
+        } else if (own.branchType !== "franchise") {
+          fail(403, "Assigned branch type is not supported.");
+        }
         directory = directory.filter(b => permitted.has(b.id));
-        staff = staff.filter(s => permitted.has(s.branchId || s.branch_id));
+        staff = staff.filter(member => permitted.has(member.branchId || member.branch_id));
       }
       return respond(res, 200, {branches:directory,staff:staff.map(s=>({id:s.id,role:s.role,branchId:s.branchId||s.branch_id})),provinceCoverage:directory.every(b=>Boolean(b.province))});
     }
