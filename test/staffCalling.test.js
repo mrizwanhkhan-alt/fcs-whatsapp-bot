@@ -26,6 +26,12 @@ let onAction;
 let restoreHttps;
 let adminCookie;
 
+let journalEnabled = true;
+let journalFailure = null;
+let nextGraphFailure;
+let inboxClaimFailure;
+const historyRows = new Map();
+
 before(async () => {
   Object.assign(process.env, {
     PHONE_NUMBER_ID: phoneId,
@@ -73,6 +79,7 @@ before(async () => {
           }
         } else if (options.path.endsWith("/messages")) {
           sent.push(payload);
+          if (nextGraphFailure) { status = nextGraphFailure; nextGraphFailure = null; }
           result = { messages: [{ id: "wamid.test" }] };
         }
 
@@ -107,7 +114,24 @@ before(async () => {
   // History storage is integration-tested separately; avoid real Google Sheets calls here.
   const historyPath = require.resolve("../callHistoryStore");
   require.cache[historyPath] = { id: historyPath, filename: historyPath, loaded: true,
-    exports: { appendEvent: async () => {}, listHistory: async () => [] } };
+    exports: {
+      appendEvent: async event => historyRows.set(event.id, event),
+      getById: async id => historyRows.get(id) || null,
+      listHistory: async () => [...historyRows.values()]
+    } };
+  const journalPath = require.resolve("../callTransactionalJournal");
+  require.cache[journalPath] = { id: journalPath, filename: journalPath, loaded: true,
+    exports: {
+      get enabled() { return journalEnabled; },
+      save: async () => { if (journalFailure) throw journalFailure; },
+      replay: async () => 0
+    } };
+  const inboxPath = require.resolve("../messageInbox");
+  require.cache[inboxPath] = { id: inboxPath, filename: inboxPath, loaded: true,
+    exports: {
+      get enabled() { return Boolean(inboxClaimFailure); },
+      claim: async () => { throw inboxClaimFailure; }
+    } };
   try {
     require("../index");
   } finally {
@@ -141,7 +165,17 @@ function callingChange(events, statuses = [], numberId = phoneId) {
   return { field: "calls", value: { metadata: { phone_number_id: numberId }, calls: events, statuses } };
 }
 
-async function webhook(changes, sign = true) {
+let nextMessageId = 0;
+async function webhook(changes, sign = true, expectedStatus = 200, expectedBody) {
+  changes = changes.map(change => change.field !== "messages" ? change : {
+    ...change, value: {
+      metadata: { phone_number_id: phoneId },
+      ...change.value,
+      ...(change.value.messages ? { messages: change.value.messages.map(message => ({
+        id: "wamid.fixture-" + ++nextMessageId, ...message
+      })) } : {})
+    }
+  });
   const body = JSON.stringify({
     object: "whatsapp_business_account",
     entry: [{ changes }]
@@ -152,8 +186,8 @@ async function webhook(changes, sign = true) {
     headers: { "X-Hub-Signature-256": sign ? "sha256=" + signature : "sha256=invalid" },
     body
   });
-  assert.equal(response.status, 200);
-  assert.equal(await response.text(), "EVENT_RECEIVED");
+  assert.equal(response.status, expectedStatus);
+  assert.equal(await response.text(), expectedBody || (expectedStatus === 200 ? "EVENT_RECEIVED" : "Call event storage temporarily unavailable"));
 }
 
 function incoming(id) {
@@ -282,19 +316,22 @@ test("shared webhook still processes existing messaging alongside call events", 
   assert.deepEqual((await api("poll")).body.incoming, [{ id, number: customer }]);
   assert.equal(sent.length, oldMessageCount + 8);
   const [languageMenu, mainMenu, faqMenu, oldTwo, oldThree, oldFour, franchise, returnedMenu] =
-    sent.slice(oldMessageCount).map(message => message.text.body);
-  assert.match(languageMenu, /Please select your preferred language/);
-  assert.match(mainMenu, /ٹینڈرز اور وینڈر مواقع/);
-  assert.match(mainMenu, /فری فرنچائز/);
-  assert.match(mainMenu, /^🔟 ایف سی ایس کے مجاز نمائندے سے بات کریں$/m);
-  assert.match(faqMenu, /اکثر پوچھے جانے والے سوالات/);
-  assert.match(faqMenu, /1\. فرنچائز/);
-  assert.doesNotMatch(faqMenu, /ٹرانسپورٹ|ویئر ہاؤس|سپلائر|وینڈر/);
-  assert.equal(oldTwo, faqMenu);
-  assert.equal(oldThree, faqMenu);
-  assert.equal(oldFour, faqMenu);
-  assert.match(franchise, /فرنچائز/);
-  assert.equal(returnedMenu, mainMenu);
+    sent.slice(oldMessageCount);
+  assert.match(languageMenu.text.body, /Please select your preferred language/);
+  const services = mainMenu.interactive.action.sections[0].rows;
+  assert.equal(services.length, 10);
+  assert.match(services[3].title, /فرنچائز/);
+  assert.match(services[5].title, /ٹینڈر/);
+  assert.equal(services[9].id, "fcs_service_ur_10");
+  assert.deepEqual(returnedMenu.interactive, mainMenu.interactive);
+  const faqText = faqMenu.text.body;
+  assert.match(faqText, /اکثر پوچھے جانے والے سوالات/);
+  assert.match(faqText, /1\. فرنچائز/);
+  assert.doesNotMatch(faqText, /ٹرانسپورٹ|ویئر ہاؤس|سپلائر|وینڈر/);
+  assert.equal(oldTwo.text.body, faqText);
+  assert.equal(oldThree.text.body, faqText);
+  assert.equal(oldFour.text.body, faqText);
+  assert.match(franchise.text.body, /فرنچائز/);
 });
 
 
@@ -458,4 +495,144 @@ test("the graphical menu routes the reordered services and rejects duplicate Flo
     if (previous === undefined) delete process.env[envName];
     else process.env[envName] = previous;
   }
+});
+
+test("a delayed offer restores caller metadata and exact Meta timestamps after acceptance", async () => {
+  const id = "wacid.delayed-metadata";
+  const start = Math.floor(Date.now() / 1000) - 80;
+  await webhook([callingChange([], [{ id, type: "call", status: "ACCEPTED", timestamp: start + 5 }])]);
+  await webhook([callingChange([{ ...incoming(id), timestamp: start }])]);
+  await webhook([callingChange([{ id, event: "terminate", timestamp: start + 65 }])]);
+  const row = historyRows.get(id);
+  assert.equal(row?.number, customer);
+  assert.equal(row.state, "ended");
+  assert.equal(Date.parse(row.startedAt), start * 1000);
+  assert.equal(Date.parse(row.answeredAt), (start + 5) * 1000);
+  assert.equal(Date.parse(row.endedAt), (start + 65) * 1000);
+  assert.equal((Date.parse(row.endedAt) - Date.parse(row.answeredAt)) / 1000, 60);
+});
+
+test("verified call intake fails closed without PostgreSQL or when journal writes fail", async () => {
+  const id = "wacid.journal-down";
+  const call = callingChange([incoming(id)]);
+  try {
+    journalEnabled = false;
+    await webhook([call], true, 503);
+    journalEnabled = true;
+    journalFailure = new Error("simulated PostgreSQL outage");
+    await webhook([call], true, 503);
+    assert.equal(historyRows.has(id), false);
+    assert.ok(!(await api("poll")).body.incoming.some(entry => entry.id === id));
+  } finally {
+    journalEnabled = true;
+    journalFailure = null;
+  }
+  await webhook([call]);
+  assert.ok((await api("poll")).body.incoming.some(entry => entry.id === id));
+  await webhook([callingChange([{ id, event: "terminate" }])]);
+});
+
+test("messaging-only webhooks remain usable without PostgreSQL", async () => {
+  const before = sent.length;
+  try {
+    journalEnabled = false;
+    await webhook([{ field: "messages", value: { messages: [
+      { from: "923000000071", type: "text", text: { body: "Hi" } }
+    ] } }]);
+    assert.ok(sent.length > before);
+  } finally {
+    journalEnabled = true;
+  }
+});
+
+test("mixed call-journal failure retries calling without duplicating a successful reply", async () => {
+  const before = sent.length;
+  const id = "wacid.mixed-journal-down";
+  const changes = [
+    callingChange([incoming(id)]),
+    { field: "messages", value: { messages: [
+      { id: "wamid.mixed-journal-down", from: "923000000072", type: "text", text: { body: "Hi" } }
+    ] } }
+  ];
+  try {
+    journalFailure = new Error("simulated PostgreSQL outage");
+    await webhook(changes, true, 503);
+    assert.equal(historyRows.has(id), false);
+    assert.equal(sent.length, before + 1);
+    await webhook(changes, true, 503);
+    assert.equal(sent.length, before + 1);
+  } finally {
+    journalFailure = null;
+  }
+  await webhook(changes);
+  assert.equal(sent.length, before + 1);
+  assert.ok((await api("poll")).body.incoming.some(call => call.id === id));
+  await webhook([callingChange([{ id, event: "terminate" }])]);
+});
+
+test("a persisted terminal call stays off Incoming after restart and tombstone expiry", async () => {
+  const id = "wacid.persisted-terminal";
+  historyRows.set(id, { id, number: customer, state: "ended" });
+  const realNow = Date.now;
+  try {
+    await webhook([callingChange([incoming(id)])]);
+    assert.ok(!(await api("poll")).body.incoming.some(entry => entry.id === id));
+    Date.now = () => realNow() + 11 * 60 * 1000;
+    await api("poll");
+    await webhook([callingChange([incoming(id)])]);
+    assert.ok(!(await api("poll")).body.incoming.some(entry => entry.id === id));
+  } finally {
+    Date.now = realNow;
+  }
+});
+
+test("message processing retries a failed Graph reply and suppresses duplicate success", async () => {
+  const id = "wamid.failed-reply";
+  const changes = [{ field: "messages", value: { messages: [
+    { id, from: "923000000073", type: "text", text: { body: "Hi" } }
+  ] } }];
+  const before = sent.length;
+  nextGraphFailure = 503;
+  await webhook(changes, true, 503, "Message processing temporarily unavailable");
+  await webhook(changes);
+  await webhook(changes);
+  assert.equal(sent.length, before + 2);
+});
+
+test("a configured inbox connection failure requests Meta redelivery without sending", async () => {
+  const changes = [{ field: "messages", value: { messages: [
+    { id: "wamid.inbox-down", from: "923000000074", type: "text", text: { body: "Hi" } }
+  ] } }];
+  const before = sent.length;
+  try {
+    inboxClaimFailure = new Error("simulated PostgreSQL connection failure");
+    await webhook(changes, true, 503, "Message processing temporarily unavailable");
+    assert.equal(sent.length, before);
+  } finally {
+    inboxClaimFailure = null;
+  }
+  await webhook(changes);
+  assert.equal(sent.length, before + 1);
+});
+
+test("a full database outage rejects mixed work and redelivery resumes both portions", async () => {
+  const id = "wacid.mixed-full-outage";
+  const before = sent.length;
+  const changes = [callingChange([incoming(id)]), { field: "messages", value: { messages: [
+    { id: "wamid.mixed-full-outage", from: "923000000076", type: "text", text: { body: "Hi" } }
+  ] } }];
+  try {
+    inboxClaimFailure = journalFailure = new Error("simulated full database outage");
+    await webhook(changes, true, 503);
+    assert.equal(historyRows.has(id), false);
+    assert.equal(sent.length, before);
+  } finally {
+    inboxClaimFailure = journalFailure = null;
+  }
+  await webhook(changes);
+  assert.equal(sent.length, before + 1);
+  assert.ok((await api("poll")).body.incoming.some(call => call.id === id));
+  await webhook(changes);
+  assert.equal(sent.length, before + 1);
+  await webhook([callingChange([{ id, event: "terminate" }])]);
 });

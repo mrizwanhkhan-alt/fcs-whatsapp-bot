@@ -59,6 +59,7 @@ const tenderMode = new Set();
 // Suppress duplicate Meta message deliveries within this process, including
 // retries of mixed call/message webhooks after a calling journal outage.
 // A durable cross-process inbox is still required for exactly-once effects.
+const outboundReplies = new (require("node:async_hooks").AsyncLocalStorage)();
 const recentMessageIds = new Map();
 function claimRecentMessage(id) {
   if (!id) return true;
@@ -80,20 +81,29 @@ const WHATSAPP_TOKEN = config.WHATSAPP_TOKEN;
 // =====================================
 
 function sendWhatsAppMessage(to, message, interactive, fallbackInteractive) {
-  const payload = interactive ? { type: "interactive", interactive } : {
-    type: "text",
-    text: { preview_url: false, body: String(message) }
-  };
-  sendWhatsAppPayload(to, payload, status => {
-    if (interactive && status >= 400 && status < 500 && status !== 429) {
-      sendWhatsAppMessage(to, message, fallbackInteractive);
-    }
-  });
+  function deliver(current, fallback) {
+    const payload = current ? { type: "interactive", interactive: current } : {
+      type: "text",
+      text: { preview_url: false, body: String(message) }
+    };
+    return new Promise((resolve, reject) => {
+      sendWhatsAppPayload(to, payload, status => {
+        if (status >= 200 && status < 300) resolve();
+        else if (current && status >= 400 && status < 500 && status !== 429) {
+          deliver(fallback).then(resolve, reject);
+        } else reject(new Error("WhatsApp reply failed with HTTP " + status));
+      }, undefined, reject);
+    });
+  }
+  const reply = deliver(interactive, fallbackInteractive);
+  outboundReplies.getStore()?.push(reply);
+  reply.catch(error => console.error("WhatsApp reply failed:", error.message));
 }
 
-function sendWhatsAppPayload(to, payload, onResponse, onClose) {
+function sendWhatsAppPayload(to, payload, onResponse, onClose, onFailure) {
   if (!PHONE_NUMBER_ID || !WHATSAPP_TOKEN) {
     console.error("WhatsApp credentials missing");
+    onFailure?.(new Error("WhatsApp credentials missing"));
     return;
   }
 
@@ -109,7 +119,7 @@ function sendWhatsAppPayload(to, payload, onResponse, onClose) {
     port: 443,
     path: `/v21.0/${PHONE_NUMBER_ID}/messages`,
     method: "POST",
-    ...(onClose ? { timeout: 5000 } : {}),
+    ...(onClose || onFailure ? { timeout: 5000 } : {}),
     headers: {
       Authorization: `Bearer ${WHATSAPP_TOKEN}`,
       "Content-Type": "application/json",
@@ -122,6 +132,8 @@ function sendWhatsAppPayload(to, payload, onResponse, onClose) {
       result += chunk.toString();
     });
 
+    response.on("error", error => onFailure?.(error));
+    response.on("aborted", () => onFailure?.(new Error("WhatsApp response aborted")));
     response.on("end", () => {
       onResponse?.(response.statusCode, result);
       console.log(
@@ -134,11 +146,12 @@ function sendWhatsAppPayload(to, payload, onResponse, onClose) {
 
   request.on("error", error => {
     console.error("WhatsApp Error:", error.message);
+    onFailure?.(error);
   });
 
-  if (onClose) {
-    request.once("close", onClose);
-    request.once("timeout", () => request.destroy(new Error("WhatsApp menu artwork request timed out")));
+  if (onClose) request.once("close", onClose);
+  if (onClose || onFailure) {
+    request.once("timeout", () => request.destroy(new Error("WhatsApp request timed out")));
   }
   request.write(data);
   request.end();
@@ -891,6 +904,7 @@ const server = http.createServer((req, res) => {
         console.error("Could not record admin WhatsApp messaging windows.");
       }
 
+      let messageRetry = false;
       try {
         const verified = data.object === "whatsapp_business_account" &&
           isVerifiedMetaWebhook(rawBody, req.headers["x-hub-signature-256"]);
@@ -911,25 +925,34 @@ const server = http.createServer((req, res) => {
 
             for (const message of value.messages || []) {
               if (!verifiedMessage) continue;
-              let claimed = false;
+              let attempt;
               const inbox = require("./messageInbox");
               try {
-                if (inbox.enabled) claimed = await inbox.claim(message.id);
-                else claimed = claimRecentMessage(message.id);
-                if (!claimed) continue;
-                await processMessage(message, verifiedMessage);
-                if (inbox.enabled) await inbox.complete(message.id);
+                if (inbox.enabled) {
+                  const claim = await inbox.claim(message.id);
+                  attempt = claim.attempt;
+                  if (!attempt) {
+                    messageRetry ||= claim.retry;
+                    continue;
+                  }
+                } else if (!claimRecentMessage(message.id)) continue;
+                const replies = [];
+                await outboundReplies.run(replies, () => processMessage(message, verifiedMessage));
+                await Promise.all(replies);
+                if (attempt && !await inbox.complete(message.id, attempt)) messageRetry = true;
               } catch (error) {
+                messageRetry = true;
                 console.error("Message Processing Error:", error);
-                if (claimed && inbox.enabled) {
-                  try { await inbox.fail(message.id, error); }
+                if (attempt) {
+                  try { await inbox.fail(message.id, attempt, error); }
                   catch (recordError) { console.error("Message inbox error:", recordError); }
-                }
+                } else if (!inbox.enabled) recentMessageIds.delete(message.id);
               }
             }
           }
         }
       } catch (error) {
+        messageRetry = true;
         console.error(
           "Webhook Processing Error:",
           error
@@ -969,10 +992,10 @@ const server = http.createServer((req, res) => {
         console.error("Calling Event Error:", error.message);
       }
 
-      res.writeHead(200, {
+      res.writeHead(messageRetry ? 503 : 200, {
         "Content-Type": "text/plain"
       });
-      res.end("EVENT_RECEIVED");
+      res.end(messageRetry ? "Message processing temporarily unavailable" : "EVENT_RECEIVED");
 
 
 

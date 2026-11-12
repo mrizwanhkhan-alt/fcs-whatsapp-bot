@@ -33,17 +33,25 @@ async function claim(id) {
       AND (fcs_message_inbox.next_retry_at IS NULL OR fcs_message_inbox.next_retry_at <= now())
       AND fcs_message_inbox.attempts < 10
     RETURNING message_id,attempts`,[String(id)]);
-  return rows.length===1;
+  if (rows.length) return { attempt: rows[0].attempts };
+  const result = await pool.query(
+    "SELECT completed_at, attempts FROM fcs_message_inbox WHERE message_id = $1", [String(id)]);
+  const existing = result.rows[0];
+  return { retry: !existing?.completed_at && (existing?.attempts ?? 0) < 10 };
 }
-async function complete(id) {
+async function complete(id, attempt) {
   await setup();
-  await pool.query(`UPDATE fcs_message_inbox SET completed_at=now(),lease_until=NULL,
-    next_retry_at=NULL,last_error=NULL WHERE message_id=$1 AND completed_at IS NULL`,[String(id)]);
+  const result = await pool.query(`UPDATE fcs_message_inbox SET completed_at=now(),lease_until=NULL,
+    next_retry_at=NULL,last_error=NULL WHERE message_id=$1 AND attempts=$2 AND completed_at IS NULL`,
+    [String(id), attempt]);
+  return result.rowCount === 1;
 }
-async function fail(id,error) {
+async function fail(id, attempt, error) {
   await setup();
-  await pool.query(`UPDATE fcs_message_inbox SET lease_until=NULL,
-    next_retry_at=now()+interval '30 seconds',last_error=$2
-    WHERE message_id=$1 AND completed_at IS NULL`,[String(id),String(error?.message||error)]);
+  const result = await pool.query(`UPDATE fcs_message_inbox SET lease_until=NULL,
+    next_retry_at=now()+interval '30 seconds',last_error=$3
+    WHERE message_id=$1 AND attempts=$2 AND completed_at IS NULL`,
+    [String(id), attempt, String(error?.message || error).slice(0, 500)]);
+  return result.rowCount === 1;
 }
-module.exports={enabled:!!pool,claim,complete,fail};
+module.exports = { enabled: !!pool, claim, complete, fail };
