@@ -18,5 +18,7 @@ jobs:
         run: node --check adminDashboard.js
       - name: Validate role module syntax
         run: node --check dashboardRoles.js
+      - name: Verify sensitive admin route guards
+        run: node adminDashboard.security.test.js
       - name: Validate hierarchy regression checks
         run: node dashboardRoles.scope.test.js
