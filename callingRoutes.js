@@ -13,6 +13,7 @@ const {
 } = require("./staffCalling");
 
 const { callingAccess, refreshSettings } = require("./adminDashboard");
+const { appendEvent, listHistory } = require("./callHistoryStore");
 const APP_SECRET = process.env.META_APP_SECRET || "";
 const TEMPLATE = process.env.CALL_PERMISSION_TEMPLATE_NAME || "";
 const ICE_SERVERS = process.env.STAFF_CALLING_ICE_SERVERS;
@@ -38,7 +39,9 @@ function trackCall(call) {
   };
   if (call.state === "accepted" && !entry.answeredAt) entry.answeredAt = new Date().toISOString();
   if (ended(call) && !entry.endedAt) entry.endedAt = new Date().toISOString();
+  const changed = !previous || previous.state !== entry.state || previous.owner !== entry.owner || previous.staffId !== entry.staffId;
   callHistory.set(call.id, entry);
+  if (changed) appendEvent(entry).catch(error => console.error("Call history persistence failed:", error.message));
   while (callHistory.size > HISTORY_LIMIT) callHistory.delete(callHistory.keys().next().value);
 }
 
@@ -358,7 +361,7 @@ async function handleAction(route, body, access = {}) {
   }
 
   if (route === "history") {
-    return { history: Array.from(callHistory.values()).filter(item => access.role === "super_admin" ? item.owner === body.owner : Boolean(access.staffId) && item.staffId === access.staffId && item.owner === body.owner).reverse().slice(0, 100), persistent: false };
+    return { history: await listHistory({ staffId: access.staffId, superAdmin: access.role === "super_admin", owner: access.role === "super_admin" ? (body.allStaff === true ? undefined : body.owner) : undefined }), persistent: true };
   }
 
   if (route === "offer") {
