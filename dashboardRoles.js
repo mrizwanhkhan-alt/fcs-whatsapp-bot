@@ -32,7 +32,12 @@ function withinScope(actor, record) {
   if (!actor || !record) return false;
   const role = normalizeRole(actor.role);
   if (role === "admin") return true;
-  if (role === "business_center") return Boolean(actor.branchId && (record.businessCenterId === actor.branchId || record.branchId === actor.branchId));
+  if (role === "business_center") {
+    // Only records explicitly linked to this Business Center are visible.
+    // A franchise communicator must carry its parent Business Center ID
+    // (resolved by the trusted backend, never accepted from client input).
+    return Boolean(actor.branchId && (record.businessCenterId === actor.branchId || (record.branchId === actor.branchId && record.type !== "franchise_communicator")));
+  }
   if (role === "franchise") return Boolean(actor.branchId && (record.franchiseId === actor.branchId || record.branchId === actor.branchId));
   if (role === "communicator") return Boolean(actor.id && (record.communicatorId === actor.id || record.id === actor.id));
   return false;
