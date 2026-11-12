@@ -248,12 +248,16 @@ function recordEvent(event) {
         state: event.status === "REJECTED" ? "rejected" : event.status === "FAILED" ? "failed" : "ended" };
       calls.set(event.id, recovered);
       trackCall(recovered);
-    }).catch(error => console.error("Call history recovery failed:", error.message));
+    }).catch(error => {
+      console.error("Call history recovery failed:", error.message);
+      // Keep a tombstone even when the lookup is unavailable; a late offer must not reopen it.
+      calls.set(event.id, { id: event.id, state: "ended", expires: Date.now() + END_MS });
+    });
     return;
   }
   const type = event.session?.sdp_type;
   const incoming = event.event === "connect" && type === "offer" && validSDP(event.session.sdp);
-  const terminal = event.event === "terminate" || event.status === "REJECTED";
+  const terminal = event.event === "terminate" || ["REJECTED", "FAILED"].includes(event.status);
   if (!call) {
     // Retain early termination and answer events until the connect request returns its call ID.
     if (!incoming && !terminal && type !== "answer" && !["RINGING", "ACCEPTED"].includes(event.status)) return;
@@ -262,6 +266,7 @@ function recordEvent(event) {
     call = { number: event.from || event.from_user_id };
     setState(call, incoming ? "incoming" : "dialing", RING_MS);
   }
+  if (existing && ended(existing)) return;
   call.id = event.id;
   calls.set(call.id, call);
   trackCall(call);
@@ -445,4 +450,4 @@ async function callingRoutes(req, res, url) {
   }
 }
 
-module.exports = { callingRoutes, handleCallingWebhook, isVerifiedMetaWebhook, requestRepresentativeCall };
+module.exports = { callingRoutes, handleCallingWebhook, isVerifiedMetaWebhook, requestRepresentativeCall, replaySavedCallEvent: recordEvent };
