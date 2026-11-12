@@ -33,10 +33,7 @@ small{color:#666}
 <label for="customer">Customer WhatsApp Number</label>
 <input id="customer" type="tel" inputmode="tel" placeholder="923001234567">
 
-<div id="accessSection">
-<label for="secret">Staff Access Secret</label>
-<input id="secret" type="password" autocomplete="off" placeholder="Enter once only">
-</div>
+<div id="accessSection" hidden><input id="secret" type="hidden" value="session"></div>
 
 <button id="listen">Connect Calling Panel</button>
 
@@ -137,7 +134,7 @@ async function api(endpoint, payload = {}, keepalive = false) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: "Bearer " + session.secret
+      "X-Requested-With": "FCS-Calling"
     },
     body: JSON.stringify({ ...payload, owner: session.id }),
     cache: "no-store",
@@ -164,7 +161,7 @@ function controls() {
 
   $("end").disabled = busy || !active;
 
-  secret.disabled = Boolean(session) || busy;
+  secret.disabled = true;
 
   $("accessSection").hidden = Boolean(session);
 
@@ -500,7 +497,7 @@ async function endCall(message = "WhatsApp call ended.") {
 
 async function connectPanel(token, automatic = false) {
   if (!token) {
-    throw new Error("Enter the Staff Access Secret.");
+    throw new Error("Sign in to your authorized FCS dashboard.");
   }
 
   if (!window.isSecureContext || !window.RTCPeerConnection) {
@@ -523,9 +520,9 @@ async function connectPanel(token, automatic = false) {
 
     $("templateOption").hidden = !data.hasTemplate;
 
-    rememberAccess(token);
+    // Access is verified through the signed-in server session, not browser storage.
 
-    secret.value = "";
+    secret.value = "session";
 
     status(
       automatic
