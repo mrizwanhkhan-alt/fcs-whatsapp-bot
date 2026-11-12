@@ -104,6 +104,9 @@ function showSession(session) {
   logout.hidden = !session.signedIn;
   byId("workspaceNav").hidden = !session.signedIn;
   byId("callingPanel").hidden = !session.signedIn;
+  byId("reportsPanel").hidden = !session.signedIn;
+  if (session.signedIn) void loadProvinceCityReport();
+  else byId("reportResults").replaceChildren();
   if (session.signedIn && !callingFrame.hasAttribute("src")) {
     callingFrame.src = "/admin/calling-panel";
   } else if (!session.signedIn) {
@@ -239,6 +242,40 @@ compose.addEventListener("submit", event => {
     }
   });
 });
+
+async function loadProvinceCityReport() {
+  const status = byId("reportStatus");
+  const root = byId("reportResults");
+  status.textContent = "Loading city report…";
+  try {
+    const result = await request("province-city-report");
+    if (!csrf) return;
+    root.replaceChildren();
+    for (const province of result.provinces || []) {
+      const outer = document.createElement("details");
+      const summary = document.createElement("summary");
+      summary.textContent = `${province.province} — ${province.total} applications, ${province.cities.length} cities`;
+      outer.append(summary);
+      for (const city of province.cities) {
+        const inner = document.createElement("details");
+        const heading = document.createElement("summary");
+        heading.textContent = `${city.city} — ${city.total} applications`;
+        inner.append(heading);
+        for (const [stage, count] of Object.entries(city.stages)) {
+          const line = document.createElement("p");
+          line.textContent = `${stage}: ${count}`;
+          inner.append(line);
+        }
+        outer.append(inner);
+      }
+      root.append(outer);
+    }
+    status.textContent = `Updated ${new Date(result.updatedAt).toLocaleString()} — ${(result.provinces || []).length} provinces/regions`;
+  } catch (error) {
+    status.textContent = `Report unavailable: ${error.message}`;
+  }
+}
+byId("refreshReport").addEventListener("click", loadProvinceCityReport);
 
 request("session").then(session => {
   showSession(session);
