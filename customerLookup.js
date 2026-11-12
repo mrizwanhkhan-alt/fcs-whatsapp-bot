@@ -12,6 +12,7 @@ function variants(value) {
   if (n.startsWith("0") && n.length === 11) set.add("92" + n.slice(1));
   return [...set];
 }
+function normalized(value) { const options = variants(value); return options.find(n => n.startsWith("92") && n.length === 12) || options[0] || ""; }
 function findCustomer(rows, phone) {
   if (!Array.isArray(rows)) throw new TypeError("Expected application rows");
   const target = new Set(variants(phone));
@@ -22,6 +23,9 @@ function findCustomer(rows, phone) {
     if (variants(row[5]).some(n => target.has(n))) {
       return {
         rowNumber: i + 1,
+        name: String(row[2] ?? "").trim(),
+        phone: String(row[5] ?? "").trim(),
+        email: String(row[6] ?? "").trim(),
         province: String(row[8] ?? "").trim(),
         city: String(row[9] ?? "").trim(),
         engagementStage: String(row[17] ?? "").trim() || "Not contacted",
@@ -32,4 +36,4 @@ function findCustomer(rows, phone) {
   }
   return null;
 }
-module.exports = { findCustomer };
+module.exports = { findCustomer, normalized };
