@@ -14,6 +14,7 @@ const { provinceCityReport } = require("./provinceCityReport");
 const { findCustomer } = require("./customerLookup");
 const { territoryOf, filterRows } = require("./staffTerritory");
 const { subscriptionOf } = require("./staffSubscription");
+const { refreshSettings, cachedSettings, saveSettings } = require("./staffSettingsStore");
 
 const COOKIE = "__Host-fcs_admin";
 const SESSION_MS = 8 * 60 * 60 * 1000;
@@ -41,7 +42,7 @@ function staffAccounts() {
   }
   return accounts;
 }
-const permissionOverrides = new Map(); // Runtime controls reset on server restart; persistent defaults remain STAFF_ACCOUNTS_JSON.
+
 const sessions = new Map();
 const loginAttempts = [];
 let sendsInProgress = 0;
@@ -79,7 +80,7 @@ function activeSession(token) {
   if (session?.expires > Date.now()) {
     if (session.role === "super_admin") return session;
     const account = staffAccounts().find(item => item.id === session.staffId);
-    if (account && account.role === session.role && account.subscription.status === "active" &&
+    if (account && account.role === session.role && effectiveSubscription(account).status === "active" &&
         JSON.stringify(account.territory) === JSON.stringify(session.territory) &&
         account.hash[2] === session.passwordHash) return session;
   }
@@ -175,7 +176,7 @@ async function staffLogin(req, res, previousToken) {
   if (!account || !crypto.timingSafeEqual(digest, Buffer.from(hash[2], "hex"))) {
     fail(401, "Incorrect staff ID or password.");
   }
-  if (account.subscription.status !== "active") fail(403, "Staff account is disabled, not yet active or expired.");
+  if (effectiveSubscription(account).status !== "active") fail(403, "Staff account is disabled, not yet active or expired.");
   loginAttempts.pop();
   sessions.delete(previousToken);
   for (const [key, value] of sessions) if (value.expires <= Date.now()) sessions.delete(key);
@@ -189,7 +190,12 @@ async function staffLogin(req, res, previousToken) {
 }
 
 function effectivePermissions(account) {
-  return permissionOverrides.get(account.id) || account.permissions;
+  const saved = cachedSettings()?.get(account.id);
+  return saved ? { calling: saved.calling, recording: saved.recording && saved.calling } : { calling: false, recording: false };
+}
+function effectiveSubscription(account) {
+  const saved = cachedSettings()?.get(account.id);
+  return saved ? subscriptionOf(saved) : { status: "unconfigured", expiresAt: null };
 }
 
 function callingAccess(req) {
@@ -197,7 +203,7 @@ function callingAccess(req) {
   if (!session) return null;
   if (session.role === "super_admin") return { role: "super_admin", calling: true, recording: false };
   const account = staffAccounts().find(item => item.id === session.staffId);
-  if (!account || account.role !== session.role || account.subscription.status !== "active") return null;
+  if (!account || account.role !== session.role || effectiveSubscription(account).status !== "active") return null;
   return { role: account.role, calling: effectivePermissions(account).calling, recording: effectivePermissions(account).recording, staffId: account.id };
 }
 
@@ -262,6 +268,7 @@ async function send(req, res, session, token) {
 
 async function adminDashboard(req, res, url) {
   try {
+    if (url.pathname !== "/admin" && url.pathname !== "/admin/" && url.pathname !== "/admin/dashboard.js") await refreshSettings();
     const route = url.pathname;
     const asset = assets[route];
     if (req.method === "GET" && route === "/admin/") {
@@ -333,16 +340,16 @@ async function adminDashboard(req, res, url) {
       if (!session) fail(401, "Your session expired. Sign in again.");
       if (session.role !== "super_admin") fail(403, "Super Admin access required.");
       return respond(res, 200, { accounts: staffAccounts().map(account => ({
-        id: account.id, role: account.role, territory: account.territory, permissions: effectivePermissions(account), ...account.subscription
+        id: account.id, role: account.role, territory: account.territory, permissions: effectivePermissions(account), ...effectiveSubscription(account), active: cachedSettings()?.get(account.id)?.active === true, startsAt: cachedSettings()?.get(account.id)?.startsAt || "", expiresOn: cachedSettings()?.get(account.id)?.expiresAt || ""
       })) });
     }
     if (req.method === "GET" && route === "/admin/session") {
       if (!session) return respond(res, 200, { signedIn: false });
-      return respond(res, 200, { signedIn: true, csrf: session.csrf, role: session.role || "super_admin", staffId: session.staffId || null, territory: session.role === "super_admin" ? null : session.territory, subscription: session.role === "super_admin" ? null : staffAccounts().find(item => item.id === session.staffId)?.subscription, callingPermissions: callingAccess(req), templates: session.role === "super_admin" ? templates : [] });
+      return respond(res, 200, { signedIn: true, csrf: session.csrf, role: session.role || "super_admin", staffId: session.staffId || null, territory: session.role === "super_admin" ? null : session.territory, subscription: session.role === "super_admin" ? null : effectiveSubscription(staffAccounts().find(item => item.id === session.staffId)), callingPermissions: callingAccess(req), templates: session.role === "super_admin" ? templates : [] });
     }
 
     if (req.method !== "POST" ||
-        !["/admin/login", "/admin/staff-login", "/admin/logout", "/admin/window", "/admin/send", "/admin/calling-permissions"].includes(route)) {
+        !["/admin/login", "/admin/staff-login", "/admin/logout", "/admin/window", "/admin/send", "/admin/calling-permissions", "/admin/staff-settings"].includes(route)) {
       fail(404, "Page not found.");
     }
 
@@ -366,12 +373,20 @@ async function adminDashboard(req, res, url) {
       return respond(res, 200, { signedIn: false }, { "Set-Cookie": cookie("", 0) });
     }
     if (session.role !== "super_admin") fail(403, "This tool requires Super Admin access.");
-    if (route === "/admin/calling-permissions") {
-      const { id, calling, recording } = await readJSON(req);
+    if (route === "/admin/calling-permissions" || route === "/admin/staff-settings") {
+      const { id, calling, recording, active, startsAt, expiresAt } = await readJSON(req);
       const account = staffAccounts().find(item => item.id === id);
-      if (!account || typeof calling !== "boolean" || typeof recording !== "boolean" || (recording && !calling)) fail(400, "Invalid staff calling permissions.");
-      permissionOverrides.set(id, { calling, recording });
-      return respond(res, 200, { id, permissions: effectivePermissions(account), persistent: false });
+      if (!account) fail(400, "Unknown staff account.");
+      const current = cachedSettings()?.get(id);
+      const settings = {
+        calling, recording,
+        active: route === "/admin/staff-settings" ? active : current?.active ?? false,
+        startsAt: route === "/admin/staff-settings" ? startsAt : current?.startsAt || "",
+        expiresAt: route === "/admin/staff-settings" ? expiresAt : current?.expiresAt || ""
+      };
+      if (subscriptionOf(settings, Date.parse(settings.startsAt + "T00:00:00Z")).status === "unconfigured") fail(400, "Invalid subscription dates.");
+      await saveSettings(id, settings);
+      return respond(res, 200, { id, permissions: effectivePermissions(account), subscription: effectiveSubscription(account), persistent: true });
     }
     if (route === "/admin/window") {
       const number = recipient((await readJSON(req)).number);
@@ -390,4 +405,4 @@ async function adminDashboard(req, res, url) {
   }
 }
 
-module.exports = { adminDashboard, callingAccess };
+module.exports = { adminDashboard, callingAccess, refreshSettings };
