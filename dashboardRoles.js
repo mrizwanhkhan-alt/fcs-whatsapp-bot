@@ -42,10 +42,32 @@ function withinScope(actor, record) {
   if (role === "communicator") return Boolean(actor.id && (record.communicatorId === actor.id || record.id === actor.id));
   return false;
 }
+/** Trusted customer ownership: missing or conflicting assignments fail closed.
+ * Assignment IDs must come from authenticated server-side records.
+ */
+function canAccessCustomer(actor, customer) {
+  if (!actor || !customer || typeof customer !== "object") return false;
+  const role = normalizeRole(actor.role);
+  if (!role) return false;
+  if (role === "admin") return true;
+  if (role === "communicator") {
+    return Boolean(actor.id && customer.communicatorId === actor.id);
+  }
+  if (role === "franchise") {
+    return Boolean(actor.branchId && customer.franchiseId === actor.branchId);
+  }
+  if (role === "business_center") {
+    return Boolean(actor.branchId && customer.businessCenterId === actor.branchId);
+  }
+  return false;
+}
+function filterAuthorizedCustomers(actor, customers) {
+  return Array.isArray(customers) ? customers.filter(customer => canAccessCustomer(actor, customer)) : [];
+}
 function normalizeTerritories(input) {
   if (!Array.isArray(input)) return [];
   return input.filter(t => t && typeof t === "object" && typeof t.province === "string" && typeof t.city === "string")
     .map(t => ({ province: t.province.trim(), city: t.city.trim(), area: typeof t.area === "string" ? t.area.trim() : "" }))
     .filter(t => t.province && t.city);
 }
-module.exports = { ALL_FEATURES, ROLE_FEATURES, normalizeRole, dashboardFeatures, canAccess, withinScope, normalizeTerritories };
+module.exports = { ALL_FEATURES, ROLE_FEATURES, normalizeRole, dashboardFeatures, canAccess, withinScope, normalizeTerritories, canAccessCustomer, filterAuthorizedCustomers };
