@@ -288,6 +288,20 @@ async function adminDashboard(req, res, url) {
       recordAudit("subscription.update", "success", updated.id + ":" + updated.subscription_status);
       return respond(res, 200, { updated });
     }
+    if (req.method === "GET" && route === "/admin/network-explorer") {
+      if (!session || role !== "admin") fail(403, "Head office access required.");
+      let directory;
+      let staff;
+      if (process.env.DATABASE_URL) {
+        await centralDb.initializeDatabase();
+        directory = (await centralDb.branchList()).map(b => ({id:b.id,city:b.city,location:b.location,province:b.province||"",branchType:b.branch_type,parentBusinessCenterId:b.parent_business_center_id,subscriptionStatus:b.subscription_status}));
+        staff = await centralDb.staffList();
+      } else {
+        directory = branches();
+        staff = safeStaffList();
+      }
+      return respond(res, 200, {branches:directory,staff:staff.map(s=>({id:s.id,role:s.role,branchId:s.branchId||s.branch_id})),provinceCoverage:directory.every(b=>Boolean(b.province))});
+    }
     if (req.method === "GET" && route === "/admin/head-office-summary") {
       if (!session || role !== "admin") fail(403, "Head office access required.");
       const directory = branchSummary(safeStaffList());
