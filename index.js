@@ -882,7 +882,11 @@ const server = http.createServer((req, res) => {
           for (const event of change.value.statuses || []) if (event?.type === "call" && event?.id) events.push(event);
         }
         if (events.length) {
-          try { await require("./callWebhookInbox").saveVerifiedEvents(events); }
+          try {
+            const transactional = require("./callTransactionalJournal");
+            if (transactional.enabled) await transactional.save(events);
+            else await require("./callWebhookInbox").saveVerifiedEvents(events);
+          }
           catch (error) {
             console.error("Durable call webhook intake failed:", error.message);
             res.writeHead(503, { "Content-Type": "text/plain" });
@@ -975,6 +979,15 @@ async function replayCallJournal() {
   if (replayRunning) return;
   replayRunning = true;
   try {
+    const transactional = require("./callTransactionalJournal");
+    if (transactional.enabled) {
+      const { replaySavedCallEvent } = require("./callingRoutes");
+      await transactional.replay(async event => {
+        replaySavedCallEvent(event);
+        await require("./callHistoryReplay").replaySingleHistoryEvent(event);
+      });
+      return;
+    }
     await require("./callHistoryReplay").replayPendingHistory();
     const events = await require("./callWebhookInbox").getSavedEvents();
     const { replaySavedCallEvent } = require("./callingRoutes");
