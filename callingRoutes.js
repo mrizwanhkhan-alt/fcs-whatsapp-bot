@@ -294,6 +294,7 @@ function recordEvent(event, incomingVerified = false) {
     setState(call, incoming ? "incoming" : "dialing", RING_MS);
   }
   if (existing && ended(existing)) return;
+  if (!call.number && (event.from || event.from_user_id)) call.number = event.from || event.from_user_id;
   call.id = event.id;
   if (incoming && metaTime && (!call.startedAt || Date.parse(metaTime) < Date.parse(call.startedAt))) call.startedAt = metaTime;
   if (event.status === "ACCEPTED" && metaTime && (!call.answeredAt || Date.parse(metaTime) < Date.parse(call.answeredAt))) call.answeredAt = metaTime;
