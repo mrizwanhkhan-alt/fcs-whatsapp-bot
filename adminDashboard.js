@@ -6,7 +6,7 @@ const path = require("node:path");
 const { promisify } = require("node:util");
 const {
   attachment, checkRecipient, deliveryStatus, recentDeliveryStatuses, fail, prepareMessage, recipient,
-  sendAdminMessage, templates, windowExpiry
+  sendAdminMessage, templates, usageSummary, windowExpiry
 } = require("./adminMessaging");
 
 const { getApplications } = require("./googleSheets");
@@ -242,6 +242,10 @@ async function adminDashboard(req, res, url) {
       if (!session) fail(401, "Your session expired. Sign in again.");
       const rows = await getApplications();
       return respond(res, 200, { provinces: provinceCityReport(rows), updatedAt: new Date().toISOString() });
+    }
+    if (req.method === "GET" && route === "/admin/cost-monitoring") {
+      if (!session) fail(401, "Your session expired. Sign in again.");
+      return respond(res, 200, usageSummary());
     }
     if (req.method === "GET" && route === "/admin/message-activity") {
       if (!session) fail(401, "Your session expired. Sign in again.");
