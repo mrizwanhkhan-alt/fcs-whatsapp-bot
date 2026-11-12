@@ -88,7 +88,24 @@
     <section id="staffHome" hidden>
       <h1>Staff Workspace</h1>
       <p id="staffGreeting"></p>
-      <p class="hint">Your account is signed in securely. Territory permissions and staff-specific tools are not yet enabled.</p>
+      <p id="territoryLabel" class="hint"></p>
+      <p class="hint">Read-only customer records and reports are restricted to your assigned territory. Messaging and calling remain Super Admin-only.</p>
+      <a href="#staffCustomerPanel">Customer Search</a> · <a href="#staffReportsPanel">Territory Reports</a> · <a href="#staffApplicationsPanel">Applications</a>
+    </section>
+    <section id="staffCustomerPanel" hidden>
+      <h1>Territory Customer Search</h1>
+      <form id="staffCustomerForm"><label>Customer phone <input id="staffCustomerPhone" type="tel" maxlength="24" required></label><button type="submit">Search</button></form>
+      <p id="staffCustomerStatus" role="status"></p><div id="staffCustomerResults"></div>
+    </section>
+    <section id="staffReportsPanel" hidden>
+      <h1>My Territory Report</h1>
+      <button id="staffRefreshReport" type="button">Refresh</button>
+      <p id="staffReportStatus" role="status"></p><div id="staffReportResults"></div>
+    </section>
+    <section id="staffApplicationsPanel" hidden>
+      <h1>My Territory Applications</h1>
+      <button id="staffRefreshApplications" type="button">Refresh</button>
+      <p id="staffApplicationsStatus" role="status"></p><div id="staffApplicationsResults"></div>
     </section>
     <nav id="workspaceNav" aria-label="WhatsApp workspace" hidden>
       <a href="#composePanel">Messaging</a>
