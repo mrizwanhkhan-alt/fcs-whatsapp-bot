@@ -105,6 +105,8 @@ function showSession(session) {
   byId("workspaceNav").hidden = !session.signedIn;
   byId("callingPanel").hidden = !session.signedIn;
   byId("reportsPanel").hidden = !session.signedIn;
+  byId("statusReportPanel").hidden = !session.signedIn;
+  if (session.signedIn) void loadCustomerStatusReport();
   byId("customerPanel").hidden = !session.signedIn;
   if (session.signedIn) void loadProvinceCityReport();
   else byId("reportResults").replaceChildren();
@@ -301,3 +303,13 @@ byId("customerLookupForm").addEventListener("submit", async event => {
     }
   } catch (error) { status.textContent = `Lookup failed: ${error.message}`; }
 });
+
+async function loadCustomerStatusReport() {
+ const summary=byId("customerStatusSummary"),root=byId("customerStatusResults");
+ summary.textContent="Loading customer statuses…";root.replaceChildren();
+ try {const result=await request("customer-status-report");
+  summary.textContent=`Total applications: ${result.total} — Updated ${new Date(result.updatedAt).toLocaleString()}`;
+  for(const item of result.stages){const line=document.createElement("p");line.textContent=`${item.stage}: ${item.count}`;root.append(line);}
+ } catch(error){summary.textContent=`Status report unavailable: ${error.message}`;}
+}
+byId("refreshStatusReport").addEventListener("click",loadCustomerStatusReport);
