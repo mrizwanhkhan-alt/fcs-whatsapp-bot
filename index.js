@@ -190,6 +190,12 @@ function sendMainMenu(number, language, verified) {
   const list = verified ? menuList(language) : null;
   const sendMenu = () => sendWhatsAppMessage(number, mainMenu(language), flow || list, flow ? list : null);
   const origin = process.env.RENDER_EXTERNAL_URL;
+  // Inbound webhook replies must be journaled as a single atomic dispatch intent.
+  // Sending menu artwork separately would bypass crash protection and can duplicate.
+  if (outboundReplies.getStore()?.attempt) {
+    sendMenu();
+    return;
+  }
   if (flow || !list || !origin?.startsWith("https://")) {
     sendMenu();
     return;
