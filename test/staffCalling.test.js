@@ -126,7 +126,8 @@ after(async () => {
 async function api(route, payload = {}, session = owner, token = secret) {
   const response = await fetch(base + "/api/staff-calling/" + route, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "X-Requested-With": "FCS-Calling",\n      Cookie: token === secret ? adminCookie : "__Host-fcs_admin=invalid" },
+    headers: { "Content-Type": "application/json", "X-Requested-With": "FCS-Calling",
+      Cookie: token === secret ? adminCookie : "__Host-fcs_admin=invalid" },
     body: JSON.stringify({ owner: session, ...payload })
   });
   return { status: response.status, body: await response.json() };
@@ -156,7 +157,11 @@ function incoming(id) {
 }
 
 test("staff routes require authorization and calling settings stay private", async () => {
-  assert.equal((await api("session", {}, owner, "incorrect")).status, 401);\n  const crossSite = await fetch(base + "/api/staff-calling/session", { method: "POST",\n    headers: { "Content-Type": "application/json", "X-Requested-With": "FCS-Calling",\n      "Sec-Fetch-Site": "cross-site", Cookie: adminCookie },\n    body: JSON.stringify({ owner }) });\n  assert.equal(crossSite.status, 403);
+  assert.equal((await api("session", {}, owner, "incorrect")).status, 401);
+  const crossSite = await fetch(base + "/api/staff-calling/session", { method: "POST",
+    headers: { "Content-Type": "application/json", "X-Requested-With": "FCS-Calling",\n      "Sec-Fetch-Site": "cross-site", Cookie: adminCookie },
+    body: JSON.stringify({ owner }) });
+  assert.equal(crossSite.status, 403);
   const { status, body } = await api("session");
   assert.equal(status, 200);
   assert.deepEqual(body.iceServers, []);
