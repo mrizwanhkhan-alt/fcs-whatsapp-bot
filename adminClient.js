@@ -105,6 +105,8 @@ function showSession(session) {
   byId("workspaceNav").hidden = !session.signedIn;
   byId("callingPanel").hidden = !session.signedIn;
   byId("reportsPanel").hidden = !session.signedIn;
+  byId("customerPanel").hidden = !session.signedIn;
+  if (!session.signedIn) { byId("customerResult").replaceChildren(); byId("customerStatus").textContent = ""; }
   if (session.signedIn) void loadProvinceCityReport();
   else byId("reportResults").replaceChildren();
   if (session.signedIn && !callingFrame.hasAttribute("src")) {
@@ -276,6 +278,37 @@ async function loadProvinceCityReport() {
   }
 }
 byId("refreshReport").addEventListener("click", loadProvinceCityReport);
+
+byId("customerForm").addEventListener("submit", event => {
+  event.preventDefault();
+  const button = event.submitter;
+  run(button, async () => {
+    const phone = byId("customerPhone").value.trim();
+    const result = await request("customer-lookup?phone=" + encodeURIComponent(phone));
+    const root = byId("customerResult");
+    root.replaceChildren();
+    if (phone !== byId("customerPhone").value.trim()) return;
+    if (!result.found) {
+      feedback("No matching customer application found.", false, byId("customerStatus"));
+      return;
+    }
+    feedback("Matching application found.", false, byId("customerStatus"));
+    for (const [label, value] of [
+      ["Sheet row", result.customer.rowNumber],
+      ["Province", result.customer.province],
+      ["City", result.customer.city],
+      ["Engagement stage", result.customer.engagementStage],
+      ["Last engagement", result.customer.lastEngagement],
+      ["Next follow-up", result.customer.nextFollowUp]
+    ]) {
+      const line = document.createElement("p");
+      const strong = document.createElement("strong");
+      strong.textContent = label + ": ";
+      line.append(strong, document.createTextNode(String(value || "—")));
+      root.append(line);
+    }
+  }, byId("customerStatus"));
+});
 
 request("session").then(session => {
   showSession(session);
