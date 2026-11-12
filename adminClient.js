@@ -116,6 +116,10 @@ function showSession(session) {
   byId("staffApplicationsTitle").textContent = info[4];
   byId("staffHome").hidden = !session.signedIn || isAdmin;
   for (const id of ["staffCustomerPanel", "staffReportsPanel", "staffApplicationsPanel"]) byId(id).hidden = !session.signedIn || isAdmin;
+  byId("staffSubscriptionLabel").textContent = session.subscription ? `Subscription: ${session.subscription.status} — expires ${session.subscription.expiresAt || "not configured"}` : "";
+  byId("subscriptionsPanel").hidden = !isAdmin;
+  if (isAdmin) void loadSubscriptions();
+  else byId("subscriptionsResults").replaceChildren();
   byId("territoryLabel").textContent = session.territory ? `Assigned territory: ${session.territory.province} — ${session.territory.cities.join(", ")}` : "";
   byId("staffGreeting").textContent = session.signedIn && !isAdmin
     ? `Signed in as ${session.staffId || "staff"} (${String(session.role).replaceAll("_", " ")})`
@@ -374,6 +378,22 @@ byId("customerForm").addEventListener("submit", event => {
     }
   }, byId("customerStatus"));
 });
+
+async function loadSubscriptions() {
+  const root = byId("subscriptionsResults");
+  const status = byId("subscriptionsStatus");
+  root.replaceChildren();
+  try {
+    const data = await request("subscriptions");
+    for (const account of data.accounts || []) {
+      const p = document.createElement("p");
+      p.textContent = `${account.id} — ${account.role} — ${account.status} — expires ${account.expiresAt || "not configured"}`;
+      root.append(p);
+    }
+    status.textContent = `${data.accounts.length} staff accounts configured.`;
+  } catch (error) { status.textContent = error.message; }
+}
+byId("refreshSubscriptions").addEventListener("click", loadSubscriptions);
 
 async function loadStaffReport() {
   const root = byId("staffReportResults");
