@@ -1,0 +1,70 @@
+{
+  "project": "FCS Express integrated admin",
+  "status": "planning-and-integration",
+  "modules": [
+    {
+      "id": "customer-history",
+      "status": "pending-verification",
+      "notes": "Track implementation and tests separately; do not mark active until verified."
+    },
+    {
+      "id": "live-customer-profile",
+      "status": "pending-verification",
+      "notes": "Track implementation and tests separately; do not mark active until verified."
+    },
+    {
+      "id": "province-city-report",
+      "status": "pending-verification",
+      "notes": "Track implementation and tests separately; do not mark active until verified."
+    },
+    {
+      "id": "dashboard",
+      "status": "pending-verification",
+      "notes": "Track implementation and tests separately; do not mark active until verified."
+    },
+    {
+      "id": "staff-accounts",
+      "status": "pending-verification",
+      "notes": "Track implementation and tests separately; do not mark active until verified."
+    },
+    {
+      "id": "calling-logs",
+      "status": "pending-verification",
+      "notes": "Track implementation and tests separately; do not mark active until verified."
+    },
+    {
+      "id": "messaging-logs",
+      "status": "pending-verification",
+      "notes": "Track implementation and tests separately; do not mark active until verified."
+    },
+    {
+      "id": "delivery-tracking",
+      "status": "pending-verification",
+      "notes": "Track implementation and tests separately; do not mark active until verified."
+    },
+    {
+      "id": "customer-engagement",
+      "status": "pending-verification",
+      "notes": "Track implementation and tests separately; do not mark active until verified."
+    },
+    {
+      "id": "data-backups",
+      "status": "pending-verification",
+      "notes": "Track implementation and tests separately; do not mark active until verified."
+    },
+    {
+      "id": "security-audit",
+      "status": "pending-verification",
+      "notes": "Track implementation and tests separately; do not mark active until verified."
+    },
+    {
+      "id": "cost-monitoring",
+      "status": "pending-verification",
+      "notes": "Track implementation and tests separately; do not mark active until verified."
+    }
+  ],
+  "constraints": [
+    "Preserve existing WhatsApp bot, calling and messaging",
+    "No live deployment before tests pass"
+  ]
+}
