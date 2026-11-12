@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "googleapis": "^144.0.0",
-    "openai": "^5.12.2"
+    "openai": "^5.12.2",
+    "pg": "^8.13.1"
   }
 }
