@@ -109,7 +109,8 @@ function iceServers() {
 
 function setState(call, state, duration) {
   call.state = state;
-  call.expires = Date.now() + duration;\n  if (call.id) trackCall(call);
+  call.expires = Date.now() + duration;
+  if (call.id) trackCall(call);
   if (duration === END_MS) {
     call.sdp = undefined;
   }
@@ -227,7 +228,8 @@ function recordEvent(event) {
     setState(call, incoming ? "incoming" : "dialing", RING_MS);
   }
   call.id = event.id;
-  calls.set(call.id, call);\n  trackCall(call);
+  calls.set(call.id, call);
+  trackCall(call);
 
   if (ended(call)) return;
   if (terminal) {
