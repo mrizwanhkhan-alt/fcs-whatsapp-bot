@@ -388,7 +388,34 @@ async function loadSubscriptions() {
     for (const account of data.accounts || []) {
       const p = document.createElement("p");
       p.textContent = `${account.id} — ${account.role} — ${account.status} — expires ${account.expiresAt || "not configured"}`;
-      root.append(p);
+      const calling = document.createElement("input");
+      calling.type = "checkbox";
+      calling.checked = account.permissions?.calling === true;
+      calling.disabled = account.status !== "active";
+      const recording = document.createElement("input");
+      recording.type = "checkbox";
+      recording.checked = account.permissions?.recording === true;
+      recording.disabled = account.status !== "active";
+      const callingLabel = document.createElement("label");
+      callingLabel.textContent = "Calling ON/OFF";
+      callingLabel.append(calling);
+      const recordingLabel = document.createElement("label");
+      recordingLabel.textContent = "Recording permission ON/OFF (recording engine pending)";
+      recordingLabel.append(recording);
+      calling.addEventListener("change", () => { if (!calling.checked) recording.checked = false; });
+      recording.addEventListener("change", () => { if (recording.checked) calling.checked = true; });
+      const save = document.createElement("button");
+      save.type = "button";
+      save.textContent = "Save Permissions";
+      save.disabled = account.status !== "active";
+      save.addEventListener("click", () => run(save, async () => {
+        const result = await request("calling-permissions", { id: account.id, calling: calling.checked, recording: recording.checked });
+        status.textContent = `${result.id}: permissions saved for this server session. Restart resets to configured defaults.`;
+      }, status));
+      const block = document.createElement("div");
+      block.append(p, callingLabel, recordingLabel, save);
+      block.style.marginBottom = "20px";
+      root.append(block);
     }
     status.textContent = `${data.accounts.length} staff accounts configured.`;
   } catch (error) { status.textContent = error.message; }
