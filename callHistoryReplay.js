@@ -56,6 +56,9 @@ async function replaySingleHistoryEvent(event) {
   if (!event?.id || !state) return;
   const saved = await getById(event.id);
   if (saved && terminalStates.has(saved.state)) return;
+  // Never regress an answered call to a late ringing or incoming event.
+  if (saved?.answeredAt && (state === "ringing" || state === "incoming")) return;
+  if (saved?.state === "accepted" && state === "ringing") return;
   const number = saved?.number || event.from || event.from_user_id;
   // Events without a caller number must wait for a prior event to provide it.
   if (!number) throw new Error("Missing caller number for call " + event.id);
