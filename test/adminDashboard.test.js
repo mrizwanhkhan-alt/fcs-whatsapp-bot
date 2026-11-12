@@ -55,6 +55,22 @@ before(async () => {
     server.listen = (_port, _host, callback) => listen(0, "127.0.0.1", callback);
     return server;
   };
+  // Isolate Admin integration tests from production Google Sheets configuration.
+  // Persistence behavior is covered separately by staffSettingsStore.test.js.
+  const settingsPath = require.resolve("../staffSettingsStore");
+  const testSettings = new Map([["agent01", {
+    calling: false, recording: false, active: true,
+    startsAt: "2026-01-01", expiresAt: "2099-12-31"
+  }]]);
+  require.cache[settingsPath] = {
+    id: settingsPath, filename: settingsPath, loaded: true,
+    exports: {
+      refreshSettings: async () => testSettings,
+      cachedSettings: () => testSettings,
+      listSettings: async () => new Map(testSettings),
+      saveSettings: async (id, settings) => { testSettings.set(id, settings); return settings; }
+    }
+  };
   try {
     require("../index");
   } finally {
