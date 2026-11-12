@@ -118,8 +118,8 @@ function showSession(session) {
   byId("branchesPanel").hidden = !isAdmin;
   byId("subscriptionPanel").hidden = !session.signedIn || isAdmin;
   byId("headOfficePanel").hidden = !isAdmin;
-  byId("networkExplorerPanel").hidden = !isAdmin;
-  if(isAdmin)void loadNetwork();
+  byId("networkExplorerPanel").hidden = !session.signedIn || (role !== "admin" && !session.identity?.branchId);
+  if(session.signedIn && (isAdmin || session.identity?.branchId))void loadNetwork();
   byId("securityAuditPanel").hidden = !isAdmin;
   if (isAdmin) void loadMessageActivity();
   if (isAdmin) void loadCustomerStatusReport();
