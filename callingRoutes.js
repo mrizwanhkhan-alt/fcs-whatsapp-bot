@@ -325,7 +325,8 @@ async function handleAction(route, body) {
         Object.assign(call, earlyEvent, { number, owner: body.owner });
       }
       call.id = id;
-      calls.set(id, call);\n      trackCall(call);
+      calls.set(id, call);
+      trackCall(call);
       return publicCall(call);
     } catch (error) {
       if (call.id) return publicCall(call);
@@ -355,7 +356,11 @@ async function handleAction(route, body) {
       ...(route === "session" && { iceServers: iceServers() }) };
   }
 
-  if (route === "history") {\n    return { history: Array.from(callHistory.values()).filter(item => item.owner === body.owner).reverse().slice(0, 100), persistent: false };\n  }\n\n  if (route === "offer") {
+  if (route === "history") {
+    return { history: Array.from(callHistory.values()).filter(item => item.owner === body.owner).reverse().slice(0, 100), persistent: false };
+  }
+
+  if (route === "offer") {
     const call = getCall(body.callId);
     if (call.state !== "incoming" || call.operation) fail(409, "This incoming call is no longer available.");
     return publicCall(call);
