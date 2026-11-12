@@ -128,7 +128,8 @@ function showSession(session) {
   byId("roleOverview").hidden = !isAdmin;
   logout.hidden = !session.signedIn;
   byId("workspaceNav").hidden = !isAdmin;
-  byId("callingPanel").hidden = !isAdmin;
+  const canCall = session.signedIn && session.callingPermissions?.calling === true;
+  byId("callingPanel").hidden = !canCall;
   byId("reportsPanel").hidden = !isAdmin;
   byId("customerPanel").hidden = !isAdmin;
   byId("applicationsPanel").hidden = !isAdmin;
@@ -136,9 +137,9 @@ function showSession(session) {
   if (isAdmin) { void loadProvinceCityReport(); void loadApplications(); }
   if (session.signedIn && !isAdmin) { void loadStaffReport(); void loadStaffApplications(); }
   else byId("reportResults").replaceChildren();
-  if (isAdmin && !callingFrame.hasAttribute("src")) {
+  if (canCall && !callingFrame.hasAttribute("src")) {
     callingFrame.src = "/admin/calling-panel";
-  } else if (!isAdmin) {
+  } else if (!canCall) {
     callingFrame.removeAttribute("src");
     showCallingAlert(false);
   }
