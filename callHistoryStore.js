@@ -4,6 +4,10 @@
 const { sheets } = require("./googleSheets");
 const { GOOGLE_SHEET_ID } = require("./config");
 const TAB = "FCS_Call_History";
+const { Pool } = require("pg");
+const historyPool = process.env.DATABASE_URL ? new Pool({connectionString:process.env.DATABASE_URL,
+  ssl:process.env.DATABASE_SSL === "disable" ? false : {rejectUnauthorized:true},max:3}) : null;
+if (historyPool) historyPool.on("error", error => console.error("Call history DB pool:",error.message));
 let setup;
 let queue = Promise.resolve();
 function unavailable(message) { return Object.assign(new Error(message), { status: 503 }); }
@@ -46,7 +50,20 @@ async function appendEvent(entry) {
       requestBody: { values: [[new Date().toISOString(),entry.id,entry.staffId || "",entry.owner || "",
         entry.number,entry.direction,entry.state,entry.startedAt || "",entry.answeredAt || "",entry.endedAt || ""]] } });
   };
-  const next = queue.then(job);
+  const guardedJob = async () => {
+    if (!historyPool) return job();
+    const client = await historyPool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [String(entry.id)]);
+      await job();
+      await client.query("COMMIT");
+    } catch(error) {
+      await client.query("ROLLBACK").catch(()=>{});
+      throw error;
+    } finally {client.release();}
+  };
+  const next = queue.then(guardedJob);
   queue = next.catch(() => {});
   return next;
 }
