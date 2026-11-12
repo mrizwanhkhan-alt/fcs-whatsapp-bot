@@ -12,6 +12,7 @@ const {
 const { getApplications } = require("./googleSheets");
 const { provinceCityReport } = require("./provinceCityReport");
 const { findCustomer } = require("./customerLookup");
+const { territoryOf, filterRows } = require("./staffTerritory");
 
 const COOKIE = "__Host-fcs_admin";
 const SESSION_MS = 8 * 60 * 60 * 1000;
@@ -33,9 +34,9 @@ function staffAccounts() {
     if (!entry || typeof entry.id !== "string" || !/^[a-zA-Z0-9_-]{3,40}$/.test(entry.id) ||
         ids.has(entry.id) || !allowed.has(entry.role)) return [];
     const hash = /^([a-f0-9]{32}):([a-f0-9]{128})$/.exec(entry.passwordHash || "");
-    if (!hash) return [];
+    if (!hash || !territoryOf(entry)) return [];
     ids.add(entry.id);
-    accounts.push({ id: entry.id, role: entry.role, hash });
+    accounts.push({ id: entry.id, role: entry.role, hash, territory: territoryOf(entry) });
   }
   return accounts;
 }
@@ -173,7 +174,7 @@ async function staffLogin(req, res, previousToken) {
   const token = crypto.randomBytes(32).toString("hex");
   sessions.set(token, {
     csrf: crypto.randomBytes(32).toString("hex"),
-    expires: Date.now() + SESSION_MS, role: account.role, staffId: account.id
+    expires: Date.now() + SESSION_MS, role: account.role, staffId: account.id, territory: account.territory
   });
   return respond(res, 200, { signedIn: true }, { "Set-Cookie": cookie(token, SESSION_MS / 1000) });
 }
@@ -272,7 +273,7 @@ async function adminDashboard(req, res, url) {
       const phone = url.searchParams.get("phone") || "";
       if (!/^\+?[0-9 ()-]{8,24}$/.test(phone)) fail(400, "Enter a valid customer phone number.");
       const rows = await getApplications();
-      const customer = findCustomer(rows, phone);
+      const customer = findCustomer(session.role === "super_admin" ? rows : filterRows(rows, session.territory), phone);
       return respond(res, 200, { found: Boolean(customer), customer });
     }
     if (req.method === "GET" && route === "/admin/application-records") {
@@ -283,13 +284,15 @@ async function adminDashboard(req, res, url) {
         province: String(row?.[8] ?? "").trim(),
         city: String(row?.[9] ?? "").trim(),
         stage: String(row?.[17] ?? "").trim() || "Not contacted"
-      })).filter(row => row.province || row.city || row.stage !== "Not contacted");
+      })).filter(row => (row.province || row.city || row.stage !== "Not contacted") &&
+        (session.role === "super_admin" || (session.territory &&
+          filterRows([[], rows[row.rowNumber - 1]], session.territory).length > 1)));
       return respond(res, 200, { total: records.length, records: records.slice(-100).reverse() });
     }
     if (req.method === "GET" && route === "/admin/province-city-report") {
       if (!session) fail(401, "Your session expired. Sign in again.");
       const rows = await getApplications();
-      return respond(res, 200, { provinces: provinceCityReport(rows), updatedAt: new Date().toISOString() });
+      return respond(res, 200, { provinces: provinceCityReport(session.role === "super_admin" ? rows : filterRows(rows, session.territory)), updatedAt: new Date().toISOString() });
     }
     if (req.method === "GET" && route === "/admin/delivery") {
       if (!session) fail(401, "Your session expired. Sign in again.");
@@ -301,7 +304,7 @@ async function adminDashboard(req, res, url) {
     }
     if (req.method === "GET" && route === "/admin/session") {
       if (!session) return respond(res, 200, { signedIn: false });
-      return respond(res, 200, { signedIn: true, csrf: session.csrf, role: session.role || "super_admin", staffId: session.staffId || null, templates: session.role === "super_admin" ? templates : [] });
+      return respond(res, 200, { signedIn: true, csrf: session.csrf, role: session.role || "super_admin", staffId: session.staffId || null, territory: session.role === "super_admin" ? null : session.territory, templates: session.role === "super_admin" ? templates : [] });
     }
 
     if (req.method !== "POST" ||
