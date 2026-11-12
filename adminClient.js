@@ -101,6 +101,7 @@ function showSession(session) {
   templates = session.templates || [];
   byId("loginPanel").hidden = session.signedIn;
   byId("composePanel").hidden = !session.signedIn;
+  byId("roleOverview").hidden = !session.signedIn;
   logout.hidden = !session.signedIn;
   byId("workspaceNav").hidden = !session.signedIn;
   byId("callingPanel").hidden = !session.signedIn;
