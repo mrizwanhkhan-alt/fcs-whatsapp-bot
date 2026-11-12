@@ -910,14 +910,21 @@ const server = http.createServer((req, res) => {
             // EXISTING WHATSAPP MESSAGES
 
             for (const message of value.messages || []) {
-              if (!verifiedMessage || !claimRecentMessage(message.id)) continue;
+              if (!verifiedMessage) continue;
+              let claimed = false;
+              const inbox = require("./messageInbox");
               try {
+                if (inbox.enabled) claimed = await inbox.claim(message.id);
+                else claimed = claimRecentMessage(message.id);
+                if (!claimed) continue;
                 await processMessage(message, verifiedMessage);
+                if (inbox.enabled) await inbox.complete(message.id);
               } catch (error) {
-                console.error(
-                  "Message Processing Error:",
-                  error
-                );
+                console.error("Message Processing Error:", error);
+                if (claimed && inbox.enabled) {
+                  try { await inbox.fail(message.id, error); }
+                  catch (recordError) { console.error("Message inbox error:", recordError); }
+                }
               }
             }
           }
