@@ -41,6 +41,7 @@ function staffAccounts() {
   }
   return accounts;
 }
+const permissionOverrides = new Map(); // Runtime controls reset on server restart; persistent defaults remain STAFF_ACCOUNTS_JSON.
 const sessions = new Map();
 const loginAttempts = [];
 let sendsInProgress = 0;
@@ -187,13 +188,17 @@ async function staffLogin(req, res, previousToken) {
   return respond(res, 200, { signedIn: true }, { "Set-Cookie": cookie(token, SESSION_MS / 1000) });
 }
 
+function effectivePermissions(account) {
+  return permissionOverrides.get(account.id) || account.permissions;
+}
+
 function callingAccess(req) {
   const session = activeSession(tokenFrom(req));
   if (!session) return null;
   if (session.role === "super_admin") return { role: "super_admin", calling: true, recording: false };
   const account = staffAccounts().find(item => item.id === session.staffId);
   if (!account || account.role !== session.role || account.subscription.status !== "active") return null;
-  return { role: account.role, calling: account.permissions.calling, recording: account.permissions.recording, staffId: account.id };
+  return { role: account.role, calling: effectivePermissions(account).calling, recording: effectivePermissions(account).recording, staffId: account.id };
 }
 
 function prepare(input, binary) {
@@ -328,7 +333,7 @@ async function adminDashboard(req, res, url) {
       if (!session) fail(401, "Your session expired. Sign in again.");
       if (session.role !== "super_admin") fail(403, "Super Admin access required.");
       return respond(res, 200, { accounts: staffAccounts().map(account => ({
-        id: account.id, role: account.role, territory: account.territory, permissions: account.permissions, ...account.subscription
+        id: account.id, role: account.role, territory: account.territory, permissions: effectivePermissions(account), ...account.subscription
       })) });
     }
     if (req.method === "GET" && route === "/admin/session") {
@@ -337,7 +342,7 @@ async function adminDashboard(req, res, url) {
     }
 
     if (req.method !== "POST" ||
-        !["/admin/login", "/admin/staff-login", "/admin/logout", "/admin/window", "/admin/send"].includes(route)) {
+        !["/admin/login", "/admin/staff-login", "/admin/logout", "/admin/window", "/admin/send", "/admin/calling-permissions"].includes(route)) {
       fail(404, "Page not found.");
     }
 
@@ -361,6 +366,13 @@ async function adminDashboard(req, res, url) {
       return respond(res, 200, { signedIn: false }, { "Set-Cookie": cookie("", 0) });
     }
     if (session.role !== "super_admin") fail(403, "This tool requires Super Admin access.");
+    if (route === "/admin/calling-permissions") {
+      const { id, calling, recording } = await readJSON(req);
+      const account = staffAccounts().find(item => item.id === id);
+      if (!account || typeof calling !== "boolean" || typeof recording !== "boolean" || (recording && !calling)) fail(400, "Invalid staff calling permissions.");
+      permissionOverrides.set(id, { calling, recording });
+      return respond(res, 200, { id, permissions: effectivePermissions(account), persistent: false });
+    }
     if (route === "/admin/window") {
       const number = recipient((await readJSON(req)).number);
       checkRecipient(number, "template");
