@@ -64,6 +64,9 @@
       <a href="#composePanel">Messages &amp; attachments</a>
       <a id="callingLink" href="#callingPanel" aria-live="polite">Calling</a>
       <a href="#reportsPanel">Cities</a>
+      <a href="#customerPanel">Customers</a>
+      <a href="#statusReportPanel">Statuses</a>
+      <a href="#messageActivityPanel">Message activity</a>
     </nav>
 
     <section id="composePanel" hidden>
@@ -105,6 +108,7 @@
       <form id="customerLookupForm"><label>Customer phone number<input id="customerPhone" type="tel" autocomplete="off" required></label><button type="submit">Find customer</button></form>
       <p id="customerLookupStatus" role="status"></p><div id="customerLookupResult"></div>
     </section>
+    <section id="messageActivityPanel" hidden><h1>Messaging &amp; Delivery Activity</h1><button id="refreshMessageActivity" type="button" class="secondary">Refresh activity</button><p id="messageActivityStatus" role="status"></p><div id="messageActivityResults"></div><p class="hint">Recent activity only. Records reset when the server restarts.</p></section>
     <section id="statusReportPanel" hidden><h1>Customer Status Tracking</h1><button id="refreshStatusReport" type="button" class="secondary">Refresh status</button><p id="customerStatusSummary" role="status"></p><div id="customerStatusResults"></div></section>
     <section id="reportsPanel" hidden>
       <h1>Province &amp; City Applications</h1>
