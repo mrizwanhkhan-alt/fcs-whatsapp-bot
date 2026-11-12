@@ -233,6 +233,11 @@ function recordEvent(event) {
     Object.assign(outbound, existing, { owner: outbound.owner, number: outbound.number });
   }
   let call = outbound || existing;
+  const terminalEvent = event.event === "terminate" || ["REJECTED", "FAILED"].includes(event.status);
+  // Install the tombstone synchronously, before any asynchronous Sheets lookup.
+  if (!call && terminalEvent && !event.from && !event.from_user_id) {
+    calls.set(event.id, { id: event.id, state: "ended", expires: Date.now() + END_MS });
+  }
   // A restart clears in-memory call details. Recover terminal webhook metadata
   // from durable history before recording the final state.
   if (!call && (event.event === "terminate" || event.status === "REJECTED" || event.status === "FAILED") &&
@@ -243,15 +248,14 @@ function recordEvent(event) {
         return;
       }
       const current = calls.get(event.id);
-      if (current?.number) return;
+      if (current?.number && ended(current)) return;
       const recovered = { ...saved, id: event.id, number: saved.number,
         state: event.status === "REJECTED" ? "rejected" : event.status === "FAILED" ? "failed" : "ended" };
       calls.set(event.id, recovered);
       trackCall(recovered);
     }).catch(error => {
       console.error("Call history recovery failed:", error.message);
-      // Keep a tombstone even when the lookup is unavailable; a late offer must not reopen it.
-      calls.set(event.id, { id: event.id, state: "ended", expires: Date.now() + END_MS });
+      // Preserve the tombstone and allow a later journal replay to retry recovery.
     });
     return;
   }
