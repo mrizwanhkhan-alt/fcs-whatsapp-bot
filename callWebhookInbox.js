@@ -5,6 +5,12 @@ const crypto = require("node:crypto");
 const { sheets } = require("./googleSheets");
 const { GOOGLE_SHEET_ID } = require("./config");
 const TAB = "FCS_Call_Webhook_Inbox";
+function canonical(value) {
+  if (Array.isArray(value)) return value.map(canonical);
+  if (value && typeof value === "object") return Object.fromEntries(
+    Object.keys(value).sort().map(key => [key, canonical(value[key])]));
+  return value;
+}
 let setup;
 let queue = Promise.resolve();
 async function ensureTab() {
@@ -35,7 +41,7 @@ async function saveVerifiedEvents(events) {
     const keys = new Set((result.data.values || []).map(row => row[0]));
     const rows = [];
     for (const event of events) {
-      const payload = JSON.stringify(event);
+      const payload = JSON.stringify(canonical(event));
       const key = crypto.createHash("sha256").update(payload).digest("hex");
       if (keys.has(key)) continue;
       keys.add(key);
