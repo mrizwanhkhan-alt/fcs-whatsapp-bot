@@ -24,11 +24,12 @@ async function setup() {
   if (!ready) ready = pool.query(`CREATE TABLE IF NOT EXISTS fcs_call_events (
     event_key text PRIMARY KEY, call_id text NOT NULL, payload jsonb NOT NULL,
     received_at timestamptz NOT NULL DEFAULT now(), processed_at timestamptz,
-    attempts integer NOT NULL DEFAULT 0, last_error text, quarantined_at timestamptz
+    attempts integer NOT NULL DEFAULT 0, last_error text, quarantined_at timestamptz, next_retry_at timestamptz
   )`).catch(e => {ready=null;throw e;});
   await ready;
   await pool.query("ALTER TABLE fcs_call_events ADD COLUMN IF NOT EXISTS last_error text");
   await pool.query("ALTER TABLE fcs_call_events ADD COLUMN IF NOT EXISTS quarantined_at timestamptz");
+  await pool.query("ALTER TABLE fcs_call_events ADD COLUMN IF NOT EXISTS next_retry_at timestamptz");
 }
 async function save(events) {
   if (!events.length) return;
@@ -48,7 +49,7 @@ async function save(events) {
 async function replay(handler, limit = 100) {
   await setup();
   const {rows} = await pool.query(`SELECT event_key FROM fcs_call_events
-    WHERE processed_at IS NULL AND quarantined_at IS NULL
+    WHERE processed_at IS NULL AND quarantined_at IS NULL AND (next_retry_at IS NULL OR next_retry_at <= now())
     ORDER BY received_at,event_key LIMIT $1`,[limit]);
   let processed=0;
   for (const candidate of rows) {
@@ -62,12 +63,13 @@ async function replay(handler, limit = 100) {
       const row=locked.rows[0];
       try {
         await handler(row.payload);
-        await client.query("UPDATE fcs_call_events SET processed_at=now(),attempts=attempts+1,last_error=NULL WHERE event_key=$1",[row.event_key]);
+        await client.query("UPDATE fcs_call_events SET processed_at=now(),attempts=attempts+1,last_error=NULL,next_retry_at=NULL WHERE event_key=$1",[row.event_key]);
         processed++;
       } catch(error) {
         const attempts=Number(row.attempts)+1;
         await client.query(`UPDATE fcs_call_events SET attempts=$2,last_error=$3,
-          quarantined_at=CASE WHEN $2 >= 5 THEN now() ELSE NULL END WHERE event_key=$1`,
+          quarantined_at=CASE WHEN $2 >= 5 THEN now() ELSE NULL END,
+          next_retry_at=CASE WHEN $2 >= 5 THEN NULL ELSE now()+make_interval(secs => LEAST(300,POWER(2,$2)::int)) END WHERE event_key=$1`,
           [row.event_key,attempts,String(error.message).slice(0,500)]);
         console.error("Call event replay failed:",row.event_key,error.message);
       }
