@@ -13,7 +13,7 @@ const {
 } = require("./staffCalling");
 
 const { callingAccess, refreshSettings } = require("./adminDashboard");
-const { appendEvent, listHistory } = require("./callHistoryStore");
+const { appendEvent, listHistory, getById } = require("./callHistoryStore");
 const APP_SECRET = process.env.META_APP_SECRET || "";
 const TEMPLATE = process.env.CALL_PERMISSION_TEMPLATE_NAME || "";
 const ICE_SERVERS = process.env.STAFF_CALLING_ICE_SERVERS;
@@ -41,7 +41,20 @@ function trackCall(call) {
   if (ended(call) && !entry.endedAt) entry.endedAt = new Date().toISOString();
   const changed = !previous || previous.state !== entry.state || previous.owner !== entry.owner || previous.staffId !== entry.staffId;
   callHistory.set(call.id, entry);
-  if (changed) appendEvent(entry).catch(error => console.error("Call history persistence failed:", error.message));
+  if (changed) appendEvent(entry).catch(error => {
+    console.error("Call history persistence failed:", error.message);
+    // Retry transient Sheets failures while this process remains alive.
+    const retry = async (attempt) => {
+      try { await appendEvent(entry); }
+      catch (err) {
+        if (attempt >= 5) return console.error("Call history retry exhausted:", entry.id, err.message);
+        const timer = setTimeout(() => retry(attempt + 1), Math.min(60000, 1000 * 2 ** attempt));
+        timer.unref?.();
+      }
+    };
+    const timer = setTimeout(() => retry(1), 1000);
+    timer.unref?.();
+  });
   while (callHistory.size > HISTORY_LIMIT) callHistory.delete(callHistory.keys().next().value);
 }
 
@@ -220,6 +233,21 @@ function recordEvent(event) {
     Object.assign(outbound, existing, { owner: outbound.owner, number: outbound.number });
   }
   let call = outbound || existing;
+  // A restart clears in-memory call details. Recover terminal webhook metadata
+  // from durable history before recording the final state.
+  if (!call && (event.event === "terminate" || event.status === "REJECTED" || event.status === "FAILED") &&
+      !event.from && !event.from_user_id) {
+    getById(event.id).then(saved => {
+      if (!saved) return;
+      const current = calls.get(event.id);
+      if (current?.number) return;
+      const recovered = { ...saved, id: event.id, number: saved.number,
+        state: event.status === "REJECTED" ? "rejected" : event.status === "FAILED" ? "failed" : "ended" };
+      calls.set(event.id, recovered);
+      trackCall(recovered);
+    }).catch(error => console.error("Call history recovery failed:", error.message));
+    return;
+  }
   const type = event.session?.sdp_type;
   const incoming = event.event === "connect" && type === "offer" && validSDP(event.session.sdp);
   const terminal = event.event === "terminate" || event.status === "REJECTED";
