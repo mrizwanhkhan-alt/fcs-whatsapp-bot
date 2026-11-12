@@ -12,7 +12,7 @@ const {
   REPRESENTATIVE_REQUEST_MINUTES
 } = require("./staffCalling");
 
-const { callingAccess } = require("./adminDashboard");
+const { callingAccess, refreshSettings } = require("./adminDashboard");
 const APP_SECRET = process.env.META_APP_SECRET || "";
 const TEMPLATE = process.env.CALL_PERMISSION_TEMPLATE_NAME || "";
 const ICE_SERVERS = process.env.STAFF_CALLING_ICE_SERVERS;
@@ -353,6 +353,10 @@ async function callingRoutes(req, res, url) {
   const site = req.headers["sec-fetch-site"];
   if ((site && site !== "same-origin" && site !== "none") || req.headers["x-requested-with"] !== "FCS-Calling") {
     sendJSON(res, 403, { success: false, error: "Cross-origin calling request denied." });
+    return;
+  }
+  try { await refreshSettings(); } catch {
+    sendJSON(res, 503, { success: false, error: "Staff access settings unavailable." });
     return;
   }
   const access = callingAccess(req);
