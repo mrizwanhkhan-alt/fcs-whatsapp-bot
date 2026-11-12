@@ -56,6 +56,20 @@ const { isBlocked } = require("./blockedUsers");
 const faqMode = new Set();
 const tenderMode = new Set();
 
+// Suppress duplicate Meta message deliveries within this process, including
+// retries of mixed call/message webhooks after a calling journal outage.
+// A durable cross-process inbox is still required for exactly-once effects.
+const recentMessageIds = new Map();
+function claimRecentMessage(id) {
+  if (!id) return true;
+  const now = Date.now();
+  for (const [key, expiry] of recentMessageIds) if (expiry <= now) recentMessageIds.delete(key);
+  if (recentMessageIds.has(id)) return false;
+  recentMessageIds.set(id, now + 24 * 60 * 60 * 1000);
+  return true;
+}
+
+
 const PORT = config.PORT;
 const VERIFY_TOKEN = config.VERIFY_TOKEN;
 const PHONE_NUMBER_ID = config.PHONE_NUMBER_ID;
@@ -896,6 +910,7 @@ const server = http.createServer((req, res) => {
             // EXISTING WHATSAPP MESSAGES
 
             for (const message of value.messages || []) {
+              if (!verifiedMessage || !claimRecentMessage(message.id)) continue;
               try {
                 await processMessage(message, verifiedMessage);
               } catch (error) {
