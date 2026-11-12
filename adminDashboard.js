@@ -5,7 +5,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { promisify } = require("node:util");
 const {
-  attachment, checkRecipient, deliveryStatus, fail, prepareMessage, recipient,
+  attachment, checkRecipient, deliveryStatus, recentDeliveryStatuses, fail, prepareMessage, recipient,
   sendAdminMessage, templates, windowExpiry
 } = require("./adminMessaging");
 
@@ -236,6 +236,10 @@ async function adminDashboard(req, res, url) {
       if (!session) fail(401, "Your session expired. Sign in again.");
       const rows = await getApplications();
       return respond(res, 200, { provinces: provinceCityReport(rows), updatedAt: new Date().toISOString() });
+    }
+    if (req.method === "GET" && route === "/admin/message-activity") {
+      if (!session) fail(401, "Your session expired. Sign in again.");
+      return respond(res, 200, { messages: recentDeliveryStatuses(), note: "Recent in-memory activity only; not a permanent archive." });
     }
     if (req.method === "GET" && route === "/admin/delivery") {
       if (!session) fail(401, "Your session expired. Sign in again.");
