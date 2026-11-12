@@ -1,7 +1,7 @@
 "use strict";
 
 const { PHONE_NUMBER_ID, WHATSAPP_TOKEN } = require("./config");
-const { isVerifiedMetaWebhook } = require("./callingRoutes");
+// Resolve webhook verification at call time to avoid a circular require during startup.
 const { normalizeNumber } = require("./staffCalling");
 const { isBlocked } = require("./blockedUsers");
 
@@ -54,7 +54,7 @@ function fail(status, message) {
 
 function recordAdminWindows(data, rawBody, signature) {
   if (data?.object !== "whatsapp_business_account" ||
-      !PHONE_NUMBER_ID || !isVerifiedMetaWebhook(rawBody, signature)) return;
+      !PHONE_NUMBER_ID || !require("./callingRoutes").isVerifiedMetaWebhook(rawBody, signature)) return;
 
   const now = Date.now();
   if (now >= nextPrune) {
