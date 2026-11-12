@@ -463,11 +463,10 @@ for(const [id,filter] of [["showBusinessCenters","business_center"],["showFranch
 byId("branchEditor").addEventListener("submit",async event=>{
  event.preventDefault();
  const status=byId("branchesStatus");
- const payload={id:byId("branchIdInput").value.trim(),city:byId("branchCityInput").value.trim(),location:byId("branchLocationInput").value.trim(),branchType:byId("branchTypeInput").value,parentBusinessCenterId:byId("branchParentInput").value.trim()||null};
+ const payload={id:byId("branchIdInput").value.trim(),city:byId("branchCityInput").value.trim(),location:byId("branchLocationInput").value.trim(),province:byId("branchProvinceInput").value.trim(),branchType:byId("branchTypeInput").value,parentBusinessCenterId:byId("branchParentInput").value.trim()||null};
  const button=event.submitter;
  await run(button,async()=>{
-  if(branchEditorMode==="edit")throw new Error("Edit is not available until the database edit operation is implemented.");
-  await request("branch-create",payload);
+  await request(branchEditorMode==="edit"?"branch-edit":"branch-create",payload);
   byId("branchEditor").reset();byId("branchEditor").hidden=true;
   await loadBranches();
  },status);
