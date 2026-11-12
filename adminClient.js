@@ -115,6 +115,7 @@ function showSession(session) {
   byId("backupPanel").hidden = !isAdmin;
   byId("callingLogsPanel").hidden = !session.signedIn;
   byId("staffIdsPanel").hidden = !isAdmin;
+  byId("branchesPanel").hidden = !isAdmin;
   byId("securityAuditPanel").hidden = !isAdmin;
   if (session.signedIn) void loadMessageActivity();
   if (session.signedIn) void loadCustomerStatusReport();
@@ -386,3 +387,11 @@ async function loadStaffIds(){
  }catch(error){status.textContent=`Staff list unavailable: ${error.message}`;}
 }
 byId("refreshStaffIds").addEventListener("click",loadStaffIds);
+
+async function loadBranches(){
+ const status=byId("branchesStatus"),root=byId("branchesResults");status.textContent="Loading branches…";root.replaceChildren();
+ try{const data=await request("branches");status.textContent=`${data.branches.length} configured branches`;
+ for(const branch of data.branches){const p=document.createElement("p");p.textContent=`${branch.id} — ${branch.city}, ${branch.location} — Staff ${branch.staffCount}/${branch.staffLimit}`;root.append(p);}
+ }catch(error){status.textContent=`Branches unavailable: ${error.message}`;}
+}
+byId("refreshBranches").addEventListener("click",loadBranches);
