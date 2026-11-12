@@ -13,6 +13,8 @@ const { getApplications } = require("./googleSheets");
 const { provinceCityReport } = require("./provinceCityReport");
 const { findCustomer } = require("./customerLookup");
 const { customerStatusReport } = require("./customerStatusReport");
+const { updateEngagement } = require("./googleSheets");
+const { recordAudit, recentAudit } = require("./securityAudit");
 
 const COOKIE = "__Host-fcs_admin";
 const SESSION_MS = 8 * 60 * 60 * 1000;
@@ -228,6 +230,10 @@ async function adminDashboard(req, res, url) {
       const customer = findCustomer(await getApplications(), phone);
       return respond(res, 200, { customer });
     }
+    if (req.method === "GET" && route === "/admin/security-audit") {
+      if (!session) fail(401, "Your session expired. Sign in again.");
+      return respond(res, 200, { events: recentAudit(), persistent: false });
+    }
     if (req.method === "GET" && route === "/admin/customer-status-report") {
       if (!session) fail(401, "Your session expired. Sign in again.");
       return respond(res, 200, { ...customerStatusReport(await getApplications()), updatedAt: new Date().toISOString() });
@@ -255,7 +261,7 @@ async function adminDashboard(req, res, url) {
     }
 
     if (req.method !== "POST" ||
-        !["/admin/login", "/admin/logout", "/admin/window", "/admin/send"].includes(route)) {
+        !["/admin/login", "/admin/logout", "/admin/window", "/admin/send", "/admin/customer-engagement"].includes(route)) {
       fail(404, "Page not found.");
     }
 
@@ -271,8 +277,23 @@ async function adminDashboard(req, res, url) {
     if (!session) fail(401, "Your session expired. Sign in again.");
     if (req.headers["x-admin-request"] !== session.csrf) fail(403, "Invalid session request.");
     if (route === "/admin/logout") {
+      recordAudit("admin.logout", "success");
       sessions.delete(token);
       return respond(res, 200, { signedIn: false }, { "Set-Cookie": cookie("", 0) });
+    }
+    if (route === "/admin/customer-engagement") {
+      const data = await readJSON(req);
+      const rowNumber = data.rowNumber;
+      const stage = data.stage;
+      const nextDate = data.nextDate || "";
+      if (!Number.isSafeInteger(rowNumber) || rowNumber < 2 || rowNumber > 1000000 ||
+          typeof stage !== "string" || !/^[\\p{L}\\p{N} ._()/-]{1,80}$/u.test(stage) ||
+          typeof nextDate !== "string" || (nextDate && !/^\\d{4}-\\d{2}-\\d{2}$/.test(nextDate))) fail(400, "Invalid engagement details.");
+      const rows = await getApplications();
+      if (rowNumber > rows.length || !Array.isArray(rows[rowNumber - 1]) || !rows[rowNumber - 1].some(v => String(v ?? "").trim())) fail(404, "Application row not found.");
+      await updateEngagement(rowNumber, stage.trim(), nextDate);
+      recordAudit("customer.engagement", "success", "row " + rowNumber);
+      return respond(res, 200, { saved: true, rowNumber });
     }
     if (route === "/admin/window") {
       const number = recipient((await readJSON(req)).number);
