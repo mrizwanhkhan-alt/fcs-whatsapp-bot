@@ -86,24 +86,24 @@
       <button id="showAdminLogin" class="secondary" type="button">Admin login</button>
     </section>
     <section id="staffHome" hidden>
-      <h1>Staff Workspace</h1>
+      <h1 id="staffWorkspaceTitle">Staff Workspace</h1>
       <p id="staffGreeting"></p>
       <p id="territoryLabel" class="hint"></p>
-      <p class="hint">Read-only customer records and reports are restricted to your assigned territory. Messaging and calling remain Super Admin-only.</p>
+      <p id="staffWorkspaceDescription" class="hint">Read-only customer records and reports are restricted to your assigned territory. Messaging and calling remain Super Admin-only.</p>
       <a href="#staffCustomerPanel">Customer Search</a> · <a href="#staffReportsPanel">Territory Reports</a> · <a href="#staffApplicationsPanel">Applications</a>
     </section>
     <section id="staffCustomerPanel" hidden>
-      <h1>Territory Customer Search</h1>
+      <h1 id="staffCustomerTitle">Territory Customer Search</h1>
       <form id="staffCustomerForm"><label>Customer phone <input id="staffCustomerPhone" type="tel" maxlength="24" required></label><button type="submit">Search</button></form>
       <p id="staffCustomerStatus" role="status"></p><div id="staffCustomerResults"></div>
     </section>
     <section id="staffReportsPanel" hidden>
-      <h1>My Territory Report</h1>
+      <h1 id="staffReportTitle">My Territory Report</h1>
       <button id="staffRefreshReport" type="button">Refresh</button>
       <p id="staffReportStatus" role="status"></p><div id="staffReportResults"></div>
     </section>
     <section id="staffApplicationsPanel" hidden>
-      <h1>My Territory Applications</h1>
+      <h1 id="staffApplicationsTitle">My Territory Applications</h1>
       <button id="staffRefreshApplications" type="button">Refresh</button>
       <p id="staffApplicationsStatus" role="status"></p><div id="staffApplicationsResults"></div>
     </section>
@@ -117,12 +117,12 @@
 
     <section id="roleOverview" hidden>
       <h1>FCS Express — Control Center</h1>
-      <p class="hint">Four workspaces. Only Super Admin tools are currently available; staff access requires separate secure login and permissions.</p>
+      <p class="hint">Four role-specific workspaces with separate sign-in and territory-limited staff access.</p>
       <div class="roleGrid">
         <a class="roleCard" href="#customerPanel"><strong>Super Admin</strong><small>Customer search, reports, messaging and calling</small></a>
-        <div class="roleCard pending"><strong>Business Center</strong><small>Staff access pending</small></div>
-        <div class="roleCard pending"><strong>Franchise</strong><small>Staff access pending</small></div>
-        <div class="roleCard pending"><strong>Communicator</strong><small>Staff access pending</small></div>
+        <div class="roleCard"><strong>Business Center</strong><small>Territory applications, customer search and city reports — staff login</small></div>
+        <div class="roleCard"><strong>Franchise</strong><small>Assigned city applications, customer search and reports — staff login</small></div>
+        <div class="roleCard"><strong>Communicator</strong><small>Territory customer lookup and application follow-up view — staff login</small></div>
       </div>
       <h2>Quick actions</h2>
       <div class="quickGrid" aria-label="Admin quick actions">
