@@ -21,15 +21,17 @@ function keyFor(event) {
 let ready;
 async function setup() {
   if (!pool) throw new Error("DATABASE_URL is required for transactional call journal");
-  if (!ready) ready = pool.query(`CREATE TABLE IF NOT EXISTS fcs_call_events (
-    event_key text PRIMARY KEY, call_id text NOT NULL, payload jsonb NOT NULL,
-    received_at timestamptz NOT NULL DEFAULT now(), processed_at timestamptz,
-    attempts integer NOT NULL DEFAULT 0, last_error text, quarantined_at timestamptz, next_retry_at timestamptz
-  )`).catch(e => {ready=null;throw e;});
+  if (!ready) ready = (async () => {
+    await pool.query(`CREATE TABLE IF NOT EXISTS fcs_call_events (
+      event_key text PRIMARY KEY, call_id text NOT NULL, payload jsonb NOT NULL,
+      received_at timestamptz NOT NULL DEFAULT now(), processed_at timestamptz,
+      attempts integer NOT NULL DEFAULT 0, last_error text, quarantined_at timestamptz, next_retry_at timestamptz
+    )`);
+    await pool.query("ALTER TABLE fcs_call_events ADD COLUMN IF NOT EXISTS last_error text");
+    await pool.query("ALTER TABLE fcs_call_events ADD COLUMN IF NOT EXISTS quarantined_at timestamptz");
+    await pool.query("ALTER TABLE fcs_call_events ADD COLUMN IF NOT EXISTS next_retry_at timestamptz");
+  })().catch(error => { ready = null; throw error; });
   await ready;
-  await pool.query("ALTER TABLE fcs_call_events ADD COLUMN IF NOT EXISTS last_error text");
-  await pool.query("ALTER TABLE fcs_call_events ADD COLUMN IF NOT EXISTS quarantined_at timestamptz");
-  await pool.query("ALTER TABLE fcs_call_events ADD COLUMN IF NOT EXISTS next_retry_at timestamptz");
 }
 async function save(events) {
   if (!events.length) return;
