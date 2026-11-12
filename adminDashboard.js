@@ -12,6 +12,7 @@ const {
 const { getApplications } = require("./googleSheets");
 const { provinceCityReport } = require("./provinceCityReport");
 const { findCustomer } = require("./customerLookup");
+const { customerStatusReport } = require("./customerStatusReport");
 
 const COOKIE = "__Host-fcs_admin";
 const SESSION_MS = 8 * 60 * 60 * 1000;
@@ -226,6 +227,10 @@ async function adminDashboard(req, res, url) {
       if (!/^[+()\d\s-]{7,24}$/.test(phone)) fail(400, "Enter a valid phone number.");
       const customer = findCustomer(await getApplications(), phone);
       return respond(res, 200, { customer });
+    }
+    if (req.method === "GET" && route === "/admin/customer-status-report") {
+      if (!session) fail(401, "Your session expired. Sign in again.");
+      return respond(res, 200, { ...customerStatusReport(await getApplications()), updatedAt: new Date().toISOString() });
     }
     if (req.method === "GET" && route === "/admin/province-city-report") {
       if (!session) fail(401, "Your session expired. Sign in again.");
