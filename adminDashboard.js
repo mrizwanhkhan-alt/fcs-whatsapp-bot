@@ -228,6 +228,17 @@ async function adminDashboard(req, res, url) {
       const customer = findCustomer(rows, phone);
       return respond(res, 200, { found: Boolean(customer), customer });
     }
+    if (req.method === "GET" && route === "/admin/application-records") {
+      if (!session) fail(401, "Your session expired. Sign in again.");
+      const rows = await getApplications();
+      const records = rows.slice(1).map((row, index) => ({
+        rowNumber: index + 2,
+        province: String(row?.[8] ?? "").trim(),
+        city: String(row?.[9] ?? "").trim(),
+        stage: String(row?.[17] ?? "").trim() || "Not contacted"
+      })).filter(row => row.province || row.city || row.stage !== "Not contacted");
+      return respond(res, 200, { total: records.length, records: records.slice(-100).reverse() });
+    }
     if (req.method === "GET" && route === "/admin/province-city-report") {
       if (!session) fail(401, "Your session expired. Sign in again.");
       const rows = await getApplications();
