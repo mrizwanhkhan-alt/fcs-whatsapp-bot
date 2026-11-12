@@ -27,7 +27,7 @@ before(async () => {
   Object.assign(process.env, {
     ADMIN_PASSWORD_HASH: salt.toString("hex") + ":" + crypto.scryptSync(password, salt, 64).toString("hex"),
     STAFF_ACCOUNTS_JSON: JSON.stringify([{
-      id: "agent01", role: "communicator",
+      id: "agent01", role: "communicator", territory: { province: "Punjab", cities: ["Lahore"] },
       passwordHash: salt.toString("hex") + ":" + crypto.scryptSync("test-staff-secret", salt, 64).toString("hex")
     }]),
     ADMIN_WHATSAPP_TEMPLATES: JSON.stringify([
@@ -284,9 +284,16 @@ test("staff accounts sign in with separate credentials and cannot access admin t
   assert.equal(session.role, "communicator");
   assert.equal(session.staffId, "agent01");
   assert.deepEqual(session.templates, []);
-  for (const route of ["customer-lookup?phone=923001234567", "application-records", "province-city-report", "calling-panel"]) {
+  assert.deepEqual(session.territory, { province: "Punjab", cities: ["Lahore"] });
+  for (const route of ["calling-panel"]) {
     const response = await realFetch(base + "/admin/" + route, { headers: { Cookie: staffCookie } });
     assert.equal(response.status, 403, route);
+  }
+  for (const route of ["customer-lookup?phone=923001234567", "application-records", "province-city-report"]) {
+    const response = await realFetch(base + "/admin/" + route, { headers: { Cookie: staffCookie } });
+    // Google Sheets is mocked only for messaging tests, so a sheet failure is possible;
+    // these routes must never return an authorization error for a scoped staff account.
+    assert.notEqual(response.status, 403, route);
   }
   const denied = await realFetch(base + "/admin/send", {
     method: "POST",
