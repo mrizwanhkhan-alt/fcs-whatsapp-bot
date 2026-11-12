@@ -19,11 +19,21 @@ async function setup() {
     await pool.query("ALTER TABLE fcs_message_inbox ADD COLUMN IF NOT EXISTS next_retry_at timestamptz");
     await pool.query("ALTER TABLE fcs_message_inbox ADD COLUMN IF NOT EXISTS payload jsonb");
     await pool.query("ALTER TABLE fcs_message_inbox ADD COLUMN IF NOT EXISTS reply_states jsonb NOT NULL DEFAULT '{}'");
+    // Bound the durable recovery payload; attachments remain in Meta storage, not PostgreSQL.
+    await pool.query("ALTER TABLE fcs_message_inbox ADD CONSTRAINT fcs_inbox_payload_2kb CHECK (payload IS NULL OR octet_length(payload::text) <= 2048)").catch(error => {
+      if (error.code !== "42710") throw error;
+    });
   })().catch(e=>{ready=null;throw e;});
   await ready;
 }
 async function claim(id, payload) {
   if (!id) throw new Error("Missing Meta message ID");
+  const serialized = JSON.stringify(payload || null);
+  if (Buffer.byteLength(serialized, "utf8") > 2048) {
+    const error = new Error("Inbound message recovery metadata exceeds 2 KB; refusing database storage");
+    error.code = "INBOX_PAYLOAD_TOO_LARGE";
+    throw error;
+  }
   await setup();
   const {rows} = await pool.query(`INSERT INTO fcs_message_inbox(message_id,lease_until,attempts,payload)
     VALUES ($1,now()+interval '5 minutes',1,$2::jsonb)
@@ -35,7 +45,7 @@ async function claim(id, payload) {
       AND (fcs_message_inbox.lease_until IS NULL OR fcs_message_inbox.lease_until < now())
       AND (fcs_message_inbox.next_retry_at IS NULL OR fcs_message_inbox.next_retry_at <= now())
 
-    RETURNING message_id,attempts`,[String(id),JSON.stringify(payload || null)]);
+    RETURNING message_id,attempts`,[String(id),serialized]);
   if (rows.length) return { attempt: rows[0].attempts };
   const result = await pool.query(
     "SELECT completed_at, attempts, next_retry_at = 'infinity'::timestamptz AS parked FROM fcs_message_inbox WHERE message_id = $1", [String(id)]);
