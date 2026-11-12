@@ -38,8 +38,8 @@
     #workspaceNav a { color: #8e1420; background: white; border: 1px solid #dcdfe4;
       border-radius: 6px; padding: 10px; text-decoration: none; font-weight: 650; }
     #workspaceNav a[data-incoming="true"] { background: #b71925; color: white; }
-    #composePanel, #callingPanel, #reportsPanel { scroll-margin-top: 68px; }
-    #reportsPanel { margin-top: 16px; }
+    #composePanel, #callingPanel, #reportsPanel, #customerPanel { scroll-margin-top: 68px; }
+    #reportsPanel, #customerPanel { margin-top: 16px; }
     #reportResults details { border-top: 1px solid #ddd; padding: 10px 0; }
     #reportResults summary { cursor: pointer; font-weight: 650; }
     #reportResults p { margin: 8px 0; }
@@ -64,6 +64,7 @@
       <a href="#composePanel">Messages &amp; attachments</a>
       <a id="callingLink" href="#callingPanel" aria-live="polite">Calling</a>
       <a href="#reportsPanel">Cities</a>
+      <a href="#customerPanel">Customers</a>
     </nav>
 
     <section id="composePanel" hidden>
@@ -106,6 +107,16 @@
       <button id="refreshReport" type="button" class="secondary">Refresh report</button>
       <p id="reportStatus" class="status" role="status"></p>
       <div id="reportResults"></div>
+    </section>
+    <section id="customerPanel" hidden>
+      <h1>Customer Search</h1>
+      <p class="hint">Search read-only application records by WhatsApp/mobile number.</p>
+      <form id="customerForm">
+        <label>Customer phone number <input id="customerPhone" type="tel" required maxlength="24" placeholder="+92 300 1234567"></label>
+        <button type="submit">Search customer</button>
+      </form>
+      <p id="customerStatus" class="status" role="status" aria-live="polite"></p>
+      <div id="customerResult"></div>
     </section>
     <section id="callingPanel" aria-label="WhatsApp Calling" hidden>
       <iframe id="callingFrame" title="WhatsApp Staff Calling" allow="microphone 'self'"></iframe>
