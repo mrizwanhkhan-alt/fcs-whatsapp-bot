@@ -1,0 +1,12 @@
+"use strict";
+const assert = require("node:assert/strict");
+const { withinScope } = require("./dashboardRoles");
+const center = { role: "business_center", branchId: "BC-1" };
+assert.equal(withinScope(center, { businessCenterId: "BC-1", franchiseId: "FR-1" }), true);
+assert.equal(withinScope(center, { businessCenterId: "BC-1", communicatorId: "C-1", type: "franchise_communicator" }), true);
+assert.equal(withinScope(center, { businessCenterId: "BC-2", franchiseId: "FR-2" }), false);
+assert.equal(withinScope(center, { franchiseId: "FR-1", communicatorId: "C-1" }), false);
+assert.equal(withinScope(center, { branchId: "BC-1", type: "franchise_communicator" }), false);
+assert.equal(withinScope({ role: "franchise", branchId: "FR-1" }, { franchiseId: "FR-2" }), false);
+assert.equal(withinScope({ role: "communicator", id: "C-1" }, { communicatorId: "C-2" }), false);
+console.log("Dashboard hierarchy scope checks passed");
