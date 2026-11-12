@@ -11,6 +11,7 @@ const {
 
 const { getApplications } = require("./googleSheets");
 const { provinceCityReport } = require("./provinceCityReport");
+const { findCustomer } = require("./customerLookup");
 
 const COOKIE = "__Host-fcs_admin";
 const SESSION_MS = 8 * 60 * 60 * 1000;
@@ -218,6 +219,14 @@ async function adminDashboard(req, res, url) {
         "Content-Security-Policy": `default-src 'none'; script-src 'sha256-${scriptHash}'; style-src 'unsafe-inline'; connect-src 'self'; media-src 'self' blob:; frame-ancestors 'self'; base-uri 'none'; form-action 'none'`
       });
       return res.end(html);
+    }
+    if (req.method === "GET" && route === "/admin/customer-lookup") {
+      if (!session) fail(401, "Your session expired. Sign in again.");
+      const phone = url.searchParams.get("phone") || "";
+      if (!/^\+?[0-9 ()-]{8,24}$/.test(phone)) fail(400, "Enter a valid customer phone number.");
+      const rows = await getApplications();
+      const customer = findCustomer(rows, phone);
+      return respond(res, 200, { found: Boolean(customer), customer });
     }
     if (req.method === "GET" && route === "/admin/province-city-report") {
       if (!session) fail(401, "Your session expired. Sign in again.");
