@@ -16,6 +16,7 @@ const { customerStatusReport } = require("./customerStatusReport");
 const { updateEngagement } = require("./googleSheets");
 const { recordAudit, recentAudit } = require("./securityAudit");
 const { recentCallLogs } = require("./callingRoutes");
+const { safeStaffList, authenticateStaff } = require("./staffAccounts");
 
 const COOKIE = "__Host-fcs_admin";
 const SESSION_MS = 8 * 60 * 60 * 1000;
@@ -244,6 +245,10 @@ async function adminDashboard(req, res, url) {
       const rows = await getApplications();
       return respond(res, 200, { provinces: provinceCityReport(rows), updatedAt: new Date().toISOString() });
     }
+    if (req.method === "GET" && route === "/admin/staff-ids") {
+      if (!session) fail(401, "Your session expired. Sign in again.");
+      return respond(res, 200, { staff: safeStaffList(), source: "ADMIN_STAFF_ACCOUNTS" });
+    }
     if (req.method === "GET" && route === "/admin/calling-logs") {
       if (!session) fail(401, "Your session expired. Sign in again.");
       return respond(res, 200, { calls: recentCallLogs(), persistent: false });
@@ -276,13 +281,21 @@ async function adminDashboard(req, res, url) {
     }
 
     if (req.method !== "POST" ||
-        !["/admin/login", "/admin/logout", "/admin/window", "/admin/send", "/admin/customer-engagement"].includes(route)) {
+        !["/admin/login", "/admin/logout", "/admin/window", "/admin/send", "/admin/customer-engagement", "/admin/staff-login"].includes(route)) {
       fail(404, "Page not found.");
     }
 
     const site = req.headers["sec-fetch-site"];
     if ((site && site !== "same-origin" && site !== "none") || !req.headers["x-admin-request"]) {
       fail(403, "Cross-origin request denied.");
+    }
+    if (route === "/admin/staff-login") {
+      if (req.headers["x-admin-request"] !== "login") fail(403, "Invalid sign-in request.");
+      const { id, password } = await readJSON(req);
+      const staff = await authenticateStaff(id,password);
+      recordAudit("staff.login", staff ? "success" : "failed", typeof id === "string" ? id.slice(0,32) : "invalid");
+      if (!staff) fail(401, "Invalid staff credentials.");
+      return respond(res, 200, { authenticated: true, staff, note: "Credential check only; staff dashboard sessions are not enabled." });
     }
     if (route === "/admin/login") {
       if (req.headers["x-admin-request"] !== "login") fail(403, "Invalid sign-in request.");
