@@ -11,6 +11,15 @@ async function initializeDatabase(){
  id VARCHAR(32) PRIMARY KEY, city VARCHAR(100) NOT NULL, location VARCHAR(200) NOT NULL,
  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+ALTER TABLE fcs_branches ADD COLUMN IF NOT EXISTS branch_type VARCHAR(20) NOT NULL DEFAULT 'franchise';
+ALTER TABLE fcs_branches ADD COLUMN IF NOT EXISTS parent_business_center_id VARCHAR(32) REFERENCES fcs_branches(id);
+ALTER TABLE fcs_branches DROP CONSTRAINT IF EXISTS fcs_branches_type_check;
+ALTER TABLE fcs_branches ADD CONSTRAINT fcs_branches_type_check CHECK(branch_type IN ('business_center','franchise'));
+ALTER TABLE fcs_branches DROP CONSTRAINT IF EXISTS fcs_branches_parent_check;
+ALTER TABLE fcs_branches ADD CONSTRAINT fcs_branches_parent_check CHECK(
+ (branch_type='business_center' AND parent_business_center_id IS NULL) OR
+ (branch_type='franchise' AND (parent_business_center_id IS NULL OR parent_business_center_id<>id))
+);
 CREATE TABLE IF NOT EXISTS fcs_staff (
  id VARCHAR(32) PRIMARY KEY, branch_id VARCHAR(32) NOT NULL REFERENCES fcs_branches(id),
  role VARCHAR(16) NOT NULL CHECK(role IN ('viewer','operator')),
@@ -20,12 +29,31 @@ CREATE TABLE IF NOT EXISTS fcs_staff (
 CREATE INDEX IF NOT EXISTS fcs_staff_branch_idx ON fcs_staff(branch_id);`);
 }
 async function branchList(){
- const result=await database().query("SELECT b.id,b.city,b.location,COUNT(s.id)::int AS staff_count FROM fcs_branches b LEFT JOIN fcs_staff s ON s.branch_id=b.id AND s.active=true GROUP BY b.id ORDER BY b.city,b.id");
+ const result=await database().query("SELECT b.id,b.city,b.location,b.branch_type,b.parent_business_center_id,COUNT(s.id)::int AS staff_count FROM fcs_branches b LEFT JOIN fcs_staff s ON s.branch_id=b.id AND s.active=true GROUP BY b.id ORDER BY b.city,b.id");
  return result.rows;
 }
-async function createBranch({id,city,location}){
+async function createBranch({id,city,location,branchType="franchise",parentBusinessCenterId=null}){
  if(typeof id!=="string"||!/^[A-Za-z0-9_-]{2,32}$/.test(id)||typeof city!=="string"||!city.trim()||city.length>100||typeof location!=="string"||!location.trim()||location.length>200)throw new Error("Invalid branch");
- await database().query("INSERT INTO fcs_branches(id,city,location) VALUES($1,$2,$3)",[id,city.trim(),location.trim()]);
+ if(!["business_center","franchise"].includes(branchType))throw new Error("Invalid branch type");
+ if(branchType==="business_center"&&parentBusinessCenterId!==null)throw new Error("Business center cannot have a parent");
+ if(parentBusinessCenterId!==null)await verifyParent(database(),parentBusinessCenterId,city);
+ await database().query("INSERT INTO fcs_branches(id,city,location,branch_type,parent_business_center_id) VALUES($1,$2,$3,$4,$5)",[id,city.trim(),location.trim(),branchType,parentBusinessCenterId]);
+}
+async function verifyParent(client,parentId,city){
+ const result=await client.query("SELECT id,city,branch_type FROM fcs_branches WHERE id=$1",[parentId]);
+ if(!result.rowCount||result.rows[0].branch_type!=="business_center"||result.rows[0].city.trim().toLowerCase()!==city.trim().toLowerCase())throw new Error("Parent must be a business center in the same city");
+}
+async function transferFranchise(franchiseId,parentBusinessCenterId=null){
+ if(typeof franchiseId!=="string"||!/^[A-Za-z0-9_-]{2,32}$/.test(franchiseId)||parentBusinessCenterId!==null&&(typeof parentBusinessCenterId!=="string"||!/^[A-Za-z0-9_-]{2,32}$/.test(parentBusinessCenterId)))throw new Error("Invalid branch ID");
+ const client=await database().connect();
+ try{
+  await client.query("BEGIN");
+  const result=await client.query("SELECT id,city,branch_type FROM fcs_branches WHERE id=$1 FOR UPDATE",[franchiseId]);
+  if(!result.rowCount||result.rows[0].branch_type!=="franchise")throw new Error("Franchise not found");
+  if(parentBusinessCenterId!==null)await verifyParent(client,parentBusinessCenterId,result.rows[0].city);
+  await client.query("UPDATE fcs_branches SET parent_business_center_id=$1 WHERE id=$2",[parentBusinessCenterId,franchiseId]);
+  await client.query("COMMIT");
+ }catch(error){await client.query("ROLLBACK");throw error;}finally{client.release();}
 }
 async function addStaff({id,branchId,role,passwordHash}){
  if(typeof id!=="string"||!/^[A-Za-z0-9_-]{3,32}$/.test(id)||typeof branchId!=="string"||!["viewer","operator"].includes(role)||typeof passwordHash!=="string"||!/^([a-f0-9]{32}):([a-f0-9]{128})$/.test(passwordHash))throw new Error("Invalid staff");
@@ -40,4 +68,4 @@ async function addStaff({id,branchId,role,passwordHash}){
   await client.query("COMMIT");
  }catch(error){await client.query("ROLLBACK");throw error;}finally{client.release();}
 }
-module.exports={database,initializeDatabase,branchList,createBranch,addStaff};
+module.exports={database,initializeDatabase,branchList,createBranch,transferFranchise,addStaff};
