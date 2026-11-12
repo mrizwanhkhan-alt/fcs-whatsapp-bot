@@ -15,6 +15,7 @@ const { findCustomer } = require("./customerLookup");
 const { customerStatusReport } = require("./customerStatusReport");
 const { updateEngagement } = require("./googleSheets");
 const { recordAudit, recentAudit } = require("./securityAudit");
+const { recentCallLogs } = require("./callingRoutes");
 
 const COOKIE = "__Host-fcs_admin";
 const SESSION_MS = 8 * 60 * 60 * 1000;
@@ -242,6 +243,10 @@ async function adminDashboard(req, res, url) {
       if (!session) fail(401, "Your session expired. Sign in again.");
       const rows = await getApplications();
       return respond(res, 200, { provinces: provinceCityReport(rows), updatedAt: new Date().toISOString() });
+    }
+    if (req.method === "GET" && route === "/admin/calling-logs") {
+      if (!session) fail(401, "Your session expired. Sign in again.");
+      return respond(res, 200, { calls: recentCallLogs(), persistent: false });
     }
     if (req.method === "GET" && route === "/admin/backup-export") {
       if (!session) fail(401, "Your session expired. Sign in again.");
