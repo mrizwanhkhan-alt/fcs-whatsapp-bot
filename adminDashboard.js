@@ -9,6 +9,9 @@ const {
   sendAdminMessage, templates, windowExpiry
 } = require("./adminMessaging");
 
+const { getApplications } = require("./googleSheets");
+const { provinceCityReport } = require("./provinceCityReport");
+
 const COOKIE = "__Host-fcs_admin";
 const SESSION_MS = 8 * 60 * 60 * 1000;
 const LOGIN_INTERVAL = 5 * 60 * 1000;
@@ -215,6 +218,11 @@ async function adminDashboard(req, res, url) {
         "Content-Security-Policy": `default-src 'none'; script-src 'sha256-${scriptHash}'; style-src 'unsafe-inline'; connect-src 'self'; media-src 'self' blob:; frame-ancestors 'self'; base-uri 'none'; form-action 'none'`
       });
       return res.end(html);
+    }
+    if (req.method === "GET" && route === "/admin/province-city-report") {
+      if (!session) fail(401, "Your session expired. Sign in again.");
+      const rows = await getApplications();
+      return respond(res, 200, { provinces: provinceCityReport(rows), updatedAt: new Date().toISOString() });
     }
     if (req.method === "GET" && route === "/admin/delivery") {
       if (!session) fail(401, "Your session expired. Sign in again.");
