@@ -967,6 +967,31 @@ const server = http.createServer((req, res) => {
 // START SERVER
 // =====================================
 
+// Recover durable call webhook events after a Render restart.
+// Replay is idempotent at the history store; avoid replaying stale incoming
+// offers into the live calling panel.
+let replayRunning = false;
+async function replayCallJournal() {
+  if (replayRunning) return;
+  replayRunning = true;
+  try {
+    const events = await require("./callWebhookInbox").getSavedEvents();
+    const { replaySavedCallEvent } = require("./callingRoutes");
+    for (const event of events) {
+      if (event.event === "terminate" || ["REJECTED","FAILED"].includes(event.status)) {
+        replaySavedCallEvent(event);
+      }
+    }
+  } catch (error) {
+    console.error("Durable call journal replay failed:", error.message);
+  } finally {
+    replayRunning = false;
+  }
+}
+const journalReplayTimer = setInterval(replayCallJournal, 60000);
+journalReplayTimer.unref?.();
+replayCallJournal();
+
 server.listen(PORT, "0.0.0.0", () => {
   console.log("FCS Express WhatsApp Bot Started");
   console.log("Port:", PORT);
