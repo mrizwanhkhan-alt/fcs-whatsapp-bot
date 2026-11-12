@@ -46,13 +46,13 @@
     #callingPanel { margin-top: 16px; padding: 0; overflow: hidden; }
     #callingFrame { display: block; width: 100%; height: 560px; border: 0; }
     header {background:linear-gradient(110deg,#82121e,#b71925);box-shadow:0 5px 20px #600e1825} header div{max-width:1240px;min-height:72px} main{max-width:1240px;padding:24px clamp(14px,3vw,36px)} section{border-radius:18px;box-shadow:0 7px 25px #14213d0a;margin-bottom:18px} #workspaceNav{overflow-x:auto;scrollbar-width:thin} #workspaceNav a{flex-shrink:0;border-radius:999px;padding:11px 15px} #branchesPanel [role="group"],#subscriptionFeatures{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0} #branchesResults>p,#networkDetails>div{background:#f8f9fc;border:1px solid #e5e8ef;border-radius:12px;padding:14px;margin:10px 0} #networkExplorerPanel label{margin:10px 0} @media(min-width:760px){#networkExplorerPanel{display:grid;grid-template-columns:1fr 1fr;gap:12px 20px}#networkExplorerPanel h1,#networkExplorerPanel>p,#networkExplorerPanel>button,#networkStatus,#networkDetails{grid-column:1/-1}}
-    @media (max-width: 400px) { section { padding: 16px; } }
+    .role-feature-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px}.role-feature-tile{display:flex;flex-direction:column;gap:12px;text-decoration:none;background:#f6f7fa;color:#222;border:1px solid #d9dce4;border-radius:12px;padding:16px;font-weight:650}.role-feature-tile small{font-weight:400}.role-feature-tile.locked{opacity:.6}    @media (max-width: 400px) { section { padding: 16px; } }
   </style>
-  <script src="/admin/dashboard.js" defer></script>
+  <script src="/admin/workspace.js" defer></script>\n  <script src="/admin/dashboard.js" defer></script>
 </head>
 <body>
   <header><div><strong>FCS EXPRESS</strong><button id="logout" class="secondary" type="button" hidden>Sign out</button></div></header>
-  <main>
+  <main>\n    <section id="roleWorkspace" hidden aria-label="Role dashboard"></section>
     <section id="loginPanel" hidden>
       <h1>Admin sign-in</h1>
       <form id="loginForm" method="post">
