@@ -18,6 +18,7 @@ const { recordAudit, recentAudit } = require("./securityAudit");
 const { recentCallLogs } = require("./callingRoutes");
 const { safeStaffList, authenticateStaff } = require("./staffAccounts");
 const { branchSummary, branches } = require("./branchDirectory");
+const centralDb = require("./centralDatabase");
 
 const COOKIE = "__Host-fcs_admin";
 const SESSION_MS = 8 * 60 * 60 * 1000;
@@ -262,6 +263,21 @@ async function adminDashboard(req, res, url) {
       const rows = await getApplications();
       return respond(res, 200, { provinces: provinceCityReport(rows), updatedAt: new Date().toISOString() });
     }
+    if (req.method === "POST" && ["/admin/branch-create","/admin/branch-edit","/admin/franchise-transfer"].includes(route)) {
+      if (!session || role !== "admin") fail(403, "Head office access required.");
+      if (!process.env.DATABASE_URL) fail(503, "Central database is not configured.");
+      if (req.headers["x-admin-request"] !== session.csrf) fail(403, "Invalid request token.");
+      const payload = await readJSON(req);
+      await centralDb.initializeDatabase();
+      if (route === "/admin/branch-create") {
+        await centralDb.createBranch(payload);
+      } else if (route === "/admin/branch-edit") {
+        await centralDb.editBranch(payload);
+      } else {
+        await centralDb.transferFranchise(payload.franchiseId, payload.parentBusinessCenterId || null);
+      }
+      return respond(res, 200, { ok: true });
+    }
     if (req.method === "GET" && route === "/admin/head-office-summary") {
       if (!session || role !== "admin") fail(403, "Head office access required.");
       const directory = branchSummary(safeStaffList());
@@ -275,6 +291,11 @@ async function adminDashboard(req, res, url) {
     }
     if (req.method === "GET" && route === "/admin/branches") {
       if (!session || role !== "admin") fail(403, "Head office access required.");
+      if (process.env.DATABASE_URL) {
+        await centralDb.initializeDatabase();
+        const records = await centralDb.branchList();
+        return respond(res, 200, { branches: records.map(b => ({ id:b.id,city:b.city,location:b.location,branchType:b.branch_type,parentBusinessCenterId:b.parent_business_center_id,staffCount:b.staff_count,staffLimit:4 })) });
+      }
       return respond(res, 200, { branches: branchSummary(safeStaffList()) });
     }
     if (req.method === "GET" && route === "/admin/staff-ids") {
@@ -318,7 +339,7 @@ async function adminDashboard(req, res, url) {
     }
 
     if (req.method !== "POST" ||
-        !["/admin/login", "/admin/logout", "/admin/window", "/admin/send", "/admin/customer-engagement", "/admin/staff-login"].includes(route)) {
+        !["/admin/login", "/admin/logout", "/admin/window", "/admin/send", "/admin/customer-engagement", "/admin/staff-login", "/admin/branch-create", "/admin/branch-edit", "/admin/franchise-transfer"].includes(route)) {
       fail(404, "Page not found.");
     }
 
