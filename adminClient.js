@@ -116,6 +116,7 @@ function showSession(session) {
   byId("callingLogsPanel").hidden = !isAdmin;
   byId("staffIdsPanel").hidden = !isAdmin;
   byId("branchesPanel").hidden = !isAdmin;
+  byId("subscriptionPanel").hidden = !session.signedIn || isAdmin;
   byId("headOfficePanel").hidden = !isAdmin;
   byId("securityAuditPanel").hidden = !isAdmin;
   if (isAdmin) void loadMessageActivity();
@@ -392,7 +393,23 @@ byId("refreshStaffIds").addEventListener("click",loadStaffIds);
 async function loadBranches(){
  const status=byId("branchesStatus"),root=byId("branchesResults");status.textContent="Loading branches…";root.replaceChildren();
  try{const data=await request("branches");status.textContent=`${data.branches.length} configured branches`;
- for(const branch of data.branches){const p=document.createElement("p");p.textContent=`${branch.id} — ${branch.city}, ${branch.location} — Staff ${branch.staffCount}/${branch.staffLimit}`;root.append(p);}
+ for(const branch of data.branches){
+  const p=document.createElement("p");
+  p.textContent=`${branch.id} — ${branch.city}, ${branch.location} — Staff ${branch.staffCount}/${branch.staffLimit} — ${branch.subscriptionStatus || "Free"}`;
+  root.append(p);
+  if(branch.subscriptionStatus){
+    const select=document.createElement("select");
+    select.setAttribute("aria-label",`Subscription for ${branch.id}`);
+    for(const [value,label] of [["free","Free — locked"],["active","Subscribed"],["expired","Expired — locked"]])select.add(new Option(label,value));
+    select.value=branch.subscriptionStatus;
+    const save=document.createElement("button");save.type="button";save.textContent="Save subscription";
+    save.addEventListener("click",()=>run(save,async()=>{
+      await request("subscription-set",{branchId:branch.id,status:select.value});
+      await loadBranches();
+    },status));
+    root.append(select,save);
+  }
+ }
  }catch(error){status.textContent=`Branches unavailable: ${error.message}`;}
 }
 byId("refreshBranches").addEventListener("click",loadBranches);
