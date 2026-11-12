@@ -80,7 +80,7 @@ function activeSession(token) {
     const account = staffAccounts().find(item => item.id === session.staffId);
     if (account && account.role === session.role && account.subscription.status === "active" &&
         JSON.stringify(account.territory) === JSON.stringify(session.territory) &&
-        account.hash[0] === session.passwordHash) return session;
+        account.hash[2] === session.passwordHash) return session;
   }
   sessions.delete(token);
   return null;
@@ -182,7 +182,7 @@ async function staffLogin(req, res, previousToken) {
   const token = crypto.randomBytes(32).toString("hex");
   sessions.set(token, {
     csrf: crypto.randomBytes(32).toString("hex"),
-    expires: Date.now() + SESSION_MS, role: account.role, staffId: account.id, territory: account.territory, passwordHash: account.hash[0]
+    expires: Date.now() + SESSION_MS, role: account.role, staffId: account.id, territory: account.territory, passwordHash: account.hash[2]
   });
   return respond(res, 200, { signedIn: true }, { "Set-Cookie": cookie(token, SESSION_MS / 1000) });
 }
