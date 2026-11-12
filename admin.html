@@ -118,7 +118,35 @@
       <p id="customerLookupStatus" role="status"></p><div id="customerLookupResult"></div>
     </section>
     <section id="headOfficePanel" hidden><h1>Head Office Control</h1><button id="refreshHeadOffice" type="button" class="secondary">Refresh overview</button><p id="headOfficeStatus" role="status"></p><div id="headOfficeResults"></div></section>
-    <section id="branchesPanel" hidden><h1>Branch Management</h1><button id="refreshBranches" type="button" class="secondary">Refresh branches</button><p id="branchesStatus" role="status"></p><div id="branchesResults"></div></section>
+    <section id="branchesPanel" hidden>
+<h1>Branch Management</h1>
+<div role="group" aria-label="Branch actions">
+<button id="showBusinessCenters" type="button">Business Centers</button>
+<button id="showFranchises" type="button">Franchises</button>
+<button id="showAllBranches" type="button">All branches</button>
+<button id="showAddBranch" type="button">Add Branch</button>
+<button id="showEditBranch" type="button">Edit Branch</button>
+<button id="showTransferFranchise" type="button">Franchise Transfer</button>
+<button id="openStaffManagement" type="button">Staff Management</button>
+</div>
+<form id="branchEditor" hidden>
+<h2 id="branchEditorTitle">Add Branch</h2>
+<label>Branch ID <input id="branchIdInput" required maxlength="32" pattern="[A-Za-z0-9_-]{2,32}"></label>
+<label>City <input id="branchCityInput" required maxlength="100"></label>
+<label>Location <input id="branchLocationInput" required maxlength="200"></label>
+<label>Type <select id="branchTypeInput"><option value="franchise">Franchise</option><option value="business_center">Business Center</option></select></label>
+<label>Parent Business Center ID (optional) <input id="branchParentInput" maxlength="32"></label>
+<button type="submit">Save branch</button>
+</form>
+<form id="franchiseTransferForm" hidden>
+<h2>Franchise Transfer</h2>
+<label>Franchise ID <input id="transferFranchiseInput" required maxlength="32"></label>
+<label>Business Center ID (leave blank for Head Office) <input id="transferParentInput" maxlength="32"></label>
+<button type="submit">Transfer</button>
+</form>
+<button id="refreshBranches" type="button" class="secondary">Refresh branches</button>
+<p id="branchesStatus" role="status"></p><div id="branchesResults"></div>
+</section>
     <section id="staffIdsPanel" hidden><h1>Staff IDs</h1><button id="refreshStaffIds" type="button" class="secondary">Refresh staff</button><p id="staffIdsStatus" role="status"></p><div id="staffIdsResults"></div><p class="hint">Staff accounts are configured securely on the server. This panel does not expose passwords.</p></section>
     <section id="callingLogsPanel" hidden><h1>Calling Logs</h1><button id="refreshCallingLogs" type="button" class="secondary">Refresh calls</button><p id="callingLogsStatus" role="status"></p><div id="callingLogsResults"></div><p class="hint">Recent call events only; no audio recordings. History resets on server restart.</p></section>
     <section id="backupPanel" hidden><h1>Data Backup</h1><p class="hint">Download a JSON copy of the Franchise Applications sheet. Keep the file secure; it contains customer information.</p><button id="downloadBackup" type="button">Download applications backup</button><p id="backupStatus" role="status"></p></section>
