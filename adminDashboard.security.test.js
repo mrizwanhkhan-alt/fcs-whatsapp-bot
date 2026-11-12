@@ -1,0 +1,11 @@
+"use strict";
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const source = fs.readFileSync(require("node:path").join(__dirname, "adminDashboard.js"), "utf8");
+const backup = source.match(/if \(req\.method === "GET" && route === "\/admin\/backup-export"\) \{([\s\S]*?)\n    \}/);
+assert.ok(backup, "backup handler must exist");
+assert.match(backup[1], /if \(role !== "admin"\) fail\(403/, "backup must be admin-only");
+const engagement = source.match(/if \(route === "\/admin\/customer-engagement"\) \{([\s\S]*?)\n    \}/);
+assert.ok(engagement, "engagement handler must exist");
+assert.match(engagement[1], /if \(role !== "admin"\) fail\(403/, "engagement must be admin-only");
+console.log("Sensitive admin route guards present");
