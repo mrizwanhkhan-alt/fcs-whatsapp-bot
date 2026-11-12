@@ -105,6 +105,7 @@ function showSession(session) {
   byId("workspaceNav").hidden = !session.signedIn;
   byId("callingPanel").hidden = !session.signedIn;
   byId("reportsPanel").hidden = !session.signedIn;
+  byId("customerPanel").hidden = !session.signedIn;
   if (session.signedIn) void loadProvinceCityReport();
   else byId("reportResults").replaceChildren();
   if (session.signedIn && !callingFrame.hasAttribute("src")) {
@@ -281,3 +282,22 @@ request("session").then(session => {
   showSession(session);
   feedback();
 }).catch(() => feedback("The dashboard could not load. Refresh to try again.", true));
+
+byId("customerLookupForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  const status = byId("customerLookupStatus");
+  const root = byId("customerLookupResult");
+  root.replaceChildren();
+  status.textContent = "Searching…";
+  try {
+    const phone = byId("customerPhone").value.trim();
+    const result = await request(`customer-lookup?phone=${encodeURIComponent(phone)}`);
+    if (!result.customer) { status.textContent = "No matching application found."; return; }
+    status.textContent = "Customer application found.";
+    for (const [label, value] of Object.entries(result.customer)) {
+      const line = document.createElement("p");
+      line.textContent = `${label}: ${value || "—"}`;
+      root.append(line);
+    }
+  } catch (error) { status.textContent = `Lookup failed: ${error.message}`; }
+});
