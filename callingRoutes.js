@@ -18,6 +18,15 @@ const TEMPLATE = process.env.CALL_PERMISSION_TEMPLATE_NAME || "";
 const ICE_SERVERS = process.env.STAFF_CALLING_ICE_SERVERS;
 const defaultIceServers = [{ urls: "stun:stun.l.google.com:19302" }];
 const calls = new Map();
+const callHistory = new Map();
+function logCall(call) {
+ if (!call?.id || !call.state) return;
+ const old = callHistory.get(call.id);
+ const record = { id: call.id, number: call.number || old?.number || "", direction: call.direction || old?.direction || "unknown", state: call.state, startedAt: old?.startedAt || new Date().toISOString(), updatedAt: new Date().toISOString() };
+ callHistory.delete(call.id);callHistory.set(call.id,record);
+ while(callHistory.size>1000)callHistory.delete(callHistory.keys().next().value);
+}
+function recentCallLogs(limit=50){return [...callHistory.values()].slice(-Math.max(1,Math.min(100,limit))).reverse();}
 const pending = new Map();
 const representativeRequests = new Map();
 const permissionDeliveries = new Map();
@@ -89,6 +98,7 @@ function iceServers() {
 
 function setState(call, state, duration) {
   call.state = state;
+  if(call.id)logCall(call);
   call.expires = Date.now() + duration;
   if (duration === END_MS) {
     call.sdp = undefined;
@@ -207,7 +217,9 @@ function recordEvent(event) {
     setState(call, incoming ? "incoming" : "dialing", RING_MS);
   }
   call.id = event.id;
+  if(incoming)call.direction = "incoming";
   calls.set(call.id, call);
+  logCall(call);
 
   if (ended(call)) return;
   if (terminal) {
@@ -372,4 +384,4 @@ async function callingRoutes(req, res, url) {
   }
 }
 
-module.exports = { callingRoutes, handleCallingWebhook, isVerifiedMetaWebhook, requestRepresentativeCall };
+module.exports = { callingRoutes, handleCallingWebhook, isVerifiedMetaWebhook, requestRepresentativeCall, recentCallLogs };
