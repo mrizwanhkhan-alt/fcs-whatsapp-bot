@@ -55,7 +55,16 @@ async function replaySingleHistoryEvent(event) {
   const state = stateOf(event);
   if (!event?.id || !state) return;
   const saved = await getById(event.id);
-  if (saved && terminalStates.has(saved.state)) return;
+  if (saved && terminalStates.has(saved.state)) {
+    // Terminal status is final, but late metadata may enrich its timestamps.
+    const timestamp = eventTime(event);
+    if (timestamp && state === "accepted" && (!saved.answeredAt || Date.parse(timestamp) < Date.parse(saved.answeredAt))) {
+      await appendEvent({ ...saved, answeredAt: timestamp, state: saved.state });
+    } else if (timestamp && state === "incoming" && (!saved.startedAt || Date.parse(timestamp) < Date.parse(saved.startedAt))) {
+      await appendEvent({ ...saved, startedAt: timestamp, state: saved.state });
+    }
+    return;
+  }
   // A delayed offer can correct the start time without regressing an answered call.
   if (saved?.answeredAt && state === "incoming") {
     const offerTime = eventTime(event);
