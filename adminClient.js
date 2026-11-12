@@ -118,6 +118,8 @@ function showSession(session) {
   byId("branchesPanel").hidden = !isAdmin;
   byId("subscriptionPanel").hidden = !session.signedIn || isAdmin;
   byId("headOfficePanel").hidden = !isAdmin;
+  byId("networkExplorerPanel").hidden = !isAdmin;
+  if(isAdmin)void loadNetwork();
   byId("securityAuditPanel").hidden = !isAdmin;
   if (isAdmin) void loadMessageActivity();
   if (isAdmin) void loadCustomerStatusReport();
@@ -478,4 +480,57 @@ byId("franchiseTransferForm").addEventListener("submit",async event=>{
   byId("franchiseTransferForm").hidden=true;
   await loadBranches();
  },status);
+});
+
+
+let networkData={branches:[],staff:[]};
+const networkIds=["networkProvince","networkCity","networkCenter","networkFranchise","networkStaff"];
+function setNetworkOptions(id,values,label){
+ const select=byId(id),previous=select.value;
+ select.replaceChildren(new Option(label,""));
+ for(const value of values)select.add(new Option(value,value));
+ if(values.includes(previous))select.value=previous;
+}
+function updateNetwork(){
+ const branches=networkData.branches,staff=networkData.staff;
+ const province=byId("networkProvince").value;
+ const provinceBranches=branches.filter(b=>!province||(b.province||"Unassigned")===province);
+ setNetworkOptions("networkCity",[...new Set(provinceBranches.map(b=>b.city))].sort(),"All cities");
+ const city=byId("networkCity").value;
+ const cityBranches=provinceBranches.filter(b=>!city||b.city===city);
+ const centers=cityBranches.filter(b=>b.branchType==="business_center");
+ setNetworkOptions("networkCenter",centers.map(b=>b.id),"All business centers");
+ const center=byId("networkCenter").value;
+ const franchises=cityBranches.filter(b=>b.branchType==="franchise"&&(!center||b.parentBusinessCenterId===center));
+ setNetworkOptions("networkFranchise",franchises.map(b=>b.id),"All franchises");
+ const franchise=byId("networkFranchise").value;
+ const visibleBranches=cityBranches.filter(b=>franchise?b.id===franchise:center?(b.id===center||b.parentBusinessCenterId===center):true);
+ setNetworkOptions("networkStaff",staff.filter(s=>visibleBranches.some(b=>b.id===s.branchId)).map(s=>s.id),"All communicators");
+ const chosenStaff=byId("networkStaff").value;
+ const root=byId("networkDetails");root.replaceChildren();
+ for(const b of visibleBranches.filter(b=>!chosenStaff||staff.some(s=>s.id===chosenStaff&&s.branchId===b.id))){
+  const card=document.createElement("div");
+  const title=document.createElement("strong");title.textContent=`${b.id} — ${b.branchType==="business_center"?"Business Center":"Franchise"} — ${b.city}`;
+  const detail=document.createElement("p");detail.textContent=`Province: ${b.province||"Unassigned"} | Parent: ${b.parentBusinessCenterId||"Head Office"} | Subscription: ${b.subscriptionStatus||"Not configured"}`;
+  card.append(title,detail);
+  for(const s of staff.filter(s=>s.branchId===b.id&&(!chosenStaff||s.id===chosenStaff))){
+   const line=document.createElement("p");line.textContent=`Communicator: ${s.id} — ${s.role}`;card.append(line);
+  }
+  root.append(card);
+ }
+ byId("networkStatus").textContent=`${visibleBranches.length} matching branches; ${staff.length} staff in directory. Province must be assigned to branches for accurate provincial filtering.`;
+}
+async function loadNetwork(){
+ const status=byId("networkStatus");status.textContent="Loading network…";
+ try{
+  networkData=await request("network-explorer");
+  setNetworkOptions("networkProvince",[...new Set(networkData.branches.map(b=>b.province||"Unassigned"))].sort(),"All provinces");
+  updateNetwork();
+ }catch(error){status.textContent=`Network unavailable: ${error.message}`;}
+}
+byId("refreshNetwork").addEventListener("click",loadNetwork);
+for(const id of networkIds)byId(id).addEventListener("change",()=>{
+ const idx=networkIds.indexOf(id);
+ for(const downstream of networkIds.slice(idx+1))byId(downstream).value="";
+ updateNetwork();
 });
