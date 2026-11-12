@@ -33,13 +33,13 @@
     .status { margin: 16px 0 0; }
     .status:empty { display: none; }
     .status[data-error="true"] { color: #9e1621; }
-    #workspaceNav { position: sticky; top: 0; z-index: 1; display: flex; gap: 8px;
+    #workspaceNav { overflow-x: auto; white-space: nowrap; position: sticky; top: 0; z-index: 1; display: flex; gap: 8px;
       padding: 8px 0; margin-bottom: 12px; background: #f5f6f8; }
     #workspaceNav a { color: #8e1420; background: white; border: 1px solid #dcdfe4;
       border-radius: 6px; padding: 10px; text-decoration: none; font-weight: 650; }
     #workspaceNav a[data-incoming="true"] { background: #b71925; color: white; }
-    #composePanel, #callingPanel, #reportsPanel, #customerPanel { scroll-margin-top: 68px; }
-    #reportsPanel, #customerPanel { margin-top: 16px; }
+    #composePanel, #callingPanel, #reportsPanel, #customerPanel, #applicationsPanel { scroll-margin-top: 68px; }
+    #reportsPanel, #customerPanel, #applicationsPanel { margin-top: 16px; }
     #reportResults details { border-top: 1px solid #ddd; padding: 10px 0; }
     #reportResults summary { cursor: pointer; font-weight: 650; }
     #reportResults p { margin: 8px 0; }
@@ -61,10 +61,11 @@
     </section>
 
     <nav id="workspaceNav" aria-label="WhatsApp workspace" hidden>
-      <a href="#composePanel">Messages &amp; attachments</a>
+      <a href="#composePanel">Messaging</a>
       <a id="callingLink" href="#callingPanel" aria-live="polite">Calling</a>
-      <a href="#reportsPanel">Cities</a>
-      <a href="#customerPanel">Customers</a>
+      <a href="#reportsPanel">Province &amp; City Reports</a>
+      <a href="#customerPanel">Customer Search</a>
+      <a href="#applicationsPanel">Applications</a>
     </nav>
 
     <section id="composePanel" hidden>
@@ -117,6 +118,13 @@
       </form>
       <p id="customerStatus" class="status" role="status" aria-live="polite"></p>
       <div id="customerResult"></div>
+    </section>
+    <section id="applicationsPanel" hidden>
+      <h1>Application Records</h1>
+      <p class="hint">Read-only list of the latest 100 franchise application records.</p>
+      <button id="refreshApplications" class="secondary" type="button">Refresh applications</button>
+      <p id="applicationsStatus" class="status" role="status"></p>
+      <div id="applicationsResults"></div>
     </section>
     <section id="callingPanel" aria-label="WhatsApp Calling" hidden>
       <iframe id="callingFrame" title="WhatsApp Staff Calling" allow="microphone 'self'"></iframe>
