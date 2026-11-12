@@ -26,10 +26,12 @@ CREATE TABLE IF NOT EXISTS fcs_staff (
  password_hash TEXT NOT NULL, active BOOLEAN NOT NULL DEFAULT true,
  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS fcs_staff_branch_idx ON fcs_staff(branch_id);`);
+CREATE INDEX IF NOT EXISTS fcs_staff_branch_idx ON fcs_staff(branch_id);
+ALTER TABLE fcs_branches ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(16) NOT NULL DEFAULT 'free';
+ALTER TABLE fcs_branches ADD CONSTRAINT fcs_subscription_status_check CHECK (subscription_status IN ('free','active','expired'));`);
 }
 async function branchList(){
- const result=await database().query("SELECT b.id,b.city,b.location,b.branch_type,b.parent_business_center_id,COUNT(s.id)::int AS staff_count FROM fcs_branches b LEFT JOIN fcs_staff s ON s.branch_id=b.id AND s.active=true GROUP BY b.id ORDER BY b.city,b.id");
+ const result=await database().query("SELECT b.id,b.city,b.location,b.branch_type,b.parent_business_center_id,b.subscription_status,COUNT(s.id)::int AS staff_count FROM fcs_branches b LEFT JOIN fcs_staff s ON s.branch_id=b.id AND s.active=true GROUP BY b.id ORDER BY b.city,b.id");
  return result.rows;
 }
 async function createBranch({id,city,location,branchType="franchise",parentBusinessCenterId=null}){
@@ -55,6 +57,16 @@ async function transferFranchise(franchiseId,parentBusinessCenterId=null){
   await client.query("COMMIT");
  }catch(error){await client.query("ROLLBACK");throw error;}finally{client.release();}
 }
+async function setSubscription(id,status){
+ if(typeof id!=="string"||!/^[A-Za-z0-9_-]{2,32}$/.test(id)||!["free","active","expired"].includes(status))throw new Error("Invalid subscription");
+ const result=await database().query("UPDATE fcs_branches SET subscription_status=$2 WHERE id=$1 RETURNING id,subscription_status",[id,status]);
+ if(!result.rowCount)throw new Error("Branch not found");
+ return result.rows[0];
+}
+async function subscriptionForBranch(id){
+ const result=await database().query("SELECT subscription_status FROM fcs_branches WHERE id=$1",[id]);
+ return result.rows[0]?.subscription_status || null;
+}
 async function addStaff({id,branchId,role,passwordHash}){
  if(typeof id!=="string"||!/^[A-Za-z0-9_-]{3,32}$/.test(id)||typeof branchId!=="string"||!["viewer","operator"].includes(role)||typeof passwordHash!=="string"||!/^([a-f0-9]{32}):([a-f0-9]{128})$/.test(passwordHash))throw new Error("Invalid staff");
  const client=await database().connect();
@@ -68,4 +80,4 @@ async function addStaff({id,branchId,role,passwordHash}){
   await client.query("COMMIT");
  }catch(error){await client.query("ROLLBACK");throw error;}finally{client.release();}
 }
-module.exports={database,initializeDatabase,branchList,createBranch,transferFranchise,addStaff};
+module.exports={database,initializeDatabase,branchList,createBranch,transferFranchise,addStaff,setSubscription,subscriptionForBranch};
