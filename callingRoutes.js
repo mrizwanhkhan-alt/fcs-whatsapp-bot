@@ -350,6 +350,11 @@ async function callingRoutes(req, res, url) {
     sendJSON(res, 405, { success: false, error: "Method not allowed." });
     return;
   }
+  const site = req.headers["sec-fetch-site"];
+  if ((site && site !== "same-origin" && site !== "none") || req.headers["x-requested-with"] !== "FCS-Calling") {
+    sendJSON(res, 403, { success: false, error: "Cross-origin calling request denied." });
+    return;
+  }
   const access = callingAccess(req);
   if (!access?.calling) {
     sendJSON(res, 401, { success: false, error: "Unauthorized staff access." });
