@@ -76,7 +76,7 @@ async function admin(route, data, { signedIn = true, request, site, file } = {})
   let body;
   if (data) {
     headers["Content-Type"] = file ? "application/octet-stream" : "application/json";
-    headers["X-Admin-Request"] = request ?? (route === "login" ? "login" : csrf ?? "unauthorized");
+    headers["X-Admin-Request"] = request ?? ((route === "login" || route === "staff-login") ? "login" : csrf ?? "unauthorized");
     body = JSON.stringify(data);
     if (file) {
       const metadata = Buffer.from(body);
