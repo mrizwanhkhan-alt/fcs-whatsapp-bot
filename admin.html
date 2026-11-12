@@ -67,6 +67,8 @@
       <a href="#customerPanel">Customers</a>
       <a href="#statusReportPanel">Statuses</a>
       <a href="#messageActivityPanel">Message activity</a>
+      <a href="#engagementPanel">Engagement</a>
+      <a href="#securityAuditPanel">Audit</a>
     </nav>
 
     <section id="composePanel" hidden>
@@ -108,6 +110,8 @@
       <form id="customerLookupForm"><label>Customer phone number<input id="customerPhone" type="tel" autocomplete="off" required></label><button type="submit">Find customer</button></form>
       <p id="customerLookupStatus" role="status"></p><div id="customerLookupResult"></div>
     </section>
+    <section id="engagementPanel" hidden><h1>Customer Engagement</h1><form id="engagementForm"><label>Application sheet row<input id="engagementRow" type="number" min="2" step="1" required></label><label>Status<input id="engagementStage" maxlength="80" required></label><label>Next follow-up<input id="engagementDate" type="date"></label><button type="submit">Save engagement</button></form><p id="engagementStatus" role="status"></p></section>
+    <section id="securityAuditPanel" hidden><h1>Security Audit</h1><button id="refreshAudit" type="button" class="secondary">Refresh audit</button><p id="auditStatus" role="status"></p><div id="auditResults"></div><p class="hint">Recent in-memory audit events, not permanent storage.</p></section>
     <section id="messageActivityPanel" hidden><h1>Messaging &amp; Delivery Activity</h1><button id="refreshMessageActivity" type="button" class="secondary">Refresh activity</button><p id="messageActivityStatus" role="status"></p><div id="messageActivityResults"></div><p class="hint">Recent activity only. Records reset when the server restarts.</p></section>
     <section id="statusReportPanel" hidden><h1>Customer Status Tracking</h1><button id="refreshStatusReport" type="button" class="secondary">Refresh status</button><p id="customerStatusSummary" role="status"></p><div id="customerStatusResults"></div></section>
     <section id="reportsPanel" hidden>
