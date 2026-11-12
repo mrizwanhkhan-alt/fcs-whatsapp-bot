@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS fcs_staff (
 );
 CREATE INDEX IF NOT EXISTS fcs_staff_branch_idx ON fcs_staff(branch_id);
 ALTER TABLE fcs_branches ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(16) NOT NULL DEFAULT 'free';
+ALTER TABLE fcs_branches DROP CONSTRAINT IF EXISTS fcs_subscription_status_check;
 ALTER TABLE fcs_branches ADD CONSTRAINT fcs_subscription_status_check CHECK (subscription_status IN ('free','active','expired'));`);
 }
 async function branchList(){
