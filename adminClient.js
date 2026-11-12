@@ -108,6 +108,7 @@ function showSession(session) {
   byId("statusReportPanel").hidden = !session.signedIn;
   byId("messageActivityPanel").hidden = !session.signedIn;
   byId("engagementPanel").hidden = !session.signedIn;
+  byId("costMonitoringPanel").hidden = !session.signedIn;
   byId("securityAuditPanel").hidden = !session.signedIn;
   if (session.signedIn) void loadMessageActivity();
   if (session.signedIn) void loadCustomerStatusReport();
@@ -342,3 +343,12 @@ async function loadSecurityAudit(){
  }catch(error){status.textContent=`Audit unavailable: ${error.message}`;}
 }
 byId("refreshAudit").addEventListener("click",loadSecurityAudit);
+
+async function loadCostMonitoring(){
+ const status=byId("costMonitoringStatus"),root=byId("costMonitoringResults");status.textContent="Loading usage…";root.replaceChildren();
+ try{const data=await request("cost-monitoring");status.textContent=`Tracked messages: ${data.trackedMessages}. Actual Meta charges unavailable.`;
+ for(const [name,count] of Object.entries(data.counts)){const p=document.createElement("p");p.textContent=`${name}: ${count}`;root.append(p);}
+ const note=document.createElement("p");note.textContent=data.note;root.append(note);
+ }catch(error){status.textContent=`Usage unavailable: ${error.message}`;}
+}
+byId("refreshCostMonitoring").addEventListener("click",loadCostMonitoring);
