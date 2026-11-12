@@ -27,6 +27,20 @@ CREATE TABLE IF NOT EXISTS fcs_staff (
  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS fcs_staff_branch_idx ON fcs_staff(branch_id);
+CREATE TABLE IF NOT EXISTS fcs_customers (
+ id VARCHAR(64) PRIMARY KEY,
+ phone VARCHAR(32) NOT NULL,
+ province VARCHAR(100) NOT NULL DEFAULT '',
+ city VARCHAR(100) NOT NULL DEFAULT '',
+ area VARCHAR(100) NOT NULL DEFAULT '',
+ business_center_id VARCHAR(32) REFERENCES fcs_branches(id),
+ franchise_id VARCHAR(32) REFERENCES fcs_branches(id),
+ communicator_id VARCHAR(32),
+ created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS fcs_customers_center_idx ON fcs_customers(business_center_id);
+CREATE INDEX IF NOT EXISTS fcs_customers_franchise_idx ON fcs_customers(franchise_id);
+CREATE INDEX IF NOT EXISTS fcs_customers_communicator_idx ON fcs_customers(communicator_id);
 ALTER TABLE fcs_branches ADD COLUMN IF NOT EXISTS province VARCHAR(100) NOT NULL DEFAULT '';
 ALTER TABLE fcs_branches ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(16) NOT NULL DEFAULT 'free';
 ALTER TABLE fcs_branches DROP CONSTRAINT IF EXISTS fcs_subscription_status_check;
@@ -93,4 +107,24 @@ async function addStaff({id,branchId,role,passwordHash}){
   await client.query("COMMIT");
  }catch(error){await client.query("ROLLBACK");throw error;}finally{client.release();}
 }
-module.exports={database,initializeDatabase,branchList,createBranch,editBranch,transferFranchise,addStaff,setSubscription,subscriptionForBranch,staffList};
+
+async function customersForIdentity(identity) {
+ const role=identity?.role;
+ const id=identity?.id;
+ const branchId=identity?.branchId;
+ let query="SELECT id,phone,province,city,area,business_center_id AS \"businessCenterId\",franchise_id AS \"franchiseId\",communicator_id AS \"communicatorId\" FROM fcs_customers";
+ let params=[];
+ if(role==="admin") {
+   query+=" ORDER BY id LIMIT 500";
+ } else if(role==="communicator" && typeof id==="string" && id) {
+   query+=" WHERE communicator_id=$1 ORDER BY id LIMIT 500";params=[id];
+ } else if(role==="franchise" && typeof branchId==="string" && branchId) {
+   query+=" WHERE franchise_id=$1 ORDER BY id LIMIT 500";params=[branchId];
+ } else if(role==="business_center" && typeof branchId==="string" && branchId) {
+   query+=" WHERE business_center_id=$1 ORDER BY id LIMIT 500";params=[branchId];
+ } else {
+   return [];
+ }
+ return (await database().query(query,params)).rows;
+}
+module.exports={customersForIdentity,database,initializeDatabase,branchList,createBranch,editBranch,transferFranchise,addStaff,setSubscription,subscriptionForBranch,staffList};
