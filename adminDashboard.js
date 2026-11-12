@@ -224,6 +224,7 @@ async function adminDashboard(req, res, url) {
     if (session && role !== "admin" && (adminOnly.has(route) || (role !== "operator" && operatorOnly.has(route)))) fail(403, "Your staff role does not permit this action.");
     if (req.method === "GET" && route === "/admin/calling-panel") {
       if (!session) fail(401, "Your session expired. Sign in again.");
+      if (role === "viewer") fail(403, "Viewer accounts cannot access calling.");
       const html = await fs.promises.readFile(path.join(__dirname, "staffCalling.html"), "utf8");
       const script = /<script>([\s\S]*?)<\/script>/.exec(html)?.[1];
       const scriptHash = crypto.createHash("sha256").update(script).digest("base64");
