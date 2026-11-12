@@ -421,3 +421,61 @@ async function loadHeadOffice(){
  }catch(error){status.textContent=`Overview unavailable: ${error.message}`;}
 }
 byId("refreshHeadOffice").addEventListener("click",loadHeadOffice);
+
+
+// Head Office branch controls; server enforces admin authorization.
+let branchEditorMode = "create";
+function branchForm(mode) {
+ branchEditorMode=mode;
+ byId("branchEditor").hidden=false;
+ byId("franchiseTransferForm").hidden=true;
+ byId("branchEditorTitle").textContent=mode==="create"?"Add Branch":"Edit Branch";
+ byId("branchTypeInput").disabled=mode==="edit";
+ byId("branchParentInput").disabled=mode==="edit";
+ byId("branchCityInput").disabled=mode==="edit";
+ byId("branchIdInput").readOnly=mode==="edit";
+ byId("branchEditor").scrollIntoView({block:"nearest"});
+}
+byId("showAddBranch").addEventListener("click",()=>branchForm("create"));
+byId("showEditBranch").addEventListener("click",()=>branchForm("edit"));
+byId("showTransferFranchise").addEventListener("click",()=>{
+ byId("branchEditor").hidden=true;
+ byId("franchiseTransferForm").hidden=false;
+});
+byId("openStaffManagement").addEventListener("click",()=>{
+ byId("staffIdsPanel").scrollIntoView({block:"start"});
+ void loadStaffIds();
+});
+for(const [id,filter] of [["showBusinessCenters","business_center"],["showFranchises","franchise"],["showAllBranches",null]]){
+ byId(id).addEventListener("click",async()=>{
+  const status=byId("branchesStatus"),root=byId("branchesResults");
+  status.textContent="Loading branches…";root.replaceChildren();
+  try{
+   const data=await request("branches");
+   const rows=(data.branches||[]).filter(b=>!filter||b.branchType===filter);
+   status.textContent=`${rows.length} branches`;
+   for(const b of rows){const line=document.createElement("p");line.textContent=`${b.id} — ${b.city} — ${b.branchType||"branch"} — ${b.subscriptionStatus||"free"}`;root.append(line);}
+  }catch(error){status.textContent=error.message;}
+ });
+}
+byId("branchEditor").addEventListener("submit",async event=>{
+ event.preventDefault();
+ const status=byId("branchesStatus");
+ const payload={id:byId("branchIdInput").value.trim(),city:byId("branchCityInput").value.trim(),location:byId("branchLocationInput").value.trim(),branchType:byId("branchTypeInput").value,parentBusinessCenterId:byId("branchParentInput").value.trim()||null};
+ const button=event.submitter;
+ await run(button,async()=>{
+  if(branchEditorMode==="edit")throw new Error("Edit is not available until the database edit operation is implemented.");
+  await request("branch-create",payload);
+  byId("branchEditor").reset();byId("branchEditor").hidden=true;
+  await loadBranches();
+ },status);
+});
+byId("franchiseTransferForm").addEventListener("submit",async event=>{
+ event.preventDefault();
+ const button=event.submitter,status=byId("branchesStatus");
+ await run(button,async()=>{
+  await request("franchise-transfer",{franchiseId:byId("transferFranchiseInput").value.trim(),parentBusinessCenterId:byId("transferParentInput").value.trim()||null});
+  byId("franchiseTransferForm").hidden=true;
+  await loadBranches();
+ },status);
+});
