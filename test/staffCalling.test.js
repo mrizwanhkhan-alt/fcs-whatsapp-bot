@@ -24,6 +24,7 @@ let graph;
 let onConnect;
 let onAction;
 let restoreHttps;
+let adminCookie;
 
 before(async () => {
   Object.assign(process.env, {
@@ -32,6 +33,7 @@ before(async () => {
     META_APP_SECRET: appSecret,
     META_GRAPH_VERSION: "v25.0",
     STAFF_CALLING_SECRET: secret,
+    ADMIN_PASSWORD_HASH: Buffer.alloc(16, 31).toString("hex") + ":" + crypto.scryptSync(secret, Buffer.alloc(16, 31), 64).toString("hex"),
     STAFF_CALLING_ICE_SERVERS: "[]",
     CALL_PERMISSION_TEMPLATE_NAME: "approved_call_permission",
     CALL_PERMISSION_TEMPLATE_LANGUAGE: "en",
@@ -96,6 +98,12 @@ before(async () => {
     server.listen = (_port, _host, callback) => listen(0, "127.0.0.1", callback);
     return server;
   };
+  // Mock persistent settings only for this isolated calling integration suite.
+  const settingsPath = require.resolve("../staffSettingsStore");
+  const settings = new Map();
+  require.cache[settingsPath] = { id: settingsPath, filename: settingsPath, loaded: true,
+    exports: { refreshSettings: async () => settings, cachedSettings: () => settings,
+      listSettings: async () => new Map(settings), saveSettings: async (id, value) => { settings.set(id, value); return value; } } };
   try {
     require("../index");
   } finally {
@@ -103,6 +111,11 @@ before(async () => {
   }
   await once(server, "listening");
   base = "http://127.0.0.1:" + server.address().port;
+  const login = await fetch(base + "/admin/login", { method: "POST",
+    headers: { "Content-Type": "application/json", "X-Admin-Request": "login" },
+    body: JSON.stringify({ password: secret }) });
+  assert.equal(login.status, 200);
+  adminCookie = login.headers.get("set-cookie").split(";")[0];
 });
 
 after(async () => {
@@ -113,7 +126,7 @@ after(async () => {
 async function api(route, payload = {}, session = owner, token = secret) {
   const response = await fetch(base + "/api/staff-calling/" + route, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+    headers: { "Content-Type": "application/json", "X-Requested-With": "FCS-Calling",\n      Cookie: token === secret ? adminCookie : "__Host-fcs_admin=invalid" },
     body: JSON.stringify({ owner: session, ...payload })
   });
   return { status: response.status, body: await response.json() };
@@ -143,7 +156,7 @@ function incoming(id) {
 }
 
 test("staff routes require authorization and calling settings stay private", async () => {
-  assert.equal((await api("session", {}, owner, "incorrect")).status, 401);
+  assert.equal((await api("session", {}, owner, "incorrect")).status, 401);\n  const crossSite = await fetch(base + "/api/staff-calling/session", { method: "POST",\n    headers: { "Content-Type": "application/json", "X-Requested-With": "FCS-Calling",\n      "Sec-Fetch-Site": "cross-site", Cookie: adminCookie },\n    body: JSON.stringify({ owner }) });\n  assert.equal(crossSite.status, 403);
   const { status, body } = await api("session");
   assert.equal(status, 200);
   assert.deepEqual(body.iceServers, []);
