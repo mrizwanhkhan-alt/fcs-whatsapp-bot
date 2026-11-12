@@ -36,12 +36,19 @@ async function branchList(){
  const result=await database().query("SELECT b.id,b.city,b.location,b.province,b.branch_type,b.parent_business_center_id,b.subscription_status,COUNT(s.id)::int AS staff_count FROM fcs_branches b LEFT JOIN fcs_staff s ON s.branch_id=b.id AND s.active=true GROUP BY b.id ORDER BY b.city,b.id");
  return result.rows;
 }
-async function createBranch({id,city,location,branchType="franchise",parentBusinessCenterId=null}){
+async function createBranch({id,city,location,province="",branchType="franchise",parentBusinessCenterId=null}){
  if(typeof id!=="string"||!/^[A-Za-z0-9_-]{2,32}$/.test(id)||typeof city!=="string"||!city.trim()||city.length>100||typeof location!=="string"||!location.trim()||location.length>200)throw new Error("Invalid branch");
+ if(typeof province!=="string"||province.length>100)throw new Error("Invalid province");
  if(!["business_center","franchise"].includes(branchType))throw new Error("Invalid branch type");
  if(branchType==="business_center"&&parentBusinessCenterId!==null)throw new Error("Business center cannot have a parent");
  if(parentBusinessCenterId!==null)await verifyParent(database(),parentBusinessCenterId,city);
- await database().query("INSERT INTO fcs_branches(id,city,location,branch_type,parent_business_center_id) VALUES($1,$2,$3,$4,$5)",[id,city.trim(),location.trim(),branchType,parentBusinessCenterId]);
+ await database().query("INSERT INTO fcs_branches(id,city,location,province,branch_type,parent_business_center_id) VALUES($1,$2,$3,$4,$5,$6)",[id,city.trim(),location.trim(),province.trim(),branchType,parentBusinessCenterId]);
+}
+async function editBranch({id,location,province}){
+ if(typeof id!=="string"||!/^[A-Za-z0-9_-]{2,32}$/.test(id)||typeof location!=="string"||!location.trim()||location.length>200||typeof province!=="string"||province.length>100)throw new Error("Invalid branch edit");
+ const result=await database().query("UPDATE fcs_branches SET location=$2,province=$3 WHERE id=$1 RETURNING id",[id,location.trim(),province.trim()]);
+ if(!result.rowCount)throw new Error("Branch not found");
+ return result.rows[0];
 }
 async function verifyParent(client,parentId,city){
  const result=await client.query("SELECT id,city,branch_type FROM fcs_branches WHERE id=$1",[parentId]);
@@ -86,4 +93,4 @@ async function addStaff({id,branchId,role,passwordHash}){
   await client.query("COMMIT");
  }catch(error){await client.query("ROLLBACK");throw error;}finally{client.release();}
 }
-module.exports={database,initializeDatabase,branchList,createBranch,transferFranchise,addStaff,setSubscription,subscriptionForBranch,staffList};
+module.exports={database,initializeDatabase,branchList,createBranch,editBranch,transferFranchise,addStaff,setSubscription,subscriptionForBranch,staffList};
