@@ -17,6 +17,7 @@ const { updateEngagement } = require("./googleSheets");
 const { recordAudit, recentAudit } = require("./securityAudit");
 const { recentCallLogs } = require("./callingRoutes");
 const { safeStaffList, authenticateStaff } = require("./staffAccounts");
+const { branchSummary } = require("./branchDirectory");
 
 const COOKIE = "__Host-fcs_admin";
 const SESSION_MS = 8 * 60 * 60 * 1000;
@@ -254,6 +255,10 @@ async function adminDashboard(req, res, url) {
       if (!session) fail(401, "Your session expired. Sign in again.");
       const rows = await getApplications();
       return respond(res, 200, { provinces: provinceCityReport(rows), updatedAt: new Date().toISOString() });
+    }
+    if (req.method === "GET" && route === "/admin/branches") {
+      if (!session || role !== "admin") fail(403, "Head office access required.");
+      return respond(res, 200, { branches: branchSummary(safeStaffList()) });
     }
     if (req.method === "GET" && route === "/admin/staff-ids") {
       if (!session) fail(401, "Your session expired. Sign in again.");
