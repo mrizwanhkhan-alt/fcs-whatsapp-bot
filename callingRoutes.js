@@ -21,7 +21,7 @@ const calls = new Map();
 const pending = new Map();
 const representativeRequests = new Map();
 const permissionDeliveries = new Map();
-const deliveryOrder = { accepted: 0, sent: 1, failed: 2, delivered: 3, read: 4 };
+const deliveryOrder = { accepted: 0, sent: 1, delivered: 2, read: 3 };
 const REPRESENTATIVE_REQUEST_MS = REPRESENTATIVE_REQUEST_MINUTES * 60_000;
 const RING_MS = 90000;
 const END_MS = 10 * 60 * 1000;
@@ -161,12 +161,19 @@ function handleCallingWebhook(data, rawBody, signature) {
       if (change.field === "messages") {
         for (const event of value.statuses || []) {
           const delivery = permissionDeliveries.get(event.id);
-          if (!delivery || deliveryOrder[event.status] <= deliveryOrder[delivery.status] ||
-              !Object.hasOwn(deliveryOrder, event.status)) continue;
+          if (!delivery) continue;
           if (event.recipient_id && event.recipient_id !== delivery.number) continue;
+          if (event.status === "failed") {
+            // Failure is terminal: a delayed status must not overwrite it.
+            delivery.status = "failed";
+            const error = event.errors?.[0];
+            delivery.errorCode = Number.isInteger(error?.code) ? error.code : null;
+            delivery.errorReason = typeof error?.message === "string" ? error.message.slice(0, 500) : null;
+            continue;
+          }
+          if (delivery.status === "failed" || !Object.hasOwn(deliveryOrder, event.status) ||
+              deliveryOrder[event.status] <= deliveryOrder[delivery.status]) continue;
           delivery.status = event.status;
-          const code = event.errors?.[0]?.code;
-          delivery.errorCode = event.status === "failed" && Number.isInteger(code) ? code : null;
         }
         continue;
       }
@@ -269,7 +276,7 @@ async function handleAction(route, body) {
       const permissionMessageId = result?.messages?.[0]?.id;
       if (!validId(permissionMessageId)) fail(502, "Meta did not confirm acceptance. Check before retrying.");
       permissionDeliveries.set(permissionMessageId, {
-        owner: body.owner, number, status: "accepted", errorCode: null, expires: Date.now() + ACTIVE_MS
+        owner: body.owner, number, status: "accepted", errorCode: null, errorReason: null, expires: Date.now() + ACTIVE_MS
       });
       if (permissionDeliveries.size > 5000) permissionDeliveries.delete(permissionDeliveries.keys().next().value);
       return { ...permission, submitted: true, permissionMessageId };
@@ -320,7 +327,7 @@ async function handleAction(route, body) {
       .map(({ number, requestedAt, status }) => ({ number, requestedAt, status }));
     const delivery = permissionDeliveries.get(body.permissionMessageId);
     const permissionDelivery = delivery?.owner === body.owner
-      ? { status: delivery.status, errorCode: delivery.errorCode }
+      ? { status: delivery.status, errorCode: delivery.errorCode, errorReason: delivery.errorReason || null }
       : undefined;
     return { incoming, call, requests, permissionDelivery, hasTemplate: Boolean(TEMPLATE),
       ...(route === "session" && { iceServers: iceServers() }) };
