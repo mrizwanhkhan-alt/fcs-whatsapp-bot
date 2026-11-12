@@ -16,6 +16,7 @@ const pageStatus = byId("status");
 const windowStatus = byId("windowStatus");
 const logout = byId("logout");
 let csrf;
+let staffLoginMode = false;
 let templates = [];
 let deliveryPoll = 0;
 
@@ -49,7 +50,7 @@ async function request(path, payload, attachment) {
   if (payload) {
     options.method = "POST";
     options.headers = {
-      "X-Admin-Request": path === "login" ? "login" : csrf,
+      "X-Admin-Request": (path === "login" || path === "staff-login") ? "login" : csrf,
       "Content-Type": attachment ? "application/octet-stream" : "application/json"
     };
     const json = JSON.stringify(payload);
@@ -99,21 +100,27 @@ function showSession(session) {
   deliveryPoll++;
   csrf = session.csrf;
   templates = session.templates || [];
-  byId("loginPanel").hidden = session.signedIn;
-  byId("composePanel").hidden = !session.signedIn;
-  byId("roleOverview").hidden = !session.signedIn;
+  const isAdmin = Boolean(session.signedIn && (!session.role || session.role === "super_admin"));
+  byId("loginPanel").hidden = session.signedIn || staffLoginMode;
+  byId("staffLoginPanel").hidden = session.signedIn || !staffLoginMode;
+  byId("staffHome").hidden = !session.signedIn || isAdmin;
+  byId("staffGreeting").textContent = session.signedIn && !isAdmin
+    ? `Signed in as ${session.staffId || "staff"} (${String(session.role).replaceAll("_", " ")})`
+    : "";
+  byId("composePanel").hidden = !isAdmin;
+  byId("roleOverview").hidden = !isAdmin;
   logout.hidden = !session.signedIn;
-  byId("workspaceNav").hidden = !session.signedIn;
-  byId("callingPanel").hidden = !session.signedIn;
-  byId("reportsPanel").hidden = !session.signedIn;
-  byId("customerPanel").hidden = !session.signedIn;
-  byId("applicationsPanel").hidden = !session.signedIn;
+  byId("workspaceNav").hidden = !isAdmin;
+  byId("callingPanel").hidden = !isAdmin;
+  byId("reportsPanel").hidden = !isAdmin;
+  byId("customerPanel").hidden = !isAdmin;
+  byId("applicationsPanel").hidden = !isAdmin;
   if (!session.signedIn) { byId("customerResult").replaceChildren(); byId("customerStatus").textContent = ""; }
-  if (session.signedIn) { void loadProvinceCityReport(); void loadApplications(); }
+  if (isAdmin) { void loadProvinceCityReport(); void loadApplications(); }
   else byId("reportResults").replaceChildren();
-  if (session.signedIn && !callingFrame.hasAttribute("src")) {
+  if (isAdmin && !callingFrame.hasAttribute("src")) {
     callingFrame.src = "/admin/calling-panel";
-  } else if (!session.signedIn) {
+  } else if (!isAdmin) {
     callingFrame.removeAttribute("src");
     showCallingAlert(false);
   }
@@ -178,6 +185,28 @@ async function run(button, action, errorElement = pageStatus) {
     button.disabled = false;
   }
 }
+
+byId("showStaffLogin").addEventListener("click", () => {
+  staffLoginMode = true;
+  byId("loginPanel").hidden = true;
+  byId("staffLoginPanel").hidden = false;
+  byId("staffId").focus();
+});
+byId("showAdminLogin").addEventListener("click", () => {
+  staffLoginMode = false;
+  byId("staffLoginPanel").hidden = true;
+  byId("loginPanel").hidden = false;
+  password.focus();
+});
+byId("staffLoginForm").addEventListener("submit", event => {
+  event.preventDefault();
+  run(event.submitter, async () => {
+    const payload = { id: byId("staffId").value.trim(), password: byId("staffPassword").value };
+    byId("staffPassword").value = "";
+    await request("staff-login", payload);
+    showSession(await request("session"));
+  });
+});
 
 loginForm.addEventListener("submit", event => {
   event.preventDefault();
