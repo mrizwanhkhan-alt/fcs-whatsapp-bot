@@ -33,7 +33,7 @@ let sendsInProgress = 0;
 
 const assets = {
   "/admin": ["admin.html", "text/html; charset=utf-8"],
-  "/admin/dashboard.js": ["adminClient.js", "application/javascript; charset=utf-8"]
+  "/admin/dashboard.js": ["adminClient.js", "application/javascript; charset=utf-8"],\n  "/admin/workspace.js": ["dashboardWorkspace.js", "application/javascript; charset=utf-8"]
 };
 const securityHeaders = {
   "Cache-Control": "no-store",
