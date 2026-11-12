@@ -261,7 +261,7 @@ function getCall(callId) {
   return call;
 }
 
-async function updateCall(call, owner, action, sdp) {
+async function updateCall(call, owner, action, sdp, staffId) {
   if (call.owner && call.owner !== owner) fail(409, "Another staff session is handling this call.");
   if (ended(call)) return publicCall(call);
   if (call.operation) fail(409, "A call action is already in progress.");
@@ -274,6 +274,7 @@ async function updateCall(call, owner, action, sdp) {
   try {
     await updateWhatsAppCall(call.id, action, sdp);
     call.owner = owner;
+    call.staffId = staffId || call.staffId || null;
     if (!ended(call)) {
       if (action === "accept") setState(call, "accepted", ACTIVE_MS);
       else setState(call, action === "reject" ? "rejected" : "ended", END_MS);
@@ -371,7 +372,7 @@ async function handleAction(route, body, access = {}) {
   }
 
   if (["accept", "reject", "terminate"].includes(route)) {
-    return updateCall(getCall(body.callId), body.owner, route, body.sdp);
+    return updateCall(getCall(body.callId), body.owner, route, body.sdp, access.staffId);
   }
   fail(404, "Unknown calling API route.");
 }
