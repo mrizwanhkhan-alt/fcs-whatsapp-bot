@@ -244,6 +244,17 @@ async function adminDashboard(req, res, url) {
       });
       return res.end(html);
     }
+    if (req.method === "GET" && route === "/admin/assigned-customers") {
+      if (!session) fail(401, "Sign in required.");
+      if (!process.env.DATABASE_URL) fail(503, "Central customer database is not configured.");
+      await centralDb.initializeDatabase();
+      const identity = session.identity;
+      const assignedRole = identity.role === "admin" ? "admin" : null;
+      // Legacy viewer/operator accounts have no trusted customer role mapping.
+      if (!assignedRole) fail(403, "Customer ownership role must be verified.");
+      const customers = await centralDb.customersForIdentity(identity);
+      return respond(res, 200, { customers, scope: "authenticated", limited: customers.length === 500 });
+    }
     if (req.method === "GET" && route === "/admin/customer-lookup") {
       if (role !== "admin") fail(403, "Customer data is restricted until branch ownership is configured.");
       if (!session) fail(401, "Your session expired. Sign in again.");
