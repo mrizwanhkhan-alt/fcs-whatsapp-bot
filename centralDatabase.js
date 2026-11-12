@@ -27,12 +27,13 @@ CREATE TABLE IF NOT EXISTS fcs_staff (
  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS fcs_staff_branch_idx ON fcs_staff(branch_id);
+ALTER TABLE fcs_branches ADD COLUMN IF NOT EXISTS province VARCHAR(100) NOT NULL DEFAULT '';
 ALTER TABLE fcs_branches ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(16) NOT NULL DEFAULT 'free';
 ALTER TABLE fcs_branches DROP CONSTRAINT IF EXISTS fcs_subscription_status_check;
 ALTER TABLE fcs_branches ADD CONSTRAINT fcs_subscription_status_check CHECK (subscription_status IN ('free','active','expired'));`);
 }
 async function branchList(){
- const result=await database().query("SELECT b.id,b.city,b.location,b.branch_type,b.parent_business_center_id,b.subscription_status,COUNT(s.id)::int AS staff_count FROM fcs_branches b LEFT JOIN fcs_staff s ON s.branch_id=b.id AND s.active=true GROUP BY b.id ORDER BY b.city,b.id");
+ const result=await database().query("SELECT b.id,b.city,b.location,b.province,b.branch_type,b.parent_business_center_id,b.subscription_status,COUNT(s.id)::int AS staff_count FROM fcs_branches b LEFT JOIN fcs_staff s ON s.branch_id=b.id AND s.active=true GROUP BY b.id ORDER BY b.city,b.id");
  return result.rows;
 }
 async function createBranch({id,city,location,branchType="franchise",parentBusinessCenterId=null}){
@@ -68,6 +69,10 @@ async function subscriptionForBranch(id){
  const result=await database().query("SELECT subscription_status FROM fcs_branches WHERE id=$1",[id]);
  return result.rows[0]?.subscription_status || null;
 }
+async function staffList(){
+ const result=await database().query("SELECT id,role,branch_id FROM fcs_staff WHERE active=true ORDER BY branch_id,id");
+ return result.rows;
+}
 async function addStaff({id,branchId,role,passwordHash}){
  if(typeof id!=="string"||!/^[A-Za-z0-9_-]{3,32}$/.test(id)||typeof branchId!=="string"||!["viewer","operator"].includes(role)||typeof passwordHash!=="string"||!/^([a-f0-9]{32}):([a-f0-9]{128})$/.test(passwordHash))throw new Error("Invalid staff");
  const client=await database().connect();
@@ -81,4 +86,4 @@ async function addStaff({id,branchId,role,passwordHash}){
   await client.query("COMMIT");
  }catch(error){await client.query("ROLLBACK");throw error;}finally{client.release();}
 }
-module.exports={database,initializeDatabase,branchList,createBranch,transferFranchise,addStaff,setSubscription,subscriptionForBranch};
+module.exports={database,initializeDatabase,branchList,createBranch,transferFranchise,addStaff,setSubscription,subscriptionForBranch,staffList};
