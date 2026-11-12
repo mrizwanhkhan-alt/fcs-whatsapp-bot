@@ -101,30 +101,31 @@ function showSession(session) {
   templates = session.templates || [];
   byId("loginPanel").hidden = session.signedIn;
   const role = session.identity?.role || "admin";
-  const canWrite = session.signedIn && role !== "viewer";
+  const canWrite = session.signedIn && role === "admin";
   const isAdmin = session.signedIn && role === "admin";
   byId("composePanel").hidden = !canWrite;
   logout.hidden = !session.signedIn;
   byId("workspaceNav").hidden = !session.signedIn;
-  byId("callingPanel").hidden = !session.signedIn;
-  byId("reportsPanel").hidden = !session.signedIn;
-  byId("statusReportPanel").hidden = !session.signedIn;
-  byId("messageActivityPanel").hidden = !session.signedIn;
+  byId("callingPanel").hidden = !isAdmin;
+  byId("reportsPanel").hidden = !isAdmin;
+  byId("statusReportPanel").hidden = !isAdmin;
+  byId("messageActivityPanel").hidden = !isAdmin;
   byId("engagementPanel").hidden = !canWrite;
-  byId("costMonitoringPanel").hidden = !session.signedIn;
+  byId("costMonitoringPanel").hidden = !isAdmin;
   byId("backupPanel").hidden = !isAdmin;
-  byId("callingLogsPanel").hidden = !session.signedIn;
+  byId("callingLogsPanel").hidden = !isAdmin;
   byId("staffIdsPanel").hidden = !isAdmin;
   byId("branchesPanel").hidden = !isAdmin;
+  byId("headOfficePanel").hidden = !isAdmin;
   byId("securityAuditPanel").hidden = !isAdmin;
-  if (session.signedIn) void loadMessageActivity();
-  if (session.signedIn) void loadCustomerStatusReport();
-  byId("customerPanel").hidden = !session.signedIn;
-  if (session.signedIn) void loadProvinceCityReport();
+  if (isAdmin) void loadMessageActivity();
+  if (isAdmin) void loadCustomerStatusReport();
+  byId("customerPanel").hidden = !isAdmin;
+  if (isAdmin) void loadProvinceCityReport();
   else byId("reportResults").replaceChildren();
-  if (session.signedIn && !callingFrame.hasAttribute("src")) {
+  if (isAdmin && !callingFrame.hasAttribute("src")) {
     callingFrame.src = "/admin/calling-panel";
-  } else if (!session.signedIn) {
+  } else if (!isAdmin) {
     callingFrame.removeAttribute("src");
     showCallingAlert(false);
   }
@@ -395,3 +396,11 @@ async function loadBranches(){
  }catch(error){status.textContent=`Branches unavailable: ${error.message}`;}
 }
 byId("refreshBranches").addEventListener("click",loadBranches);
+
+async function loadHeadOffice(){
+ const status=byId("headOfficeStatus"),root=byId("headOfficeResults");status.textContent="Loading overview…";root.replaceChildren();
+ try{const data=await request("head-office-summary");status.textContent="Head office overview";
+ const p=document.createElement("p");p.textContent=`Branches: ${data.totalBranches} | Cities: ${data.cities} | Staff: ${data.totalStaff} | Available staff slots: ${data.availableStaffSlots}`;root.append(p);
+ }catch(error){status.textContent=`Overview unavailable: ${error.message}`;}
+}
+byId("refreshHeadOffice").addEventListener("click",loadHeadOffice);
