@@ -29,6 +29,13 @@ async function ensureTab() {
 async function appendEvent(entry) {
   const job = async () => {
     await ensureTab();
+    // Re-read persisted events so retries after a process restart do not duplicate an event.
+    const existing = await sheets.spreadsheets.values.get({ spreadsheetId: GOOGLE_SHEET_ID,
+      range: "'FCS_Call_History'!A2:J" });
+    const eventKey = [entry.id, entry.staffId || "", entry.owner || "", entry.state,
+      entry.startedAt || "", entry.answeredAt || "", entry.endedAt || ""].join("|");
+    if ((existing.data.values || []).some(row =>
+      [row[1],row[2] || "",row[3] || "",row[6],row[7] || "",row[8] || "",row[9] || ""].join("|") === eventKey)) return;
     await sheets.spreadsheets.values.append({ spreadsheetId: GOOGLE_SHEET_ID,
       range: "'FCS_Call_History'!A:J", valueInputOption: "RAW", insertDataOption: "INSERT_ROWS",
       requestBody: { values: [[new Date().toISOString(),entry.id,entry.staffId || "",entry.owner || "",
@@ -51,7 +58,7 @@ async function listHistory({ staffId, owner, superAdmin = false, limit = 100 } =
     if (owner && rowOwner !== owner) continue;
     latest.set(id, { id, staffId: rowStaff || null, owner: rowOwner || null, number,
       direction, state, startedAt, answeredAt: answeredAt || null, endedAt: endedAt || null,
-      updatedAt: eventAt });
+      updatedAt: eventAt, durationSeconds: answeredAt && endedAt ? Math.max(0, Math.floor((Date.parse(endedAt) - Date.parse(answeredAt)) / 1000)) : null });
   }
   return Array.from(latest.values()).reverse().slice(0, Math.min(Math.max(Number(limit)||100,1),100));
 }
