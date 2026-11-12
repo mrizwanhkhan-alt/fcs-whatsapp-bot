@@ -345,6 +345,7 @@ async function adminDashboard(req, res, url) {
     }
     if (req.method === "GET" && route === "/admin/backup-export") {
       if (!session) fail(401, "Your session expired. Sign in again.");
+      if (role !== "admin") fail(403, "Head office access required for nationwide backup.");
       const rows = await getApplications();
       recordAudit("applications.backup", "success", `${rows.length} rows`);
       return respond(res, 200, { format: "FCS-Applications-Backup-v1", exportedAt: new Date().toISOString(), source: "Franchise_Applications", rows }, { "Content-Disposition": 'attachment; filename="fcs-applications-backup.json"' });
@@ -403,6 +404,7 @@ async function adminDashboard(req, res, url) {
       return respond(res, 200, { signedIn: false }, { "Set-Cookie": cookie("", 0) });
     }
     if (route === "/admin/customer-engagement") {
+      if (role !== "admin") fail(403, "Head office access required until customer ownership is verified.");
       const data = await readJSON(req);
       const rowNumber = data.rowNumber;
       const stage = data.stage;
