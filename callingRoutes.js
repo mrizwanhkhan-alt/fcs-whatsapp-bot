@@ -34,14 +34,14 @@ function trackCall(call) {
     owner: call.owner || previous?.owner || null,
     staffId: call.staffId || previous?.staffId || null,
     direction: call.direction || previous?.direction || "incoming",
-    startedAt: previous?.startedAt || call.startedAt || new Date().toISOString(),
-    answeredAt: previous?.answeredAt || call.answeredAt || null,
+    startedAt: call.startedAt && (!previous?.startedAt || Date.parse(call.startedAt) < Date.parse(previous.startedAt)) ? call.startedAt : previous?.startedAt || call.startedAt || new Date().toISOString(),
+    answeredAt: call.answeredAt && (!previous?.answeredAt || Date.parse(call.answeredAt) < Date.parse(previous.answeredAt)) ? call.answeredAt : previous?.answeredAt || call.answeredAt || null,
     endedAt: previous?.endedAt || call.endedAt || null,
     state: call.state
   };
-  if (call.state === "accepted" && !entry.answeredAt) entry.answeredAt = new Date().toISOString();
+  if (call.state === "accepted" && !entry.answeredAt) entry.answeredAt = call.answeredAt || new Date().toISOString();
   if (ended(call) && !entry.endedAt) entry.endedAt = new Date().toISOString();
-  const changed = !previous || previous.state !== entry.state || previous.owner !== entry.owner || previous.staffId !== entry.staffId || previous.answeredAt !== entry.answeredAt || previous.endedAt !== entry.endedAt;
+  const changed = !previous || previous.state !== entry.state || previous.owner !== entry.owner || previous.staffId !== entry.staffId || previous.startedAt !== entry.startedAt || previous.answeredAt !== entry.answeredAt || previous.endedAt !== entry.endedAt;
   callHistory.set(call.id, entry);
   if (changed) appendEvent(entry).catch(error => {
     console.error("Call history persistence failed:", error.message);
@@ -282,6 +282,7 @@ function recordEvent(event, incomingVerified = false) {
     return;
   }
   const type = event.session?.sdp_type;
+  const metaTime = Number(event.timestamp) > 0 ? new Date(Number(event.timestamp) * 1000).toISOString() : null;
   const incoming = event.event === "connect" && type === "offer" && validSDP(event.session.sdp);
   const terminal = event.event === "terminate" || ["REJECTED", "FAILED"].includes(event.status);
   if (!call) {
@@ -289,11 +290,13 @@ function recordEvent(event, incomingVerified = false) {
     if (!incoming && !terminal && type !== "answer" && !["RINGING", "ACCEPTED"].includes(event.status)) return;
     const eventAge = Date.now() - Number(event.timestamp) * 1000;
     if (incoming && Number.isFinite(eventAge) && eventAge > RING_MS) return;
-    call = { number: event.from || event.from_user_id };
+    call = { number: event.from || event.from_user_id, startedAt: metaTime || new Date().toISOString() };
     setState(call, incoming ? "incoming" : "dialing", RING_MS);
   }
   if (existing && ended(existing)) return;
   call.id = event.id;
+  if (incoming && metaTime && (!call.startedAt || Date.parse(metaTime) < Date.parse(call.startedAt))) call.startedAt = metaTime;
+  if (event.status === "ACCEPTED" && metaTime && (!call.answeredAt || Date.parse(metaTime) < Date.parse(call.answeredAt))) call.answeredAt = metaTime;
   calls.set(call.id, call);
   trackCall(call);
 
