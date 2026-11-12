@@ -109,6 +109,7 @@ function showSession(session) {
   byId("messageActivityPanel").hidden = !session.signedIn;
   byId("engagementPanel").hidden = !session.signedIn;
   byId("costMonitoringPanel").hidden = !session.signedIn;
+  byId("backupPanel").hidden = !session.signedIn;
   byId("securityAuditPanel").hidden = !session.signedIn;
   if (session.signedIn) void loadMessageActivity();
   if (session.signedIn) void loadCustomerStatusReport();
@@ -352,3 +353,15 @@ async function loadCostMonitoring(){
  }catch(error){status.textContent=`Usage unavailable: ${error.message}`;}
 }
 byId("refreshCostMonitoring").addEventListener("click",loadCostMonitoring);
+
+byId("downloadBackup").addEventListener("click",async()=>{
+ const status=byId("backupStatus");status.textContent="Preparing backup…";
+ try{const data=await request("backup-export");
+  if(data.format!=="FCS-Applications-Backup-v1"||!Array.isArray(data.rows))throw new Error("Invalid backup response");
+  const blob=new Blob([JSON.stringify(data)],{type:"application/json"});
+  const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;
+  a.download=`fcs-applications-${new Date().toISOString().slice(0,10)}.json`;
+  document.body.append(a);a.click();a.remove();URL.revokeObjectURL(url);
+  status.textContent=`Backup prepared: ${data.rows.length} sheet rows. Store securely.`;
+ }catch(error){status.textContent=`Backup failed: ${error.message}`;}
+});
