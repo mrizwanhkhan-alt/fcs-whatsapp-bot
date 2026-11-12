@@ -74,7 +74,7 @@
       <a href="#callingLogsPanel">Calling logs</a>
       <a href="#staffIdsPanel">Staff IDs</a>
       <a href="#branchesPanel">Branches</a>\n      <a href="#subscriptionPanel">Subscription</a>
-      <a href="#headOfficePanel">Head office</a>
+      <a href="#headOfficePanel">Head office</a>\n      <a href="#networkExplorerPanel">Network explorer</a>
       <a href="#securityAuditPanel">Audit</a>
     </nav>
 
@@ -127,6 +127,18 @@
       <h1>Live Customer Profile</h1>
       <form id="customerLookupForm"><label>Customer phone number<input id="customerPhone" type="tel" autocomplete="off" required></label><button type="submit">Find customer</button></form>
       <p id="customerLookupStatus" role="status"></p><div id="customerLookupResult"></div>
+    </section>
+    <section id="networkExplorerPanel" hidden>
+      <h1>Head Office Network Explorer</h1>
+      <p class="hint">Select a province, city, business center, franchise or individual communicator.</p>
+      <label>Province <select id="networkProvince"></select></label>
+      <label>City <select id="networkCity"></select></label>
+      <label>Business Center <select id="networkCenter"></select></label>
+      <label>Franchise <select id="networkFranchise"></select></label>
+      <label>Communicator <select id="networkStaff"></select></label>
+      <button id="refreshNetwork" type="button" class="secondary">Refresh network</button>
+      <p id="networkStatus" role="status"></p>
+      <div id="networkDetails"></div>
     </section>
     <section id="headOfficePanel" hidden><h1>Head Office Control</h1><button id="refreshHeadOffice" type="button" class="secondary">Refresh overview</button><p id="headOfficeStatus" role="status"></p><div id="headOfficeResults"></div></section>
     <section id="branchesPanel" hidden>
