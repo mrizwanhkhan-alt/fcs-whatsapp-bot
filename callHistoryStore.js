@@ -20,7 +20,7 @@ async function ensureTab() {
         if (!(check.data.sheets || []).some(x => x.properties?.title === TAB)) throw error;
       }
       await sheets.spreadsheets.values.update({ spreadsheetId: GOOGLE_SHEET_ID,
-        range: "'FCS_Call_History'!A1:I1", valueInputOption: "RAW",
+        range: "'FCS_Call_History'!A1:J1", valueInputOption: "RAW",
         requestBody: { values: [["Event UTC","Call ID","Staff ID","Session ID","Number","Direction","State","Started UTC","Answered UTC","Ended UTC"]] } });
     }
   })().catch(error => { setup = null; throw error; });
