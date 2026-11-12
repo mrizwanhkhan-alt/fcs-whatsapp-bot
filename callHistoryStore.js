@@ -38,6 +38,9 @@ async function appendEvent(entry) {
       [row[1],row[2] || "",row[3] || "",row[6],row[7] || "",row[8] || "",row[9] || ""].join("|") === eventKey)) return;
     // Never append a stale nonterminal event after a terminal event was persisted.
     if (!["ended","rejected","failed"].includes(entry.state) && (existing.data.values || []).some(row => row[1] === entry.id && ["ended","rejected","failed"].includes(row[6]))) return;
+    // Do not regress an answered call to ringing/incoming, even across processes.
+    if (["ringing","incoming","dialing"].includes(entry.state) && (existing.data.values || []).some(row =>
+      row[1] === entry.id && (row[8] || ["accepted","ended","rejected","failed"].includes(row[6])))) return;
     await sheets.spreadsheets.values.append({ spreadsheetId: GOOGLE_SHEET_ID,
       range: "'FCS_Call_History'!A:J", valueInputOption: "RAW", insertDataOption: "INSERT_ROWS",
       requestBody: { values: [[new Date().toISOString(),entry.id,entry.staffId || "",entry.owner || "",
