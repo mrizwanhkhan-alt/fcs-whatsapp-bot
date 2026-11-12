@@ -32,6 +32,13 @@ const windows = new Map();
 const deliveryStatuses = new Map();
 const MAX_DELIVERY_STATUSES = 5000;
 
+function usageSummary() {
+ const statuses = [...deliveryStatuses.values()];
+ const counts = { accepted:0, sent:0, delivered:0, read:0, failed:0 };
+ for (const item of statuses) if (Object.hasOwn(counts,item.status)) counts[item.status]++;
+ return { trackedMessages: statuses.length, counts, currency: null, estimatedCost: null, note: "Tracked messages only; Meta billing rates and actual costs are not available here. Counts reset on restart." };
+}
+
 function recentDeliveryStatuses(limit = 50) {
   return [...deliveryStatuses.entries()].slice(-Math.min(100, Math.max(1, limit))).reverse().map(([messageId, entry]) => ({ messageId, number: entry.number || "", status: entry.status, updatedAt: entry.updatedAt, errorCode: entry.errorCode }));
 }
@@ -287,5 +294,5 @@ async function sendAdminMessage(message, file, bytes, authorized) {
 
 module.exports = {
   attachment, checkRecipient, deliveryStatus, recentDeliveryStatuses, fail, prepareMessage, recipient, recordAdminWindows,
-  sendAdminMessage, templates, windowExpiry
+  sendAdminMessage, templates, usageSummary, windowExpiry
 };
