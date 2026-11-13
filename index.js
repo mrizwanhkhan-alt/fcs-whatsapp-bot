@@ -8,6 +8,7 @@ const config = require("./config");
 const { menuFlow, menuList, menuSelection, listSelection } = require("./serviceMenuFlow");
 const { callingRoutes, handleCallingWebhook, isVerifiedMetaWebhook, requestRepresentativeCall } = require("./callingRoutes");
 const { adminDashboard } = require("./adminDashboard");
+const inbox = require("./inbox");
 const { recordAdminWindows } = require("./adminMessaging");
 const { getReply } = require("./openai");
 
@@ -109,6 +110,11 @@ function sendWhatsAppPayload(to, payload, onResponse, onClose) {
     });
 
     response.on("end", () => {
+      if (inbox.configured && response.statusCode >= 200 && response.statusCode < 300) {
+        let id;
+        try { id = JSON.parse(result).messages?.[0]?.id; } catch {}
+        inbox.outgoing(String(to), id, inbox.payloadText(payload), "bot");
+      }
       onResponse?.(response.statusCode, result);
       console.log(
         "WhatsApp Response:",
@@ -869,6 +875,19 @@ const server = http.createServer((req, res) => {
         return;
       }
 
+      const verified = data?.object === "whatsapp_business_account" &&
+        isVerifiedMetaWebhook(rawBody, req.headers["x-hub-signature-256"]);
+      if (verified && inbox.configured && PHONE_NUMBER_ID) {
+        try {
+          await inbox.incoming(data, PHONE_NUMBER_ID);
+        } catch {
+          console.error("Could not save incoming WhatsApp message to Inbox.");
+          res.writeHead(503);
+          res.end("Inbox storage unavailable");
+          return;
+        }
+      }
+
       res.writeHead(200, {
         "Content-Type": "text/plain"
       });
@@ -887,8 +906,6 @@ const server = http.createServer((req, res) => {
       }
 
       try {
-        const verified = data.object === "whatsapp_business_account" &&
-          isVerifiedMetaWebhook(rawBody, req.headers["x-hub-signature-256"]);
         for (const entry of data.entry || []) {
           for (const change of entry.changes || []) {
             const value = change.value || {};

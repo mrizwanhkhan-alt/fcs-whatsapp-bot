@@ -4,6 +4,9 @@ const assert = require("node:assert/strict");
 const crypto = require("node:crypto");
 const { once } = require("node:events");
 const http = require("node:http");
+const fs = require("node:fs/promises");
+const os = require("node:os");
+const path = require("node:path");
 const { after, before, test } = require("node:test");
 
 const password = "test-admin-password-24-characters";
@@ -16,6 +19,7 @@ const pdf = Buffer.from("%PDF-1.7\n%%EOF\n");
 const jpeg = Buffer.from("ffd8ffe000104a464946", "hex");
 const realFetch = global.fetch;
 let server;
+let inboxDirectory;
 let base;
 let cookie;
 let csrf;
@@ -23,8 +27,10 @@ const graph = [];
 let graphResponse;
 
 before(async () => {
+  inboxDirectory = await fs.mkdtemp(path.join(os.tmpdir(), "fcs-inbox-"));
   const salt = Buffer.alloc(16, 42);
   Object.assign(process.env, {
+    FCS_INBOX_DIR: inboxDirectory,
     ADMIN_PASSWORD_HASH: salt.toString("hex") + ":" + crypto.scryptSync(password, salt, 64).toString("hex"),
     STAFF_ACCOUNTS_JSON: JSON.stringify([{
       id: "agent01", role: "communicator", active: true, startsAt: "2026-01-01", expiresAt: "2099-12-31", territory: { province: "Punjab", cities: ["Lahore"] },
@@ -83,6 +89,7 @@ before(async () => {
 after(async () => {
   global.fetch = realFetch;
   if (server?.listening) await new Promise(resolve => server.close(resolve));
+  await fs.rm(inboxDirectory, { recursive: true, force: true });
 });
 
 async function admin(route, data, { signedIn = true, request, site, file } = {}) {
@@ -105,8 +112,9 @@ async function admin(route, data, { signedIn = true, request, site, file } = {})
 }
 
 async function webhook({ timestamp = Date.now(), number = customer, phone = phoneId, signed = true,
-  field = "messages", type = "image", status = false } = {}) {
-  const message = { id: "wamid.inbound", from: number, type, timestamp: String(Math.floor(timestamp / 1000)) };
+  field = "messages", type = "image", status = false, id = "wamid.inbound", text } = {}) {
+  const message = { id, from: number, type, timestamp: String(Math.floor(timestamp / 1000)) };
+  if (text) message.text = { body: text };
   const body = JSON.stringify({
     object: "whatsapp_business_account",
     entry: [{ changes: [{ field, value: {
@@ -206,6 +214,37 @@ test("valid inbound messages open a recipient-specific window and text uses the 
     messaging_product: "whatsapp", recipient_type: "individual", to: customer, type: "text",
     text: { preview_url: false, body: "السلام علیکم" }
   });
+});
+
+test("Inbox stores signed customer text once, records replies and persists read state", async () => {
+  const number = "923001234599";
+  const timestamp = Date.now() - 1000;
+  const inbound = { number, timestamp, id: "wamid.inbox", type: "text", text: "ہاں 1" };
+  await webhook({ ...inbound, signed: false });
+  await webhook({ ...inbound, phone: "987" });
+  assert.deepEqual((await admin("inbox?number=" + number)).body.messages, []);
+  await webhook(inbound);
+  await webhook(inbound);
+  const inbox = await admin("inbox");
+  assert.equal(inbox.body.threads.find(thread => thread.number === number).unread, 1);
+  const history = await admin("inbox?number=" + number);
+  assert.equal(history.body.messages.filter(event => event.id === inbound.id).length, 1);
+  assert.equal(history.body.messages.find(event => event.id === inbound.id).text, inbound.text);
+  assert.equal((await admin("inbox", null, { signedIn: false })).status, 401);
+  assert.equal((await admin("inbox/read", { number, through: Math.floor(timestamp / 1000) * 1000 }, { request: "bad" })).status, 403);
+  await admin("inbox/read", { number, through: Math.floor(timestamp / 1000) * 1000 });
+  assert.equal((await admin("inbox")).body.threads.find(thread => thread.number === number).unread, 0);
+  graphResponse = () => Response.json({ messages: [{ id: "wamid.inbox-reply" }] });
+  try {
+    assert.equal((await admin("send", { number, type: "text", text: "شکریہ" })).status, 200);
+    delete require.cache[require.resolve("../inbox")];
+    const reopened = require("../inbox");
+    const stored = await reopened.history(number);
+    assert.equal(stored.find(event => event.id === "wamid.inbox-reply").text, "شکریہ");
+    assert.equal((await reopened.list()).find(thread => thread.number === number).unread, 0);
+  } finally {
+    graphResponse = undefined;
+  }
 });
 
 test("PDF, images and Office documents upload to Meta and send using its media ID", async () => {

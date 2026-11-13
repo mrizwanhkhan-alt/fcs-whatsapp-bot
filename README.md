@@ -81,3 +81,16 @@ message for delivery.
 Run `npm test` before deploying. After deploying, verify sign-in and window
 detection, then send a text, a file and a configured template to a consenting
 test phone.
+
+### WhatsApp Inbox
+
+The Super Admin dashboard includes an Inbox for new verified customer messages and
+outbound messages sent through the bot and Admin Messaging. It shows the latest
+100 conversations and up to 100 messages per conversation. WhatsApp attachments
+appear as captions or message-type labels.
+
+To enable it, set `FCS_INBOX_DIR` to a writable absolute path on a persistent
+disk attached to the existing single-instance service. The Inbox stores its
+message journal and read state there. Keep access to the disk and its backups
+restricted to authorized administrators. With no directory configured, the
+existing messaging routes operate and the Inbox reports that storage is unavailable.

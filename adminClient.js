@@ -20,7 +20,7 @@ let staffLoginMode = false;
 let templates = [];
 let deliveryPoll = 0;
 
-async function watchDelivery(id) {
+async function watchDelivery(id, element = pageStatus) {
   const poll = ++deliveryPoll;
   for (let attempt = 0; attempt < 20; attempt++) {
     await new Promise(resolve => setTimeout(resolve, 3000));
@@ -29,14 +29,14 @@ async function watchDelivery(id) {
       const result = await request(`delivery?id=${encodeURIComponent(id)}`);
       if (poll !== deliveryPoll) return;
       const suffix = result.errorCode ? ` (Meta error ${result.errorCode})` : "";
-      feedback(`WhatsApp status: ${result.status}${suffix}`, result.status === "failed");
+      feedback(`WhatsApp status: ${result.status}${suffix}`, result.status === "failed", element);
       if (["delivered", "read", "failed"].includes(result.status)) return;
     } catch {
-      if (poll === deliveryPoll) feedback("Delivery status unavailable; check Meta logs before retrying.", true);
+      if (poll === deliveryPoll) feedback("Delivery status unavailable; check Meta logs before retrying.", true, element);
       return;
     }
   }
-  if (poll === deliveryPoll) feedback("Delivery not confirmed yet. Check Meta logs before retrying.", true);
+  if (poll === deliveryPoll) feedback("Delivery not confirmed yet. Check Meta logs before retrying.", true, element);
 }
 
 
@@ -125,6 +125,18 @@ function showSession(session) {
     ? `Signed in as ${session.staffId || "staff"} (${String(session.role).replaceAll("_", " ")})`
     : "";
   byId("composePanel").hidden = !isAdmin;
+  byId("inboxPanel").hidden = !isAdmin;
+  if (isAdmin) {
+    if (location.hash === "#inboxPanel") void refreshInbox();
+  } else {
+    inboxRevision++;
+    inboxNumber = "";
+    byId("inboxThreads").replaceChildren();
+    byId("inboxMessages").replaceChildren();
+    byId("inboxContact").textContent = "";
+    byId("inboxText").value = "";
+    byId("inboxConversation").hidden = true;
+  }
   byId("roleOverview").hidden = !isAdmin;
   logout.hidden = !session.signedIn;
   byId("workspaceNav").hidden = !isAdmin;
@@ -502,3 +514,99 @@ request("session").then(session => {
   showSession(session);
   feedback();
 }).catch(() => feedback("The dashboard could not load. Refresh to try again.", true));
+
+let inboxNumber = "";
+let inboxRevision = 0;
+const inboxReply = byId("inboxReply");
+const inboxText = byId("inboxText");
+const inboxReplyStatus = byId("inboxReplyStatus");
+
+async function refreshInbox() {
+  if (byId("inboxPanel").hidden) return;
+  const revision = ++inboxRevision;
+  const selected = inboxNumber;
+  const status = byId("inboxStatus");
+  try {
+    if (selected) {
+      const conversation = await request(`inbox?number=${encodeURIComponent(selected)}`);
+      if (revision !== inboxRevision) return;
+      const rows = conversation.messages.map(event => {
+        const row = document.createElement("p");
+        const label = document.createElement("strong");
+        const body = document.createElement("span");
+        label.textContent = `${{ customer: "Customer", bot: "Bot", staff: "Staff" }[event.direction]} · ${new Date(event.time).toLocaleString()}`;
+        body.dir = "auto";
+        body.style.whiteSpace = "pre-wrap";
+        body.textContent = event.text;
+        row.append(label, document.createElement("br"), body);
+        return row;
+      });
+      const messages = byId("inboxMessages");
+      const atBottom = messages.scrollHeight - messages.scrollTop - messages.clientHeight < 30;
+      messages.replaceChildren(...rows);
+      if (atBottom) messages.scrollTop = messages.scrollHeight;
+      inboxReply.hidden = !conversation.expires;
+      if (!conversation.expires) feedback("Use an approved template in Messaging to reopen contact.", false, inboxReplyStatus);
+      const through = Math.max(0, ...conversation.messages.filter(event => event.direction === "customer").map(event => event.time));
+      if (through) await request("inbox/read", { number: selected, through });
+    }
+    const result = await request("inbox");
+    if (revision !== inboxRevision) return;
+    const buttons = result.threads.map(thread => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dir = "auto";
+      button.setAttribute("aria-pressed", String(thread.number === inboxNumber));
+      button.textContent = `${thread.name ? thread.name + " · " : ""}+${thread.number} · ${new Date(thread.time).toLocaleString()} · ${thread.latest}${thread.unread ? ` · Unread (${thread.unread})` : ""}`;
+      button.addEventListener("click", () => {
+        if (inboxNumber !== thread.number) {
+          inboxText.value = "";
+          byId("inboxMessages").replaceChildren();
+          feedback("", false, inboxReplyStatus);
+        }
+        inboxNumber = thread.number;
+        byId("inboxContact").textContent = `${thread.name || "WhatsApp"} · +${thread.number}`;
+        byId("inboxConversation").hidden = false;
+        void refreshInbox();
+      });
+      return button;
+    });
+    byId("inboxThreads").replaceChildren(...buttons);
+    feedback(buttons.length ? "" : "No conversations yet.", false, status);
+  } catch (error) {
+    if (revision === inboxRevision) feedback(error.message, true, status);
+  }
+}
+
+byId("inboxLink").addEventListener("click", () => void refreshInbox());
+byId("refreshInbox").addEventListener("click", () => void refreshInbox());
+setInterval(() => {
+  if (!document.hidden && location.hash === "#inboxPanel") void refreshInbox();
+}, 8000);
+
+byId("inboxCompose").addEventListener("click", () => {
+  number.value = inboxNumber;
+  feedback("", false, windowStatus);
+  location.hash = "composePanel";
+});
+
+inboxReply.addEventListener("submit", async event => {
+  event.preventDefault();
+  const selected = inboxNumber;
+  const button = inboxReply.querySelector("button");
+  if (button.disabled) return;
+  button.disabled = true;
+  try {
+    const sent = await request("send", { type: "text", number: selected, text: inboxText.value });
+    if (inboxNumber === selected) {
+      inboxText.value = "";
+      feedback("WhatsApp accepted the reply.", false, inboxReplyStatus);
+      void watchDelivery(sent.messageId, inboxReplyStatus);
+      void refreshInbox();
+    }
+  } catch (error) {
+    if (inboxNumber === selected) feedback(error.message, true, inboxReplyStatus);
+  } finally {
+    button.disabled = false;
+  }
+});

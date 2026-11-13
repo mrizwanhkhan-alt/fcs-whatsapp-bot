@@ -38,7 +38,7 @@
     #workspaceNav a { color: #8e1420; background: white; border: 1px solid #dcdfe4;
       border-radius: 6px; padding: 10px; text-decoration: none; font-weight: 650; }
     #workspaceNav a[data-incoming="true"] { background: #b71925; color: white; }
-    #composePanel, #callingPanel, #reportsPanel, #customerPanel, #applicationsPanel { scroll-margin-top: 68px; }
+    #inboxPanel, #composePanel, #callingPanel, #reportsPanel, #customerPanel, #applicationsPanel { scroll-margin-top: 68px; }
     #reportsPanel, #customerPanel, #applicationsPanel { margin-top: 16px; }
     #reportResults details { border-top: 1px solid #ddd; padding: 10px 0; }
     #reportResults summary { cursor: pointer; font-weight: 650; }
@@ -110,6 +110,7 @@
     </section>
     <nav id="workspaceNav" aria-label="WhatsApp workspace" hidden>
       <a href="#composePanel">Messaging</a>
+      <a href="#inboxPanel" id="inboxLink">Inbox</a>
       <a id="callingLink" href="#callingPanel" aria-live="polite">Calling</a>
       <a href="#reportsPanel">Province &amp; City Reports</a>
       <a href="#customerPanel">Customer Search</a>
@@ -142,6 +143,23 @@
       <p id="subscriptionsStatus" role="status"></p>
       <div id="subscriptionsResults"></div>
     </section>
+    <section id="inboxPanel" hidden>
+      <h2>WhatsApp Inbox</h2>
+      <button id="refreshInbox" type="button">Refresh</button>
+      <p id="inboxStatus" role="status"></p>
+      <div id="inboxThreads" style="display:grid;gap:8px"></div>
+      <section id="inboxConversation" hidden>
+        <h3 id="inboxContact"></h3>
+        <div id="inboxMessages" style="max-height:55vh;overflow:auto;overflow-wrap:anywhere"></div>
+        <form id="inboxReply">
+          <label>Reply <textarea id="inboxText" dir="auto" maxlength="4096" required></textarea></label>
+          <button type="submit">Send reply</button>
+        </form>
+        <button id="inboxCompose" type="button">Open Messaging for this number</button>
+        <p id="inboxReplyStatus" role="status"></p>
+      </section>
+    </section>
+
     <section id="composePanel" hidden>
       <h1>Send a WhatsApp message</h1>
       <p class="hint">Send to one customer. Free-form messages and files require a reply from the customer within the last 24 hours.</p>

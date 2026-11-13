@@ -28,6 +28,7 @@ const INBOUND_TYPES = new Set([
 const graphVersion = process.env.META_GRAPH_VERSION || "v25.0";
 const graphConfigured = /^\d+$/.test(PHONE_NUMBER_ID) &&
   Boolean(WHATSAPP_TOKEN) && /^v\d+\.\d+$/.test(graphVersion);
+const inbox = require("./inbox");
 const windows = new Map();
 const deliveryStatuses = new Map();
 const MAX_DELIVERY_STATUSES = 5000;
@@ -122,7 +123,7 @@ function recipient(number) {
 }
 
 function windowExpiry(number) {
-  const expiry = windows.get(number);
+  const expiry = Math.max(windows.get(number) || 0, inbox.windowExpiry(number));
   return expiry > Date.now() ? expiry : null;
 }
 
@@ -278,7 +279,7 @@ async function sendAdminMessage(message, file, bytes, authorized) {
   }
   const messageId = result.messages[0].id;
   saveDeliveryStatus(messageId, { number, status: "accepted", updatedAt: new Date().toISOString(), errorCode: null });
-  return { messageId };
+  return { messageId, payload };
 }
 
 module.exports = {

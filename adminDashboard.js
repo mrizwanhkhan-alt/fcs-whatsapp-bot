@@ -16,6 +16,8 @@ const { territoryOf, filterRows } = require("./staffTerritory");
 const { subscriptionOf } = require("./staffSubscription");
 const { refreshSettings, cachedSettings, saveSettings } = require("./staffSettingsStore");
 
+const inbox = require("./inbox");
+
 const COOKIE = "__Host-fcs_admin";
 const SESSION_MS = 8 * 60 * 60 * 1000;
 const LOGIN_INTERVAL = 5 * 60 * 1000;
@@ -259,6 +261,7 @@ async function send(req, res, session, token) {
       : prepare(await readJSON(req), false);
 
     const result = await sendAdminMessage(message, file, bytes, () => activeSession(token) === session);
+    await inbox.outgoing(message.number, result.messageId, inbox.payloadText(result.payload), "staff");
     return respond(res, 200, { accepted: true, messageId: result.messageId, status: "accepted" });
   } finally {
     session.sending = false;
@@ -327,6 +330,14 @@ async function adminDashboard(req, res, url) {
       const rows = await getApplications();
       return respond(res, 200, { provinces: provinceCityReport(session.role === "super_admin" ? rows : filterRows(rows, session.territory)), updatedAt: new Date().toISOString() });
     }
+    if (req.method === "GET" && route === "/admin/inbox") {
+      if (!session) fail(401, "Your session expired. Sign in again.");
+      if (session.role !== "super_admin") fail(403, "Super Admin access required.");
+      const number = url.searchParams.get("number");
+      if (!number) return respond(res, 200, { threads: await inbox.list() });
+      const normalized = recipient(number);
+      return respond(res, 200, { messages: await inbox.history(normalized), expires: windowExpiry(normalized) });
+    }
     if (req.method === "GET" && route === "/admin/delivery") {
       if (!session) fail(401, "Your session expired. Sign in again.");
       if (session.role !== "super_admin") fail(403, "This tool requires Super Admin access.");
@@ -349,7 +360,7 @@ async function adminDashboard(req, res, url) {
     }
 
     if (req.method !== "POST" ||
-        !["/admin/login", "/admin/staff-login", "/admin/logout", "/admin/window", "/admin/send", "/admin/calling-permissions", "/admin/staff-settings"].includes(route)) {
+        !["/admin/login", "/admin/staff-login", "/admin/logout", "/admin/window", "/admin/inbox/read", "/admin/send", "/admin/calling-permissions", "/admin/staff-settings"].includes(route)) {
       fail(404, "Page not found.");
     }
 
@@ -387,6 +398,11 @@ async function adminDashboard(req, res, url) {
       if (subscriptionOf(settings, Date.parse(settings.startsAt + "T00:00:00Z")).status === "unconfigured") fail(400, "Invalid subscription dates.");
       await saveSettings(id, settings);
       return respond(res, 200, { id, permissions: effectivePermissions(account), subscription: effectiveSubscription(account), persistent: true });
+    }
+    if (route === "/admin/inbox/read") {
+      const { number, through } = await readJSON(req);
+      await inbox.markRead(recipient(number), through);
+      return respond(res, 200, { read: true });
     }
     if (route === "/admin/window") {
       const number = recipient((await readJSON(req)).number);
