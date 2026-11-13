@@ -89,7 +89,14 @@ outbound messages sent through the bot and Admin Messaging. It shows the latest
 100 conversations and up to 100 messages per conversation. WhatsApp attachments
 appear as captions or message-type labels.
 
-To enable it, set `FCS_INBOX_DIR` to a writable absolute path on a persistent
+On a single-instance service without a persistent disk, set
+`FCS_INBOX_STORAGE=sheets` to use the production bot's Google service account and
+`GOOGLE_SHEET_ID`. The inbox creates the dedicated `FCS_WhatsApp_Inbox` tab on
+first use. Restrict sharing of the spreadsheet to staff authorized to read
+customer conversations. Verify write and read access with a synthetic message
+before release.
+
+For disk storage, set `FCS_INBOX_DIR` to a writable absolute path on a persistent
 disk attached to the existing single-instance service. The Inbox stores its
 message journal and read state there. Keep access to the disk and its backups
 restricted to authorized administrators. With no directory configured, the
