@@ -4,7 +4,25 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 
 const directory = process.env.FCS_INBOX_DIR;
-const configured = Boolean(directory && path.isAbsolute(directory));
+const { GOOGLE_SHEET_ID } = require("./config");
+const useSheets = process.env.FCS_INBOX_STORAGE === "sheets";
+const configured = useSheets ? Boolean(GOOGLE_SHEET_ID) : Boolean(directory && path.isAbsolute(directory));
+const tab = "FCS_WhatsApp_Inbox";
+
+function spreadsheet() {
+  return require("./googleSheets").sheets.spreadsheets;
+}
+
+async function sheetEvents() {
+  const api = spreadsheet();
+  const meta = await api.get({ spreadsheetId: GOOGLE_SHEET_ID, fields: "sheets(properties(title))" });
+  if (!(meta.data.sheets || []).some(sheet => sheet.properties.title === tab)) {
+    await api.batchUpdate({ spreadsheetId: GOOGLE_SHEET_ID,
+      requestBody: { requests: [{ addSheet: { properties: { title: tab } } }] } });
+  }
+  const response = await api.values.get({ spreadsheetId: GOOGLE_SHEET_ID, range: tab + "!A:A" });
+  return (response.data.values || []).map(row => JSON.parse(row[0]));
+}
 const threads = new Map();
 const ids = new Set();
 const inboundTypes = new Set([
@@ -30,6 +48,11 @@ function apply(event) {
 function load() {
   if (!configured) throw Object.assign(new Error("Inbox storage is unavailable."), { status: 503 });
   ready ||= (async () => {
+    if (useSheets) {
+      const events = await sheetEvents();
+      events.forEach(apply);
+      return;
+    }
     const contents = await fs.readFile(path.join(directory, "inbox.ndjson"), "utf8").catch(error => {
       if (error.code === "ENOENT") return "";
       throw error;
@@ -51,8 +74,31 @@ function load() {
 function write(events) {
   const job = queue.then(async () => {
     await load();
-    const pending = events.filter(event => !ids.has(event.id));
+    const batchIds = new Set();
+    const pending = events.filter(event => {
+      if (event.id === undefined) return true;
+      if (ids.has(event.id) || batchIds.has(event.id)) return false;
+      batchIds.add(event.id);
+      return true;
+    });
     if (!pending.length) return;
+    if (useSheets) {
+      try {
+        await spreadsheet().values.append({
+          spreadsheetId: GOOGLE_SHEET_ID,
+          range: tab + "!A:A",
+          valueInputOption: "RAW",
+          insertDataOption: "INSERT_ROWS",
+          requestBody: { values: pending.map(event => [JSON.stringify(event)]) }
+        }, { retry: false });
+      } catch (error) {
+        // An interrupted response can hide a successful append. Reload before retrying.
+        ready = undefined;
+        throw error;
+      }
+      pending.forEach(apply);
+      return;
+    }
     const file = await fs.open(path.join(directory, "inbox.ndjson"), "a", 0o600);
     const { size } = await file.stat();
     try {
