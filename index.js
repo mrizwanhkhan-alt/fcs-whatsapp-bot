@@ -525,7 +525,12 @@ async function processMessage(message, verified) {
     }
     callbackDetailsPending.delete(number);
     try {
-      await requestRepresentativeCall(message, language);
+      const ticket = await requestRepresentativeCall(message, language);
+      if (ticket) {
+        await sendWhatsAppMessage(number, language === "ur"
+          ? `آپ کی درخواست درج کر لی گئی ہے۔ آپ کا ٹکٹ نمبر: ${ticket}۔ ایف سی ایس کا نمائندہ 24 گھنٹوں کے اندر آپ سے رابطہ کرے گا۔`
+          : `Your request has been recorded. Ticket number: ${ticket}. An FCS representative will contact you within 24 hours.`);
+      }
     } catch (error) {
       console.error("Representative call button failed:", error.status || "network error");
       if (error.status >= 400 && error.status < 500 && error.status !== 429) {
