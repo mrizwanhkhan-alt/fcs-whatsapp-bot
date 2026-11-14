@@ -143,11 +143,7 @@ async function requestRepresentativeCall(message, language) {
   const previous = representativeRequests.get(number);
   if (previous && (previous.id === id || previous.requestedAt >= requestedAt)) return;
 
-  try {
-    await require("./inbox").recordCallRequest(message);
-  } catch {
-    console.error("Could not record callback request in Sheets.");
-  }
+  const ticket = await require("./inbox").recordCallRequest(message);
   const request = { id, number, requestedAt, status: "pending" };
   representativeRequests.delete(number);
   representativeRequests.set(number, request);
@@ -160,8 +156,10 @@ async function requestRepresentativeCall(message, language) {
     request.status = "accepted";
   } catch (error) {
     request.status = "failed";
-    throw error;
+    if (!ticket) throw error;
+    console.error("Representative call button failed after ticket was saved:", error.status || "network error");
   }
+  return ticket;
 }
 
 function ended(call) {
