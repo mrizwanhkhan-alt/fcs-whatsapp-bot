@@ -1,5 +1,6 @@
 "use strict";
 
+const { createHash } = require("node:crypto");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 
@@ -90,12 +91,12 @@ function write(events) {
       try {
         await spreadsheet().values.append({
           spreadsheetId: GOOGLE_SHEET_ID,
-          range: tab + "!A:G",
+          range: tab + "!A:H",
           valueInputOption: "RAW",
           insertDataOption: "INSERT_ROWS",
           requestBody: { values: pending.map(event => {
             const journal = JSON.stringify(event);
-            if (event.callRequestFor) return [journal, "", "", "", "", "", event.callRequestFor];
+            if (event.callRequestFor) return [journal, "", "", "", "", "", event.callRequestFor, event.ticket];
             if (event.direction !== "customer") return [journal];
             return [journal, new Date(event.time).toISOString(), event.name, "+" + event.number, event.text, event.id];
           }) }
@@ -185,9 +186,11 @@ function windowExpiry(number) {
   }, 0) || 0;
 }
 
-function recordCallRequest(message) {
+async function recordCallRequest(message) {
   if (!configured || !useSheets || !message.id) return;
-  return write([{ id: "call-request:" + message.id, callRequestFor: message.id }]);
+  const ticket = "FCS-CALL-" + createHash("sha256").update(message.id).digest("hex").slice(0, 16).toUpperCase();
+  await write([{ id: "call-request:" + message.id, callRequestFor: message.id, ticket }]);
+  return ticket;
 }
 
 module.exports = { recordCallRequest, configured, load, incoming, outgoing, payloadText, list, history, markRead, windowExpiry };
