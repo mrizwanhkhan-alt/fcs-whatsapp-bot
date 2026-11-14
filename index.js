@@ -9,6 +9,7 @@ const { menuFlow, menuList, menuSelection, listSelection } = require("./serviceM
 const { callingRoutes, handleCallingWebhook, isVerifiedMetaWebhook, requestRepresentativeCall } = require("./callingRoutes");
 const { adminDashboard } = require("./adminDashboard");
 const inbox = require("./inbox");
+const callbackDetailsPending = new Map();
 const { recordAdminWindows } = require("./adminMessaging");
 const { getReply } = require("./openai");
 
@@ -493,9 +494,36 @@ async function processMessage(message, verified) {
     return;
   }
 
-  if ((text === "10" || text === "11") && !faqMode.has(number) && !tenderMode.has(number)) {
-    if (!verified) return;
+  const callbackOption = (text === "10" || text === "11") && !faqMode.has(number) && !tenderMode.has(number);
+  const callbackUntil = callbackDetailsPending.get(number) || 0;
+  if (callbackUntil && callbackUntil <= Date.now()) callbackDetailsPending.delete(number);
+
+  if (callbackOption && !verified) return;
+
+  if (verified && (callbackOption || (type === "text" && callbackUntil > Date.now()))) {
     const language = getLanguage(number) || "en";
+    const prompt = language === "ur"
+      ? "ایف سی ایس کے نمائندے سے بات کے لیے تین الگ لائنوں میں لکھیں:\nاپنا نام\nاپنا شہر\nبات کا مقصد اور درخواست نمبر، اگر موجود ہو\nدرخواست روکنے کے لیے Cancel لکھیں۔"
+      : "To speak with an FCS representative, reply on three separate lines:\nYour name\nYour city\nReason for calling and application number, if available\nReply Cancel to stop.";
+    if (callbackOption) {
+      if (callbackUntil > Date.now()) return;
+      callbackDetailsPending.delete(number);
+      callbackDetailsPending.set(number, Date.now() + 86400000);
+      if (callbackDetailsPending.size > 1000) callbackDetailsPending.delete(callbackDetailsPending.keys().next().value);
+      await sendWhatsAppMessage(number, prompt);
+      return;
+    }
+    if (/^(cancel|منسوخ)$/i.test(customerText.trim())) {
+      callbackDetailsPending.delete(number);
+      await sendWhatsAppMessage(number, language === "ur" ? "کال کی درخواست منسوخ کر دی گئی ہے۔" : "Your call request was cancelled.");
+      return;
+    }
+    const details = customerText.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    if (details.length !== 3 || details[0].length > 120 || details[1].length > 100 || details[2].length > 500) {
+      await sendWhatsAppMessage(number, prompt);
+      return;
+    }
+    callbackDetailsPending.delete(number);
     try {
       await requestRepresentativeCall(message, language);
     } catch (error) {
