@@ -86,10 +86,14 @@ function write(events) {
       try {
         await spreadsheet().values.append({
           spreadsheetId: GOOGLE_SHEET_ID,
-          range: tab + "!A:A",
+          range: tab + "!A:E",
           valueInputOption: "RAW",
           insertDataOption: "INSERT_ROWS",
-          requestBody: { values: pending.map(event => [JSON.stringify(event)]) }
+          requestBody: { values: pending.map(event => {
+            const journal = JSON.stringify(event);
+            if (event.direction !== "customer") return [journal];
+            return [journal, new Date(event.time).toISOString(), event.name, "+" + event.number, event.text];
+          }) }
         }, { retry: false });
       } catch (error) {
         // An interrupted response can hide a successful append. Reload before retrying.
