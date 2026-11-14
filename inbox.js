@@ -33,6 +33,10 @@ let ready;
 let queue = Promise.resolve();
 
 function apply(event) {
+  if (event.callRequestFor) {
+    ids.add(event.id);
+    return;
+  }
   const thread = threads.get(event.number) || { name: "", readThrough: 0, messages: [] };
   threads.set(event.number, thread);
   if (event.readThrough !== undefined) {
@@ -86,13 +90,14 @@ function write(events) {
       try {
         await spreadsheet().values.append({
           spreadsheetId: GOOGLE_SHEET_ID,
-          range: tab + "!A:E",
+          range: tab + "!A:G",
           valueInputOption: "RAW",
           insertDataOption: "INSERT_ROWS",
           requestBody: { values: pending.map(event => {
             const journal = JSON.stringify(event);
+            if (event.callRequestFor) return [journal, "", "", "", "", "", event.callRequestFor];
             if (event.direction !== "customer") return [journal];
-            return [journal, new Date(event.time).toISOString(), event.name, "+" + event.number, event.text];
+            return [journal, new Date(event.time).toISOString(), event.name, "+" + event.number, event.text, event.id];
           }) }
         }, { retry: false });
       } catch (error) {
@@ -180,4 +185,9 @@ function windowExpiry(number) {
   }, 0) || 0;
 }
 
-module.exports = { configured, load, incoming, outgoing, payloadText, list, history, markRead, windowExpiry };
+function recordCallRequest(message) {
+  if (!configured || !useSheets || !message.id) return;
+  return write([{ id: "call-request:" + message.id, callRequestFor: message.id }]);
+}
+
+module.exports = { recordCallRequest, configured, load, incoming, outgoing, payloadText, list, history, markRead, windowExpiry };
