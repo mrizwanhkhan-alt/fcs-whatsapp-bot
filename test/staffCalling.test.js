@@ -326,6 +326,9 @@ test("option 11 acknowledges a verified request and accepts a customer-initiated
   await webhook([change]);
   await webhook([change]);
   assert.equal(sent.length, count + 1);
+  assert.match(sent.at(-1).text.body, /Your city/);
+  assert.deepEqual((await api("poll")).body.requests, []);
+  await webhook([{ ...change, value: { ...change.value, messages: [{ ...message, id: "wamid.rep-details", text: { body: "Ali\nLahore\nCity Business Center FCS-123" } }] } }]);
   const button = sent.at(-1);
   assert.equal(button.to, from);
   assert.equal(button.interactive.type, "voice_call");
@@ -449,6 +452,8 @@ test("the graphical menu routes the reordered services and rejects duplicate Flo
         response_json: JSON.stringify({ flow_token: nextToken, service: "10" })
       } }
     })]);
+    assert.match(sent.at(-1).text.body, /Your city/);
+    await webhook([change({id: "wamid.flow-call-details", timestamp: String(Math.floor(Date.now() / 1000)), type: "text", text: { body: "Ali\nLahore\nApplication inquiry" }})]);
     assert.equal(sent.at(-1).interactive.type, "voice_call");
   } finally {
     if (previous === undefined) delete process.env[envName];
