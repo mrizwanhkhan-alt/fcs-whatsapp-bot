@@ -1,3 +1,4 @@
+const { consentPrompt, isConsentButton, recordConsent } = require("./applicationContactConsent");
 const {
   applications,
   questions
@@ -139,7 +140,7 @@ function isApplying(number) {
   return true;
 }
 
-async function handleApplication(number, answer) {
+async function handleApplication(number, answer, context) {
   const app = applications.get(number);
   const lang = getLanguage(number) || "en";
 
@@ -197,6 +198,16 @@ async function handleApplication(number, answer) {
     }
   }
 
+  if (app.awaitingContactConsent) {
+    if (!await recordConsent(app, answer, context, "Franchise", app.data.mobile, generateApplicationNumber)) {
+      return { completed: false, ...consentPrompt(lang) };
+    }
+    app.awaitingContactConsent = false;
+    return { completed: false, reply: questions[lang][app.step] };
+  }
+
+  if (isConsentButton(answer)) return null;
+
   const currentField =
     fields[app.step];
 
@@ -210,7 +221,7 @@ async function handleApplication(number, answer) {
     const data = app.data;
 
     const applicationNumber =
-      await generateApplicationNumber();
+      app.consentRecord?.applicationNo || await generateApplicationNumber();
 
     const now = new Date();
 
@@ -264,7 +275,7 @@ async function handleApplication(number, answer) {
 
 درخواست نمبر: ${applicationNumber}
 
-ہماری ٹیم آپ کی درخواست کا جائزہ لے گی اور آپ سے رابطہ کرے گی۔
+ہماری ٹیم آپ کی درخواست کا جائزہ لے گی۔
 
 👋 اللہ حافظ۔`
           : `🎉 Thank you!
@@ -273,13 +284,18 @@ Your FCS Express Franchise Application has been submitted successfully.
 
 Application No: ${applicationNumber}
 
-Our team will review your application and contact you.
+Our team will review your application.
 
 👋 Goodbye.`
     };
   }
 
   app.step++;
+  if (currentField === "mobile") {
+    app.awaitingContactConsent = true;
+    return { completed: false, ...consentPrompt(lang) };
+  }
+
   applications.set(number, app);
 
   return {

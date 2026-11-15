@@ -1,3 +1,4 @@
+const { isConsentButton } = require("./applicationContactConsent");
 
 const http = require("http");
 const https = require("https");
@@ -348,11 +349,19 @@ async function processMessage(message, verified) {
   if (!number || isBlocked(number)) return;
 
   const type = message.type;
+  const buttonId = message.interactive?.button_reply?.id;
+  const consentButton = verified && type === "interactive" && isConsentButton(buttonId);
+  const activeConsentFlow = () => isApplying(number) || isJobActive(number) || businessTender.isActive(number);
+  if (consentButton && !activeConsentFlow()) return;
+
+  const eventTime = Number(message.timestamp) * 1000;
+  const receivedAt = new Date(eventTime > 0 && eventTime <= Date.now() ? eventTime : Date.now()).toISOString();
+  const consentContext = { verified, receivedAt, sender: number };
 
   let customerText =
     type === "text"
       ? (message.text?.body || "")
-      : "";
+      : consentButton ? buttonId : "";
 
   let text = customerText.trim();
 
@@ -379,7 +388,7 @@ async function processMessage(message, verified) {
 
   const flowReply = verified && type === "interactive" && message.interactive?.type === "nfm_reply";
   const listReply = verified && type === "interactive" && message.interactive?.type === "list_reply";
-  if (type !== "text" && !languageChoice && !flowReply && !listReply) return;
+  if (type !== "text" && !languageChoice && !flowReply && !listReply && !consentButton) return;
   if ((languageChoice || flowReply || listReply) && (isApplying(number) || isSupplierRegistering(number) ||
       isTransportRegistering(number) || isWarehouseRegistering(number) ||
       isJobActive(number) || businessTender.isActive(number))) return;
@@ -402,11 +411,12 @@ async function processMessage(message, verified) {
   if (isApplying(number)) {
     const result = await handleApplication(
       number,
-      customerText
+      customerText,
+      consentContext
     );
 
     if (result && result.reply) {
-      sendWhatsAppMessage(number, result.reply);
+      sendWhatsAppMessage(number, result.reply, result.interactive);
     }
 
     return;
@@ -462,11 +472,12 @@ async function processMessage(message, verified) {
   if (isJobActive(number)) {
     const result = await handleJob(
       number,
-      customerText
+      customerText,
+      consentContext
     );
 
     if (result && result.reply) {
-      sendWhatsAppMessage(number, result.reply);
+      sendWhatsAppMessage(number, result.reply, result.interactive);
     }
 
     return;
@@ -477,11 +488,12 @@ async function processMessage(message, verified) {
   if (businessTender.isActive(number)) {
     const result = await businessTender.handle(
       number,
-      customerText
+      customerText,
+      consentContext
     );
 
     if (result && result.reply) {
-      sendWhatsAppMessage(number, result.reply);
+      sendWhatsAppMessage(number, result.reply, result.interactive);
     }
 
     return;

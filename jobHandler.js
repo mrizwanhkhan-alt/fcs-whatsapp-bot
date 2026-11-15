@@ -1,3 +1,4 @@
+const { consentPrompt, isConsentButton, recordConsent } = require("./applicationContactConsent");
 
 const https = require("https");
 const { google } = require("googleapis");
@@ -164,7 +165,7 @@ function reply(done, message) {
   return { done, reply: message };
 }
 
-async function handleJob(number, text) {
+async function handleJob(number, text, context) {
   const key = String(number);
   const session = sessions.get(key);
 
@@ -192,6 +193,17 @@ async function handleJob(number, text) {
     );
   }
 
+  if (session.awaitingContactConsent) {
+    if (!await recordConsent(session, value, context, "Career", session.data.mobile, careerID)) {
+      return { done: false, ...consentPrompt(session.lang) };
+    }
+    session.awaitingContactConsent = false;
+    session.updated = Date.now();
+    return reply(false, question(session));
+  }
+
+  if (isConsentButton(value)) return null;
+
   if (session.step >= FIELDS.length) {
     return reply(false, question(session));
   }
@@ -217,6 +229,11 @@ async function handleJob(number, text) {
 
   session.step++;
   session.updated = Date.now();
+
+  if (field[2] === "phone") {
+    session.awaitingContactConsent = true;
+    return { done: false, ...consentPrompt(session.lang) };
+  }
 
   return reply(false, question(session));
 }
@@ -365,7 +382,7 @@ async function saveJob(number, session, cvLink) {
 
   followUp.setDate(followUp.getDate() + 15);
 
-  const id = careerID();
+  const id = session.consentRecord?.applicationNo || careerID();
   const v = session.data;
 
   const row = [

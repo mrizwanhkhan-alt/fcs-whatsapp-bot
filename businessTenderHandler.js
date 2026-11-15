@@ -1,3 +1,4 @@
+const { consentPrompt, isConsentButton, recordConsent } = require("./applicationContactConsent");
 
 const { sheets, generateApplicationNumber } = require("./googleSheets");
 const config = require("./config");
@@ -522,7 +523,7 @@ async function save(session, number) {
     isTender ? TENDER_HEADERS : BUSINESS_HEADERS
   );
 
-  const applicationNo = await generateApplicationNumber();
+  const applicationNo = session.consentRecord?.applicationNo || await generateApplicationNumber();
 
   const row = isTender
     ? makeTenderRow(session, number, applicationNo)
@@ -541,7 +542,7 @@ async function save(session, number) {
   return applicationNo;
 }
 
-async function handle(number, text) {
+async function handle(number, text, context) {
   const session = sessions.get(number);
   if (!session) return null;
 
@@ -558,6 +559,20 @@ async function handle(number, text) {
     };
   }
 
+  if (session.awaitingContactConsent) {
+    const isTender = session.kind === "tender";
+    if (!await recordConsent(
+      session, value, context, isTender ? "Tender" : "City Business Center",
+      isTender ? session.values.phone : session.values.mobile, generateApplicationNumber
+    )) {
+      return { done: false, ...consentPrompt(session.lang) };
+    }
+    session.awaitingContactConsent = false;
+    return { done: false, reply: promptField(session) };
+  }
+
+  if (isConsentButton(value)) return null;
+
   const fields = fieldsFor(session);
 
   if (session.step < fields.length) {
@@ -572,6 +587,10 @@ async function handle(number, text) {
 
     session.values[field[3]] = normalizeAnswer(field, value);
     session.step++;
+    if (field[2] === "phone") {
+      session.awaitingContactConsent = true;
+      return { done: false, ...consentPrompt(session.lang) };
+    }
   }
 
   if (session.step < fields.length) {
@@ -599,7 +618,7 @@ Application Status: Pending Review
 ${session.kind === "tender"
   ? "Payment Status: Pending Verification\n"
   : ""}
-آپ کی درخواست کی جانچ کے بعد FCS Express آپ کو اگلے مرحلے سے آگاہ کرے گی۔
+ہماری ٹیم آپ کی درخواست کا جائزہ لے گی۔
 
 FCS Express Logistics & Transport
 
@@ -620,7 +639,7 @@ Application Status: Pending Review
 ${session.kind === "tender"
   ? "Payment Status: Pending Verification\n"
   : ""}
-FCS Express will inform you about the next step after reviewing your application.
+Our team will review your application.
 
 FCS Express Logistics & Transport
 
