@@ -110,6 +110,7 @@
     </section>
     <nav id="workspaceNav" aria-label="WhatsApp workspace" hidden>
       <a href="#composePanel">Messaging</a>
+      <a href="#bulkPanel">Bulk Templates</a>
       <a id="callingLink" href="#callingPanel" aria-live="polite">Calling</a>
       <a href="#reportsPanel">Province &amp; City Reports</a>
       <a href="#customerPanel">Customer Search</a>
@@ -132,6 +133,7 @@
         <a class="quickAction" href="#reportsPanel">City Reports<small>View province and city totals</small></a>
         <a class="quickAction" href="#applicationsPanel">Applications<small>Review recent records</small></a>
         <a class="quickAction" href="#composePanel">Send Message<small>Text, PDF or approved template</small></a>
+        <a class="quickAction" href="#bulkPanel">Bulk Templates<small>Send to consenting contacts</small></a>
         <a class="quickAction" href="#callingPanel">Calling<small>Open existing staff calling panel</small></a>
       </div>
     </section>
@@ -156,6 +158,24 @@
         <button id="staffTemplateSend" type="submit">Send template</button>
       </form>
       <p id="staffTemplateStatus" class="status" role="status" aria-live="polite"></p>
+    </section>
+    <section id="bulkPanel" hidden style="margin-bottom:16px;scroll-margin-top:68px">
+      <h1>Bulk WhatsApp templates</h1>
+      <p class="hint">Send a configured, Meta-approved fixed-content template to up to 25 contacts per batch. Enter one contact per line as country-code number,YES. YES must mean verified, recorded opt-in for this exact message category; application contact permission alone does not authorize marketing. Meta charges and messaging limits apply.</p>
+      <form id="bulkForm">
+        <label>Approved fixed-content template <select id="bulkTemplate" required></select></label>
+        <label>Consenting WhatsApp numbers (one per line, maximum 25)
+          <textarea id="bulkRecipients" rows="7" placeholder="923001234567,YES" required></textarea>
+        </label>
+        <label class="check"><input id="bulkConfirm" type="checkbox" required> I have checked recorded customer opt-ins for this template category; numbers without YES will not be sent.</label>
+        <button id="bulkSend" type="submit">Send approved template batch</button>
+      </form>
+      <p id="bulkStatus" class="status" role="status" aria-live="polite"></p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        <button id="bulkRefresh" type="button" class="secondary" disabled>Refresh delivery statuses</button>
+        <button id="bulkExport" type="button" class="secondary" disabled>Export this batch CSV</button>
+      </div>
+      <div id="bulkResults" aria-live="polite"></div>
     </section>
     <section id="composePanel" hidden>
       <h1>Send a WhatsApp message</h1>
