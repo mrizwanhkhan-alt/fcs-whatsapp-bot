@@ -19,6 +19,8 @@ let csrf;
 let staffLoginMode = false;
 let templates = [];
 let deliveryPoll = 0;
+let bulkRunning = false;
+let bulkResults = [];
 
 async function watchDelivery(id) {
   const poll = ++deliveryPoll;
@@ -125,6 +127,7 @@ function showSession(session) {
     ? `Signed in as ${session.staffId || "staff"} (${String(session.role).replaceAll("_", " ")})`
     : "";
   byId("composePanel").hidden = !isAdmin;
+  byId("bulkPanel").hidden = !isAdmin;
   byId("staffTemplatePanel").hidden = !session.signedIn || isAdmin;
   byId("staffTemplateForm").reset();
   byId("staffTemplateStatus").textContent = "";
@@ -158,6 +161,11 @@ function showSession(session) {
     templates.length ? "Choose a template" : "No approved templates configured", ""
   ));
   for (const item of templates) template.add(new Option(`${item.name} (${item.language})`, item.key));
+  const fixedTemplates = templates.filter(item => !item.header && item.bodyParameters === 0);
+  const bulkChoice = byId("bulkTemplate");
+  bulkChoice.replaceChildren(new Option(fixedTemplates.length ? "Choose fixed template" : "No fixed templates configured", ""));
+  for (const item of fixedTemplates) bulkChoice.add(new Option(`${item.name} (${item.language})`, item.key));
+  byId("bulkSend").disabled = !isAdmin || !fixedTemplates.length || bulkRunning;
   compose.reset();
   feedback("", false, windowStatus);
   updateFields();
@@ -317,6 +325,136 @@ compose.addEventListener("submit", event => {
       fields.forEach(element => { element.disabled = false; });
     }
   });
+});
+
+
+const bulkForm = byId("bulkForm");
+const bulkStatus = byId("bulkStatus");
+const bulkOutput = byId("bulkResults");
+
+function parseBulkRecipients(value) {
+  const lines = value.split(/\r?\n/).map(item => item.trim()).filter(Boolean);
+  if (!lines.length || lines.length > 25) throw new Error("Provide 1 to 25 consenting numbers.");
+  const unique = new Set();
+  return lines.map((line, index) => {
+    const fields = line.split(",").map(item => item.trim());
+    if (fields.length !== 2 || fields[1].toUpperCase() !== "YES") {
+      throw new Error("Line " + (index + 1) + ": provide number,YES only for recorded opt-in.");
+    }
+    const number = fields[0].replace(/[ ()+-]/g, "");
+    if (!/^[1-9]\d{7,14}$/.test(number)) throw new Error("Invalid country-code number on line " + (index + 1) + ".");
+    if (unique.has(number)) throw new Error("Duplicate number on line " + (index + 1) + ".");
+    unique.add(number);
+    return number;
+  });
+}
+
+function showBulkResults() {
+  bulkOutput.replaceChildren();
+  const accepted = bulkResults.filter(item => item.status === "accepted").length;
+  const delivered = bulkResults.filter(item => item.status === "delivered" || item.status === "read").length;
+  const failed = bulkResults.filter(item => item.status === "failed").length;
+  const unknown = bulkResults.filter(item => item.status === "unconfirmed").length;
+  for (const row of bulkResults) {
+    const p = document.createElement("p");
+    p.textContent = row.number + " — " + row.status + (row.reason ? " (" + row.reason + ")" : "");
+    bulkOutput.append(p);
+  }
+  if (!bulkRunning) feedback(
+    "Batch: " + bulkResults.length + " attempted; " + accepted + " accepted; " +
+    delivered + " delivered/read; " + failed + " failed; " + unknown + " unconfirmed. " +
+    "Accepted does not mean delivered. Export the CSV before closing this page.",
+    Boolean(failed || unknown), bulkStatus
+  );
+  byId("bulkExport").disabled = !bulkResults.length;
+  byId("bulkRefresh").disabled = bulkRunning || !bulkResults.some(item => item.messageId);
+}
+
+bulkForm.addEventListener("submit", event => {
+  event.preventDefault();
+  const button = event.submitter;
+  if (bulkRunning || !csrf) return;
+  let numbers;
+  try {
+    numbers = parseBulkRecipients(byId("bulkRecipients").value);
+    if (!byId("bulkConfirm").checked) throw new Error("Confirm every number has recorded opt-in.");
+    const selected = templates.find(item => item.key === byId("bulkTemplate").value);
+    if (!selected || selected.header || selected.bodyParameters !== 0) {
+      throw new Error("Choose a configured, approved fixed-content template.");
+    }
+  } catch (error) {
+    feedback(error.message, true, bulkStatus);
+    return;
+  }
+  if (!window.confirm("Send an approved Meta template to " + numbers.length +
+      " opted-in numbers? WhatsApp messaging charges may apply.")) return;
+  bulkRunning = true;
+  button.disabled = true;
+  byId("bulkRefresh").disabled = true;
+  byId("bulkExport").disabled = true;
+  bulkResults = [];
+  bulkOutput.replaceChildren();
+  const selectedTemplate = byId("bulkTemplate").value;
+  void (async () => {
+    try {
+      for (let i = 0; i < numbers.length; i++) {
+        const n = numbers[i];
+        feedback("Sending " + (i + 1) + " of " + numbers.length + " to " + n + "...", false, bulkStatus);
+        try {
+          const sent = await request("send", {
+            number: n, type: "template", template: selectedTemplate, optIn: true, parameters: []
+          });
+          bulkResults.push({ number: n, status: "accepted", messageId: sent.messageId || "", reason: "" });
+        } catch (error) {
+          const message = String(error.message || "Unknown error");
+          const uncertain = /could not confirm|check before retrying/i.test(message);
+          bulkResults.push({ number: n, status: uncertain ? "unconfirmed" : "failed", messageId: "", reason: message });
+          if (uncertain || !csrf || /too many|in progress|rate limit/i.test(message)) break;
+        }
+        showBulkResults();
+        if (i + 1 < numbers.length) await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    } finally {
+      bulkRunning = false;
+      button.disabled = !csrf;
+      showBulkResults();
+    }
+  })();
+});
+
+byId("bulkRefresh").addEventListener("click", event => {
+  const button = event.currentTarget;
+  if (bulkRunning || !csrf) return;
+  void run(button, async () => {
+    for (const row of bulkResults) {
+      if (!row.messageId) continue;
+      try {
+        const latest = await request("delivery?id=" + encodeURIComponent(row.messageId));
+        row.status = latest.status;
+        row.reason = latest.errorCode ? "Meta error " + latest.errorCode : "";
+      } catch {
+        row.reason = "Delivery status unavailable; verify in Meta";
+      }
+    }
+    showBulkResults();
+  }, bulkStatus);
+});
+
+byId("bulkExport").addEventListener("click", () => {
+  if (!bulkResults.length) return;
+  const rows = [["Number", "Template", "Meta message ID", "Status", "Notes"],
+    ...bulkResults.map(row => [row.number, byId("bulkTemplate").value, row.messageId, row.status, row.reason])];
+  const cell = value => '"' + String(value || "").replaceAll('"', '""') + '"';
+  const csv = "\uFEFF" + rows.map(row => row.map(cell).join(",")).join("\r\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "fcs-bulk-template-" + new Date().toISOString().slice(0, 10) + ".csv";
+  document.body.append(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 });
 
 async function loadProvinceCityReport() {
